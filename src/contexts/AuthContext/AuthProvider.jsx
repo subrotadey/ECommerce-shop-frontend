@@ -1,16 +1,16 @@
 // ============================================
 // contexts/AuthContext/AuthProvider.jsx - FIXED
 // ============================================
-import { 
-    createUserWithEmailAndPassword, 
-    GoogleAuthProvider, 
-    onAuthStateChanged, 
-    sendEmailVerification, 
-    sendPasswordResetEmail, 
-    signInWithEmailAndPassword, 
-    signInWithPopup, 
-    signOut, 
-    updateProfile 
+import {
+    createUserWithEmailAndPassword,
+    GoogleAuthProvider,
+    onAuthStateChanged,
+    sendEmailVerification,
+    sendPasswordResetEmail,
+    signInWithEmailAndPassword,
+    signInWithPopup,
+    signOut,
+    updateProfile
 } from 'firebase/auth';
 import { useEffect, useState } from 'react';
 import { auth } from '../../firebase/firebase.init';
@@ -22,7 +22,7 @@ const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [currentUser, setCurrentUser] = useState(null); // Backend user data
-    
+
     const createUser = (email, password) => {
         setLoading(true);
         return createUserWithEmailAndPassword(auth, email, password);
@@ -59,33 +59,28 @@ const AuthProvider = ({ children }) => {
     // Firebase auth state listener
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-            console.log('🔥 Firebase user state changed:', firebaseUser?.email);
+            // console.log('🔥 Firebase user state changed:', firebaseUser?.email);
             setUser(firebaseUser);
-            
+
             if (firebaseUser) {
-                // Backend থেকে user data fetch করুন
+                // Backend থেকে user data fetch
                 try {
-                    // আপনার backend API call
-                    // const response = await fetch(`/api/users/${firebaseUser.uid}`);
-                    // const userData = await response.json();
-                    
-                    // এখনকার জন্য Firebase user ই use করুন
+
+                    // Firebase user
                     setCurrentUser({
                         _id: firebaseUser.uid,
                         email: firebaseUser.email,
                         displayName: firebaseUser.displayName,
                         photoURL: firebaseUser.photoURL
                     });
-                    console.log('✅ User data loaded');
                 } catch (error) {
-                    console.error('❌ Error loading user data:', error);
+                    console.error(' Error loading user data:', error);
                     setCurrentUser(null);
                 }
             } else {
                 setCurrentUser(null);
-                console.log('👤 User logged out');
             }
-            
+
             setLoading(false);
         });
 

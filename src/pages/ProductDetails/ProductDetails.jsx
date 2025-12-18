@@ -1,12 +1,10 @@
-// src/pages/ProductDetails/ProductDetails.jsx
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import useSingleProduct from "../../hooks/useSingleProduct";
-// import { useCart } from "../../contexts/CartContext";
 import Swal from "sweetalert2";
-import toast from "react-hot-toast";
 import useCart from "../../hooks/useCart";
 import Loading from "../../components/Shared/Loading/Loading";
+import Breadcrumb from "../../components/Shared/Breadcrumb/Breadcrumb";
 
 const ProductDetails = () => {
   const { productId } = useParams();
@@ -51,7 +49,6 @@ const ProductDetails = () => {
       color: selectedColor,
       qty: Number(qty),
     });
-    toast.success('Successfully toasted!')
 
     // SweetAlert
     Swal.fire({
@@ -79,181 +76,151 @@ const ProductDetails = () => {
       showConfirmButton: false,
       timer: 1500
     });
-    // toast.success('Successfully toasted!')
 
     goToCart(); // Redirect to cart page instantly
   };
 
   return (
-    <div className="max-w-6xl mx-auto py-8 px-4 grid grid-cols-1 md:grid-cols-2 gap-8">
-      {/* Image Section */}
-      <div>
-        <img
-          src={product.images?.[0] ?? ""}
-          alt={product.productName}
-          className="w-full h-[480px] object-cover rounded"
-        />
+    <>
+      <Breadcrumb
+        dynamicLabels={{
+          [productId]: product.productName
+        }}
+      />
+      <div className="max-w-6xl mx-auto py-8 px-4 grid grid-cols-1 md:grid-cols-2 gap-8">
+        {/* Image Section */}
+        <div>
+          <img
+            src={product.images?.[0] ?? ""}
+            alt={product.productName}
+            className="w-full h-[480px] object-cover rounded"
+          />
 
-        <div className="mt-4 flex gap-2">
-          {product.images?.map((img, i) => (
-            <img
-              key={i}
-              src={img}
-              alt={`${product.productName}-${i}`}
-              className="w-20 h-20 object-cover rounded border"
-            />
-          ))}
+          <div className="mt-4 flex gap-2">
+            {product.images?.map((img, i) => (
+              <img
+                key={i}
+                src={img}
+                alt={`${product.productName}-${i}`}
+                className="w-20 h-20 object-cover rounded border"
+              />
+            ))}
+          </div>
         </div>
-      </div>
 
-      {/* Product Details */}
-      <div>
-        <h1 className="text-2xl font-semibold">{product.productName}</h1>
+        {/* Product Details */}
+        <div>
+          <h1 className="text-2xl font-semibold">{product.productName}</h1>
 
-        {/* Price */}
-        <div className="mt-2 flex items-baseline gap-3">
-          <span className="text-xl font-bold text-red-600">
-            {product.newPrice} ৳
-          </span>
-          {product.oldPrice && (
-            <span className="line-through text-gray-400">
-              {product.oldPrice} ৳
+          {/* Price */}
+          <div className="mt-2 flex items-baseline gap-3">
+            <span className="text-xl font-bold text-red-600">
+              {product.newPrice} ৳
             </span>
+            {product.oldPrice && (
+              <span className="line-through text-gray-400">
+                {product.oldPrice} ৳
+              </span>
+            )}
+          </div>
+
+          {/* Description */}
+          <div
+            className="mt-4"
+            dangerouslySetInnerHTML={{ __html: product.descriptionHtml ?? "" }}
+          />
+
+          {/* Size Selector */}
+          {sizes.length > 0 && (
+            <div className="mt-6">
+              <label className="block font-medium mb-2">Size</label>
+              <div className="flex gap-2">
+                {sizes.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setSelectedSize(s)}
+                    className={`px-3 py-2 border rounded ${selectedSize === s
+                      ? "border-black bg-black text-white"
+                      : "border-gray-300"
+                      }`}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
-        </div>
 
-        {/* Description */}
-        <div
-          className="mt-4"
-          dangerouslySetInnerHTML={{ __html: product.descriptionHtml ?? "" }}
-        />
+          {/* Color Selector */}
+          {colors.length > 0 && (
+            <div className="mt-6">
+              <label className="block font-medium mb-2">Color</label>
+              <div className="flex gap-2">
+                {colors.map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setSelectedColor(c)}
+                    className={`px-3 py-2 border rounded ${selectedColor === c
+                      ? "border-black bg-black text-white"
+                      : "border-gray-300"
+                      }`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
-        {/* Size Selector */}
-        {sizes.length > 0 && (
-          <div className="mt-6">
-            <label className="block font-medium mb-2">Size</label>
-            <div className="flex gap-2">
-              {sizes.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setSelectedSize(s)}
-                  className={`px-3 py-2 border rounded ${selectedSize === s
-                    ? "border-black bg-black text-white"
-                    : "border-gray-300"
-                    }`}
-                >
-                  {s}
-                </button>
-              ))}
+          {/* Quantity */}
+          <div className="mt-6 flex items-center gap-4">
+            <div className="flex items-center border rounded">
+              <button
+                onClick={() => setQty((q) => Math.max(1, q - 1))}
+                className="px-3 py-2"
+              >
+                -
+              </button>
+              <input
+                value={qty}
+                onChange={(e) =>
+                  setQty(Math.max(1, Number(e.target.value || 1)))
+                }
+                className="w-16 text-center px-2 py-1"
+                type="number"
+                min={1}
+              />
+              <button onClick={() => setQty((q) => q + 1)} className="px-3 py-2">
+                +
+              </button>
             </div>
           </div>
-        )}
 
-        {/* Color Selector */}
-        {colors.length > 0 && (
-          <div className="mt-6">
-            <label className="block font-medium mb-2">Color</label>
-            <div className="flex gap-2">
-              {colors.map((c) => (
-                <button
-                  key={c}
-                  onClick={() => setSelectedColor(c)}
-                  className={`px-3 py-2 border rounded ${selectedColor === c
-                    ? "border-black bg-black text-white"
-                    : "border-gray-300"
-                    }`}
-                >
-                  {c}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Quantity */}
-        <div className="mt-6 flex items-center gap-4">
-          <div className="flex items-center border rounded">
+          {/* Action Buttons */}
+          <div className="mt-6 flex gap-4">
             <button
-              onClick={() => setQty((q) => Math.max(1, q - 1))}
-              className="px-3 py-2"
+              onClick={handleAddToCart}
+              className="bg-black text-white px-6 py-2 rounded font-medium"
             >
-              -
+              Add to Cart
             </button>
-            <input
-              value={qty}
-              onChange={(e) =>
-                setQty(Math.max(1, Number(e.target.value || 1)))
-              }
-              className="w-16 text-center px-2 py-1"
-              type="number"
-              min={1}
-            />
-            <button onClick={() => setQty((q) => q + 1)} className="px-3 py-2">
-              +
+
+            <button
+              onClick={handleBuyNow}
+              className="bg-red-600 text-white px-6 py-2 rounded font-medium"
+            >
+              Buy Now
             </button>
           </div>
-        </div>
 
-        {/* Action Buttons */}
-        <div className="mt-6 flex gap-4">
-          <button
-            onClick={handleAddToCart}
-            className="bg-black text-white px-6 py-2 rounded font-medium"
-            >
-            Add to Cart
-          </button>
-          
-          <button
-            onClick={handleBuyNow}
-            className="bg-red-600 text-white px-6 py-2 rounded font-medium"
-          >
-            Buy Now
-          </button>
+          {error && <p className="text-red-600 mt-3">{error}</p>}
         </div>
-
-        {error && <p className="text-red-600 mt-3">{error}</p>}
       </div>
-    </div>
+    </>
   );
 };
 
 export default ProductDetails;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 // import { useState, useEffect } from "react";

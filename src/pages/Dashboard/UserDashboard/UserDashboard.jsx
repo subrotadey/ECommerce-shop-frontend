@@ -7,6 +7,7 @@ import AccountInfo from '../DashboardComponent/AccountInfo';
 import Addresses from '../DashboardComponent/Addresses';
 import Orders from '../DashboardComponent/Orders';
 import useCart from '../../../hooks/useCart';
+import Breadcrumb from '../../../components/Shared/Breadcrumb/Breadcrumb';
 
 export default function UserDashboard() {
     const [activeSection, setActiveSection] = useState('orders');
@@ -49,8 +50,24 @@ export default function UserDashboard() {
         }
     };
 
-    return (
+    // Dynamic breadcrumb based on active section
+    const getSectionBreadcrumb = () => {
+        const sectionLabels = {
+            'orders': 'My Orders',
+            'addresses': 'My Addresses',
+            'account': 'Account Information'
+        };
+
+        return [
+            { label: 'My Account', path: '/dashboard' },
+            { label: sectionLabels[activeSection] || 'Dashboard' }
+        ];
+    };
+
+   return (
         <div className="min-h-screen bg-gray-50">
+            <Breadcrumb customBreadcrumbs={getSectionBreadcrumb()} />
+
             {/* Hero Section with Title */}
             <div className="relative bg-linear-to-r from-gray-800 to-gray-900 text-white py-16">
                 <div className="absolute inset-0 opacity-50">

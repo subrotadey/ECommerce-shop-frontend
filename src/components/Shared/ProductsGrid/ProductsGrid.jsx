@@ -2,18 +2,22 @@ import { useState, useMemo } from 'react';
 import { Heart, X, SlidersHorizontal, Search } from 'lucide-react';
 import useWishlist from '../../../hooks/useWishlist';
 import toast from 'react-hot-toast';
+import Breadcrumb from '../Breadcrumb/Breadcrumb';
+import useCart from '../../../hooks/useCart';
+import Swal from 'sweetalert2';
 
 // Reusable ProductsGrid Component
-export default function ProductsGrid({ 
-  products = [], 
-  isLoading = false, 
+export default function ProductsGrid({
+  products = [],
+  isLoading = false,
   isError = false,
   category = "Products",
   breadcrumbs = []
 }) {
   const [showFilters, setShowFilters] = useState(false);
   const { isInWishlist, toggleWishlist, isToggling, userId } = useWishlist();
-  
+  const { addToCart, goToCart } = useCart();
+
   // Filter states
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategories, setSelectedCategories] = useState([]);
@@ -23,17 +27,17 @@ export default function ProductsGrid({
   const [selectedTags, setSelectedTags] = useState([]);
 
   // Extract unique values from products
-  const allCategories = useMemo(() => 
+  const allCategories = useMemo(() =>
     [...new Set(products.flatMap(p => p.categories || []))],
     [products]
   );
-  
-  const allTags = useMemo(() => 
+
+  const allTags = useMemo(() =>
     [...new Set(products.flatMap(p => p.tags || []))],
     [products]
   );
-  
-  const allColors = useMemo(() => 
+
+  const allColors = useMemo(() =>
     [...new Set(products.flatMap(p => p.colors || []))],
     [products]
   );
@@ -51,11 +55,11 @@ export default function ProductsGrid({
     }
   }, [maxPrice, products.length]);
 
-  // 👇 Wishlist toggle handler
+  //  Wishlist toggle handler
   const handleToggleWishlist = (productId, e) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     if (userId === 'guest') {
       toast.error('Please login to add to wishlist');
       return;
@@ -79,14 +83,14 @@ export default function ProductsGrid({
   const filteredProducts = useMemo(() => {
     let filtered = products.filter(product => {
       const matchesSearch = product.productName.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesCategory = selectedCategories.length === 0 || 
+      const matchesCategory = selectedCategories.length === 0 ||
         selectedCategories.some(cat => product.categories?.includes(cat));
-      const matchesColor = selectedColors.length === 0 || 
+      const matchesColor = selectedColors.length === 0 ||
         selectedColors.some(color => product.colors?.includes(color));
       const matchesPrice = product.newPrice >= priceRange[0] && product.newPrice <= priceRange[1];
-      const matchesTags = selectedTags.length === 0 || 
+      const matchesTags = selectedTags.length === 0 ||
         selectedTags.some(tag => product.tags?.includes(tag));
-      
+
       return matchesSearch && matchesCategory && matchesColor && matchesPrice && matchesTags;
     });
 
@@ -138,7 +142,7 @@ export default function ProductsGrid({
   };
 
   const activeFiltersCount = selectedCategories.length + selectedTags.length + selectedColors.length +
-    (searchQuery ? 1 : 0) + 
+    (searchQuery ? 1 : 0) +
     (priceRange[0] !== 0 || priceRange[1] !== maxPrice ? 1 : 0);
 
   // Loading State
@@ -159,7 +163,7 @@ export default function ProductsGrid({
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <p className="text-red-600 text-lg font-semibold mb-4">Error loading products</p>
-          <button 
+          <button
             onClick={() => window.location.reload()}
             className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
           >
@@ -172,26 +176,7 @@ export default function ProductsGrid({
 
   return (
     <div className="bg-gray-50 min-h-screen">
-      {/* Breadcrumb */}
-      {breadcrumbs.length > 0 && (
-        <div className="bg-white border-b">
-          <div className="container mx-auto px-4 py-4">
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              {breadcrumbs.map((crumb, index) => (
-                <div key={index} className="flex items-center gap-2">
-                  {crumb.link ? (
-                    <a href={crumb.link} className="hover:text-gray-900">{crumb.label}</a>
-                  ) : (
-                    <span className="text-gray-900 font-medium">{crumb.label}</span>
-                  )}
-                  {index < breadcrumbs.length - 1 && <span>/</span>}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
+      <Breadcrumb />
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
@@ -199,7 +184,7 @@ export default function ProductsGrid({
             {category} Collection
           </h1>
           <p className="text-gray-600 max-w-3xl">
-            Discover our elegant collection with modern designs, premium fabrics, and timeless styles. 
+            Discover our elegant collection with modern designs, premium fabrics, and timeless styles.
             Perfect for every occasion. Shop now for the latest trends!
           </p>
         </div>
@@ -286,9 +271,8 @@ export default function ProductsGrid({
                       <button
                         key={color}
                         onClick={() => toggleColor(color)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                          selectedColors.includes(color) ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${selectedColors.includes(color) ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
                       >
                         {color}
                       </button>
@@ -306,9 +290,8 @@ export default function ProductsGrid({
                       <button
                         key={tag}
                         onClick={() => toggleTag(tag)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                          selectedTags.includes(tag) ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${selectedTags.includes(tag) ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
                       >
                         {tag}
                       </button>
@@ -390,42 +373,41 @@ export default function ProductsGrid({
                   <div key={product._id || product.sku} className="group bg-white rounded-lg shadow-sm hover:shadow-lg transition-all duration-300">
                     <div className="relative overflow-hidden rounded-t-lg">
                       <button
-                onClick={(e) => handleToggleWishlist(product._id || product.sku, e)}
-                disabled={isToggling}
-                className="absolute top-3 right-3 z-10 p-2 bg-white rounded-full shadow-md hover:shadow-lg transition-all group/wishlist"
-                title={isInWishlist(product._id || product.sku) ? 'Remove from wishlist' : 'Add to wishlist'}
-              >
-                <Heart
-                  size={20}
-                  className={`transition-all ${
-                    isInWishlist(product._id || product.sku) 
-                      ? 'fill-red-600 text-red-600' 
-                      : 'text-gray-600 group-hover/wishlist:text-red-600'
-                  }`}
-                />
-              </button>
+                        onClick={(e) => handleToggleWishlist(product._id || product.sku, e)}
+                        disabled={isToggling}
+                        className="absolute top-3 right-3 z-10 p-2 bg-white rounded-full shadow-md hover:shadow-lg transition-all group/wishlist"
+                        title={isInWishlist(product._id || product.sku) ? 'Remove from wishlist' : 'Add to wishlist'}
+                      >
+                        <Heart
+                          size={20}
+                          className={`transition-all ${isInWishlist(product._id || product.sku)
+                            ? 'fill-red-600 text-red-600'
+                            : 'text-gray-600 group-hover/wishlist:text-red-600'
+                            }`}
+                        />
+                      </button>
 
-              {/* Badges */}
-              <div className="absolute top-3 left-3 z-10 flex flex-col gap-1">
-                {product.tags?.includes('Best Seller') && (
-                  <span className="bg-green-600 text-white text-xs font-bold px-2 py-1 rounded">BEST SELLER</span>
-                )}
-                {product.tags?.includes('Exclusive Collection') && (
-                  <span className="bg-purple-600 text-white text-xs font-bold px-2 py-1 rounded">EXCLUSIVE</span>
-                )}
-                {product.oldPrice > product.newPrice && (
-                  <span className="bg-red-600 text-white text-xs font-bold px-2 py-1 rounded">SALE</span>
-                )}
-              </div>
+                      {/* Badges */}
+                      <div className="absolute top-3 left-3 z-10 flex flex-col gap-1">
+                        {product.tags?.includes('Best Seller') && (
+                          <span className="bg-green-600 text-white text-xs font-bold px-2 py-1 rounded">BEST SELLER</span>
+                        )}
+                        {product.tags?.includes('Exclusive Collection') && (
+                          <span className="bg-purple-600 text-white text-xs font-bold px-2 py-1 rounded">EXCLUSIVE</span>
+                        )}
+                        {product.oldPrice > product.newPrice && (
+                          <span className="bg-red-600 text-white text-xs font-bold px-2 py-1 rounded">SALE</span>
+                        )}
+                      </div>
 
-              {/* Product Image */}
-              <a href={`/product/${product._id || product.sku}`}>
-                <img
-                  src={product.images?.[0] || 'https://via.placeholder.com/300'}
-                  alt={product.productName}
-                  className="w-full h-72 object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-              </a>
+                      {/* Product Image */}
+                      <a href={`/product/${product._id || product.sku}`}>
+                        <img
+                          src={product.images?.[0] || 'https://via.placeholder.com/300'}
+                          alt={product.productName}
+                          className="w-full h-72 object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      </a>
 
                       <div className="absolute top-3 left-3 z-10 flex flex-col gap-1">
                         {product.tags?.includes('Best Seller') && (
@@ -439,13 +421,7 @@ export default function ProductsGrid({
                         )}
                       </div>
 
-                      <a href={`/product/${product._id || product.sku}`}>
-                        <img
-                          src={product.images?.[0] || 'https://via.placeholder.com/300'}
-                          alt={product.productName}
-                          className="w-full h-72 object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                      </a>
+
                     </div>
 
                     <div className="p-4">
@@ -490,9 +466,6 @@ export default function ProductsGrid({
                       )}
 
                       <div className="space-y-2">
-                        <button className="w-full py-2.5 bg-gray-900 text-white text-sm font-semibold rounded-lg hover:bg-gray-800 transition-colors uppercase">
-                          Add to Bag
-                        </button>
                         <a
                           href={`/product/${product._id || product.sku}`}
                           className="block w-full py-2.5 text-center border border-gray-300 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-50 transition-colors"

@@ -18,7 +18,6 @@ const CartProvider = ({ children }) => {
         if (!loading) {
             // If previous user existed but now is null = logout happened
             if (prevUserId && !userId) {
-                console.log("🚪 User logged out detected, clearing cart...");
                 setItems([]);
                 localStorage.removeItem(CART_KEY);
             }
@@ -29,22 +28,17 @@ const CartProvider = ({ children }) => {
     // Cart load করার useEffect
     useEffect(() => {
         if (loading) {
-            console.log("⏳ Waiting for auth to load...");
             return;
         }
 
         const loadCart = async () => {
             try {
                 if (userId) {
-                    console.log("✅ Loading cart from backend for user:", userId);
-
                     const res = await axiosInstance.get(`/api/cart/${userId}`);
                     const backendItems = res.data.items || [];
-                    console.log("Backend cart items:", backendItems.length);
 
                     const raw = localStorage.getItem(CART_KEY);
                     let guestItems = raw ? JSON.parse(raw) : [];
-                    console.log("Guest cart items:", guestItems.length);
 
                     const merged = [...backendItems];
                     guestItems.forEach(gi => {
@@ -61,15 +55,14 @@ const CartProvider = ({ children }) => {
                     if (guestItems.length > 0) {
                         await axiosInstance.post(`/api/cart/${userId}`, { items: merged });
                         localStorage.removeItem(CART_KEY);
-                        console.log("✅ Guest cart merged and synced");
+                        // console.log("✅ Guest cart merged and synced");
                     }
                 } else {
-                    console.log("👤 Guest user, loading from localStorage...");
                     const raw = localStorage.getItem(CART_KEY);
                     if (raw) {
                         const localItems = JSON.parse(raw);
                         setItems(localItems);
-                        console.log("Loaded items:", localItems.length);
+                        // console.log("Loaded items:", localItems.length);
                     }
                 }
             } catch (err) {
@@ -87,13 +80,10 @@ const CartProvider = ({ children }) => {
         const timeout = setTimeout(async () => {
             try {
                 if (userId) {
-                    console.log("💾 Saving cart to backend...");
                     await axiosInstance.post(`/api/cart/${userId}`, { items });
-                    console.log("✅ Cart saved to backend");
                 } else {
                     if (items.length > 0) {
                         localStorage.setItem(CART_KEY, JSON.stringify(items));
-                        console.log("💾 Cart saved to localStorage");
                     }
                 }
             } catch (err) {
@@ -156,7 +146,6 @@ const CartProvider = ({ children }) => {
     };
 
     const clearCart = () => {
-        console.log("🧹 Clearing cart manually...");
         setItems([]);
         localStorage.removeItem(CART_KEY);
     };

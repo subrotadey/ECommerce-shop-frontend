@@ -5,7 +5,6 @@ import "./index.css";
 import { RouterProvider } from "react-router";
 import router from "./Routes/AppRoutes";
 import AuthProvider from "./contexts/AuthContext/AuthProvider";
-import CartProvider from "./contexts/CartProvider";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 

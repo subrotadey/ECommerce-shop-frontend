@@ -4,6 +4,7 @@ import useWishlist from '../../hooks/useWishlist';
 import useCart from '../../hooks/useCart';
 import Loading from '../../components/Shared/Loading/Loading';
 import toast from 'react-hot-toast';
+import Breadcrumb from '../../components/Shared/Breadcrumb/Breadcrumb';
 
 const Wishlist = () => {
     const { wishlist, isLoading, isError, removeFromWishlist, isRemoving } = useWishlist();
@@ -50,6 +51,8 @@ const Wishlist = () => {
 
     if (wishlist.length === 0) {
         return (
+            <>
+            <Breadcrumb />
             <div className="min-h-screen flex items-center justify-center bg-gray-50">
                 <div className="text-center">
                     <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -64,11 +67,14 @@ const Wishlist = () => {
                     </Link>
                 </div>
             </div>
+            </>
         );
     }
 
     return (
-        <div className="bg-gray-50 min-h-screen py-8">
+        <>
+        <Breadcrumb />
+            <div className="bg-gray-50 min-h-screen py-8">
             <div className="container mx-auto px-4 max-w-6xl">
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold text-gray-900">
@@ -86,7 +92,7 @@ const Wishlist = () => {
                             <div key={item._id} className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow">
                                 <div className="flex flex-col sm:flex-row gap-4 p-4">
                                     {/* Product Image */}
-                                    <Link to={`/product/${product._id}`} className="flex-shrink-0">
+                                    <Link to={`/product/${product._id}`} className="shrink-0">
                                         <img
                                             src={product.images?.[0]}
                                             alt={product.productName}
@@ -95,7 +101,7 @@ const Wishlist = () => {
                                     </Link>
 
                                     {/* Product Details */}
-                                    <div className="flex-grow">
+                                    <div className="grow">
                                         <div className="flex flex-col h-full">
                                             {/* Categories */}
                                             <p className="text-xs text-gray-500 mb-1">
@@ -177,6 +183,7 @@ const Wishlist = () => {
                 </div>
             </div>
         </div>
+        </>
     );
 };
 
