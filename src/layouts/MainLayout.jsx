@@ -8,11 +8,13 @@ import CartProvider from "../contexts/CartProvider";
 
 const MainLayout = () => {
   return (
-    <CartProvider>
-      <Navbar />
-      <Outlet />
-      <Footer />
-    </CartProvider>
+    <>
+      <CartProvider>
+        <Navbar />
+        <Outlet />
+        <Footer />
+      </CartProvider>
+    </>
   );
 };
 

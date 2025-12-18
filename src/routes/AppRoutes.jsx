@@ -16,6 +16,8 @@ import NotFound from "../pages/NotFound/NotFound";
 import AbayaAll from "../pages/AbayaAll/AbayaAll";
 import HijabAll from "../pages/HijabAll/HijabAll";
 import Checkout from "../pages/Checkout/Checkout";
+import DashboardLayout from "../layouts/DashboardLayout";
+import UserDashboard from "../pages/Dashboard/UserDashboard/UserDashboard";
 
 const router = createBrowserRouter([
   {
@@ -71,6 +73,18 @@ const router = createBrowserRouter([
         path: "/checkout",
         element: <Checkout />
       }
+    ],
+  },
+  {
+    path: "/dashboard",
+    element: <DashboardLayout/>,
+    errorElement: <DisplayError />,
+    children: [
+      {
+        index: true,
+        element: <UserDashboard />,
+      },
+      // ... other dashboard routes
     ],
   },
   {

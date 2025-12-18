@@ -1,6 +1,3 @@
-// ============================================
-// UPDATED CartProvider.jsx - Better logout handling
-// ============================================
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "../utils/axios";

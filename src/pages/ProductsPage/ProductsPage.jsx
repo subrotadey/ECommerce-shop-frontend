@@ -1,5 +1,6 @@
 import React from "react";
 import useProducts from "../../hooks/useProducts";
+import Loading from "../../components/Shared/Loading/Loading";
 
 const ProductsPage = () => {
   const { data: abayaProducts, isLoading: abayaLoading, isError: abayaError } = useProducts("abaya");
@@ -24,7 +25,8 @@ const ProductsPage = () => {
       <section className="mb-12">
         <h2 className="text-2xl font-bold mb-4">Abaya Collection</h2>
         {abayaLoading ? (
-          <p>Loading Abaya products...</p>
+          // <p>Loading Abaya products...</p>
+          <Loading />
         ) : abayaError ? (
           <p>Error loading Abaya products.</p>
         ) : abayaProducts.length === 0 ? (
@@ -40,7 +42,7 @@ const ProductsPage = () => {
       <section className="mb-12">
         <h2 className="text-2xl font-bold mb-4">Hijab Collection</h2>
         {hijabLoading ? (
-          <p>Loading Hijab products...</p>
+          <Loading />
         ) : hijabError ? (
           <p>Error loading Hijab products.</p>
         ) : hijabProducts.length === 0 ? (

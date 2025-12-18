@@ -1,13 +1,11 @@
-// ============================================
-// FIXED Navbar.jsx - Clear cart on logout
-// ============================================
-import { ShoppingCart } from "lucide-react";
+import { ShoppingCart, UserCheck2 } from "lucide-react";
 import { useContext, useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import logo from "../../assets/images/logo.png";
-import avatar from "../../assets/images/profile.svg";
+import avatar from "../../assets/icons/user.svg";
 import { AuthContext } from "../../contexts/AuthContext/AuthContext";
 import useCart from "../../hooks/useCart";
+import useAuth from "../../hooks/useAuth";
 
 const Navbar = () => {
   const { items, clearCart } = useCart(); // ⭐ clearCart যোগ করুন
@@ -16,7 +14,8 @@ const Navbar = () => {
   const navbarRef = useRef(null);
   const [navHeight, setNavHeight] = useState(0);
 
-  const { user, logOut } = useContext(AuthContext) || {};
+  const { user} = useAuth();
+
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -43,18 +42,6 @@ const Navbar = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // ⭐ FIXED: Clear cart before logout
-  const handleLogOut = async () => {
-    try {
-      console.log("🚪 Logging out...");
-      clearCart(); // ⭐ Cart clear করুন
-      await logOut(); // তারপর logout
-      console.log("✅ Logged out successfully");
-    } catch (err) {
-      console.error("❌ Logout error:", err);
-    }
-  };
-
   useEffect(() => {
     if (isMenuOpen) {
       document.body.style.overflow = "hidden";
@@ -79,11 +66,10 @@ const Navbar = () => {
     <>
       <nav
         ref={navbarRef}
-        className={`fixed top-0 left-0 w-full z-50 transition-all duration-500 px-4 md:px-16 lg:px-24 xl:px-32 flex items-center justify-between ${
-          isScrolled
-            ? " shadow-md text-gray-950 backdrop-blur-lg py-3 md:py-4"
-            : "bg-amber-500 text-white py-3 md:py-4"
-        }`}
+        className={`fixed top-0 left-0 w-full z-50 transition-all duration-500 px-4 md:px-16 lg:px-24 xl:px-32 flex items-center justify-between ${isScrolled
+          ? " shadow-md text-gray-950 backdrop-blur-lg py-3 md:py-4"
+          : "bg-amber-500 text-white py-3 md:py-4"
+          }`}
       >
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2">
@@ -100,15 +86,13 @@ const Navbar = () => {
             <Link
               key={i}
               to={link.path}
-              className={`group flex flex-col gap-0.5 ${
-                isScrolled ? "text-gray-950 " : "text-white"
-              }`}
+              className={`group flex flex-col gap-0.5 ${isScrolled ? "text-gray-950 " : "text-white"
+                }`}
             >
               {link.name}
               <div
-                className={`h-0.5 w-0 group-hover:w-full transition-all duration-300 ${
-                  isScrolled ? "bg-gray-700" : "bg-white"
-                }`}
+                className={`h-0.5 w-0 group-hover:w-full transition-all duration-300 ${isScrolled ? "bg-gray-700" : "bg-white"
+                  }`}
               />
             </Link>
           ))}
@@ -118,34 +102,24 @@ const Navbar = () => {
         <div className="hidden md:flex items-center gap-4">
           {/* User Profile */}
           {user?.uid ? (
-            <div className="dropdown dropdown-end">
-              <label tabIndex={0} className="btn btn-ghost btn-circle avatar">
-                <div className="w-12 rounded-full ring ring-primary ring-offset-base-100 ring-offset-2">
-                  <img src={user?.photoURL || avatar} alt="profile" />
-                </div>
+            <div>
+              <label tabIndex={0} className="btn btn-ghost btn-circle border-0 avatar bg-transparent shadow-none">
+                <Link to="/dashboard" className="flex items-center justify-center relative cursor-pointer">
+                  {/* <img src={user?.photoURL || avatar} alt="profile" /> */}
+                  <UserCheck2 className="w-7 h-7" />
+                </Link>
               </label>
-              <ul
-                tabIndex={0}
-                className="dropdown-content menu shadow rounded-box w-52 mt-3 text-black bg-white"
-              >
-                <li className="text-center font-bold my-3">{user.displayName}</li>
-                <div className="divider my-1"></div>
-                <li>
-                  <Link to="/dashboard">Dashboard</Link>
-                </li>
-                <li>
-                  <button onClick={handleLogOut}>Sign Out</button>
-                </li>
-              </ul>
+
+
             </div>
           ) : (
             <Link to="/login">
               <button
-                className={`px-8 py-2.5 rounded-full ml-4 transition-all duration-500 ${
-                  isScrolled ? "text-white bg-black" : "bg-white text-black"
-                }`}
+                className={`px-8 py-2.5 rounded-full ml-4 transition-all duration-500 cursor-pointer ${isScrolled ? "text-white bg-black" : "bg-white text-black"
+                  }`}
               >
                 Login
+
               </button>
             </Link>
           )}
@@ -175,12 +149,11 @@ const Navbar = () => {
               </div>
             )}
           </Link>
-          
+
           <svg
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className={`h-6 w-6 cursor-pointer transition-all duration-500 ${
-              isScrolled ? "text-black" : "text-white"
-            }`}
+            className={`h-6 w-6 cursor-pointer transition-all duration-500 ${isScrolled ? "text-black" : "text-white"
+              }`}
             fill="none"
             stroke="currentColor"
             strokeWidth="2"
@@ -195,9 +168,8 @@ const Navbar = () => {
 
       {/* Mobile Menu */}
       <div
-        className={`text-black bg-white fixed top-0 left-0 w-full h-screen text-center z-50 py-6 flex flex-col md:hidden items-start px-6 justify-start gap-6 font-medium transition-transform duration-500 ${
-          isMenuOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+        className={`text-black bg-white fixed top-0 left-0 w-full h-screen text-center z-50 py-6 flex flex-col md:hidden items-start px-6 justify-start gap-6 font-medium transition-transform duration-500 ${isMenuOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
       >
         <button className="absolute top-4 right-4" onClick={() => setIsMenuOpen(false)}>
           <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -212,9 +184,6 @@ const Navbar = () => {
             <div className="flex items-center gap-3 mt-10">
               <img src={user?.photoURL || avatar} className="w-10 h-10 rounded-full" alt="User" />
             </div>
-            <span className="font-semibold">{user?.displayName}</span>
-            <Link to="/dashboard" onClick={() => setIsMenuOpen(false)}>Dashboard</Link>
-            <button onClick={() => { handleLogOut(); setIsMenuOpen(false); }}>Sign Out</button>
           </div>
         ) : (
           <Link to="/login" onClick={() => setIsMenuOpen(false)} className="mx-auto">

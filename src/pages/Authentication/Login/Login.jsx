@@ -15,8 +15,7 @@ function Login() {
     register, formState: { errors }, handleSubmit, setValue,
   } = useForm();
 
-  // const { currentUser } = useAuth();
-  // console.log(currentUser);
+  
 
   const { signIn, providerLogin } = useContext(AuthContext) || {};
   const [loginError, setLoginError] = useState("");
@@ -46,6 +45,7 @@ function Login() {
     signIn(data.email, data.password)
       .then(() => {
         setLoginUserEmail(data.email);
+        navigate("/dashboard");
       })
       .catch((error) => {
         setLoginError(error.message);

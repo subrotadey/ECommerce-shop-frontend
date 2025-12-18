@@ -1,3 +1,49 @@
+import React from 'react';
+import Navbar from '../components/Navbar/Navbar';
+import Footer from '../components/Footer/Footer';
+import { Outlet } from 'react-router';
+import CartProvider from '../contexts/CartProvider';
+
+const DashboardLayout = () => {
+    return (
+        <>
+            <CartProvider>
+                <Navbar></Navbar>
+                <Outlet></Outlet>
+                <Footer></Footer>
+            </CartProvider>
+        </>
+    );
+};
+
+export default DashboardLayout;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // import React, { useContext } from "react";
 // import { Link, Outlet } from "react-router-dom";
 // import { AuthContext } from "../contexts/AuthProvider";

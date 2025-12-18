@@ -1,18 +1,20 @@
-
 import { useNavigate } from "react-router-dom";
 import useCart from "../../hooks/useCart";
+import shoppingBag from "../../assets/icons/shopping-bag.svg";
 
 const Cart = () => {
   const { items, updateQty, removeItem, clearCart } = useCart();
-  const navigate = useNavigate(); // ✅ add this
+  const navigate = useNavigate();
 
   const subtotal = items.reduce((s, it) => s + it.price * it.qty, 0);
 
   if (!items || items.length === 0) {
     return (
-      <div className="max-w-4xl mx-auto py-12 px-4">
-        <h2 className="text-xl font-semibold mb-4">Your cart is empty</h2>
+      <div className="w-10/12 mx-auto flex flex-col items-center justify-center text-center py-20">
+        <img className="w-1/5" src={shoppingBag} alt="" />
+        <h2 className="text-xl font-semibold mt-4">Your cart is empty</h2>
       </div>
+
     );
   }
 

@@ -6,6 +6,7 @@ import useSingleProduct from "../../hooks/useSingleProduct";
 import Swal from "sweetalert2";
 import toast from "react-hot-toast";
 import useCart from "../../hooks/useCart";
+import Loading from "../../components/Shared/Loading/Loading";
 
 const ProductDetails = () => {
   const { productId } = useParams();
@@ -17,7 +18,7 @@ const ProductDetails = () => {
   const [qty, setQty] = useState(1);
   const [error, setError] = useState("");
 
-  if (isLoading) return <div className="p-6">Loading product...</div>;
+  if (isLoading) return <div className="p-6"><Loading /></div>;
   if (isError) return <div className="p-6">Failed to load product.</div>;
   if (!product) return <div className="p-6">Product not found.</div>;
 
@@ -202,8 +203,6 @@ const ProductDetails = () => {
             Add to Cart
           </button>
           
-
-
           <button
             onClick={handleBuyNow}
             className="bg-red-600 text-white px-6 py-2 rounded font-medium"
