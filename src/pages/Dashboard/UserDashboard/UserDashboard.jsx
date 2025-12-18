@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom'; // Add this import
+import { useNavigate } from 'react-router-dom';
 import { ShoppingCart, Home, User, LogOut } from 'lucide-react';
 import bgImg from "../../../assets/images/bgImg.png";
 import useAuth from '../../../hooks/useAuth';
@@ -10,7 +10,7 @@ import useCart from '../../../hooks/useCart';
 
 export default function UserDashboard() {
     const [activeSection, setActiveSection] = useState('orders');
-    const navigate = useNavigate(); // Add this hook
+    const navigate = useNavigate();
 
     const { clearCart } = useCart();
     const { logOut } = useAuth();

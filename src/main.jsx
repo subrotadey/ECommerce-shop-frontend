@@ -17,7 +17,7 @@ createRoot(document.getElementById("root")).render(
       <AuthProvider>
         <RouterProvider router={router}>
           {/* <CartProvider> */}
-            {/* App components rendered inside router + cart + auth */}
+          {/* App components rendered inside router + cart + auth */}
           {/* </CartProvider> */}
         </RouterProvider>
       </AuthProvider>

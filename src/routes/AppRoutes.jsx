@@ -18,6 +18,7 @@ import HijabAll from "../pages/HijabAll/HijabAll";
 import Checkout from "../pages/Checkout/Checkout";
 import DashboardLayout from "../layouts/DashboardLayout";
 import UserDashboard from "../pages/Dashboard/UserDashboard/UserDashboard";
+import Wishlist from "../pages/Wishlist/Wishlist";
 
 const router = createBrowserRouter([
   {
@@ -72,6 +73,10 @@ const router = createBrowserRouter([
       {
         path: "/checkout",
         element: <Checkout />
+      },
+      {
+        path: "/wishlist",
+        element: <Wishlist />
       }
     ],
   },

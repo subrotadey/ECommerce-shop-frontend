@@ -10,16 +10,8 @@ const CartProvider = ({ children }) => {
     const { currentUser, loading } = useAuth();
     const userId = currentUser?._id || null;
     const [items, setItems] = useState([]);
-    const [prevUserId, setPrevUserId] = useState(null); // ⭐ Track previous userId
+    const [prevUserId, setPrevUserId] = useState(null);
     const navigate = useNavigate();
-
-    console.log("=== CartProvider Debug ===");
-    console.log("Auth loading:", loading);
-    console.log("Current user:", currentUser);
-    console.log("User ID:", userId);
-    console.log("Prev User ID:", prevUserId);
-    console.log("Cart items:", items.length);
-    console.log("========================");
 
     // ⭐ Detect user logout
     useEffect(() => {
@@ -45,7 +37,7 @@ const CartProvider = ({ children }) => {
             try {
                 if (userId) {
                     console.log("✅ Loading cart from backend for user:", userId);
-                    
+
                     const res = await axiosInstance.get(`/api/cart/${userId}`);
                     const backendItems = res.data.items || [];
                     console.log("Backend cart items:", backendItems.length);
@@ -84,7 +76,7 @@ const CartProvider = ({ children }) => {
                 console.error("❌ Failed to load cart:", err);
             }
         };
-        
+
         loadCart();
     }, [userId, loading]);
 
@@ -117,18 +109,18 @@ const CartProvider = ({ children }) => {
             console.warn("⚠️ Invalid product", product);
             return;
         }
-        
+
         const key = `${product._id}__${size ?? "NOSIZE"}__${color ?? "NOCOLOR"}`;
-        
+
         setItems((prev) => {
             const existing = prev.find((it) => it.key === key);
             if (existing) {
                 console.log("📦 Updated quantity for:", product.productName);
-                return prev.map((it) => 
+                return prev.map((it) =>
                     it.key === key ? { ...it, qty: it.qty + qty } : it
                 );
             }
-            
+
             const newItem = {
                 key,
                 productId: product._id,
@@ -141,7 +133,7 @@ const CartProvider = ({ children }) => {
                 color: color ?? null,
                 qty,
             };
-            
+
             console.log("✅ Added to cart:", product.productName);
             return [...prev, newItem];
         });
@@ -157,7 +149,7 @@ const CartProvider = ({ children }) => {
             removeItem(key);
             return;
         }
-        setItems((prev) => 
+        setItems((prev) =>
             prev.map((it) => it.key === key ? { ...it, qty } : it)
         );
         console.log("🔄 Updated quantity");
@@ -168,18 +160,18 @@ const CartProvider = ({ children }) => {
         setItems([]);
         localStorage.removeItem(CART_KEY);
     };
-    
+
     const goToCart = () => navigate("/cart");
 
     return (
-        <CartContext.Provider 
-            value={{ 
-                items, 
-                addToCart, 
-                removeItem, 
-                updateQty, 
-                clearCart, 
-                goToCart 
+        <CartContext.Provider
+            value={{
+                items,
+                addToCart,
+                removeItem,
+                updateQty,
+                clearCart,
+                goToCart
             }}
         >
             {children}

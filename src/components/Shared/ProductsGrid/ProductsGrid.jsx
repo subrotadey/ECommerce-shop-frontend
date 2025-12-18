@@ -1,5 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Heart, X, SlidersHorizontal, Search } from 'lucide-react';
+import useWishlist from '../../../hooks/useWishlist';
+import toast from 'react-hot-toast';
 
 // Reusable ProductsGrid Component
 export default function ProductsGrid({ 
@@ -9,8 +11,8 @@ export default function ProductsGrid({
   category = "Products",
   breadcrumbs = []
 }) {
-  const [wishlist, setWishlist] = useState([]);
   const [showFilters, setShowFilters] = useState(false);
+  const { isInWishlist, toggleWishlist, isToggling, userId } = useWishlist();
   
   // Filter states
   const [searchQuery, setSearchQuery] = useState('');
@@ -49,13 +51,28 @@ export default function ProductsGrid({
     }
   }, [maxPrice, products.length]);
 
-  // Toggle wishlist
-  const toggleWishlist = (productId) => {
-    setWishlist(prev => 
-      prev.includes(productId) 
-        ? prev.filter(id => id !== productId)
-        : [...prev, productId]
-    );
+  // 👇 Wishlist toggle handler
+  const handleToggleWishlist = (productId, e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (userId === 'guest') {
+      toast.error('Please login to add to wishlist');
+      return;
+    }
+
+    toggleWishlist(productId, {
+      onSuccess: (data) => {
+        if (data.inWishlist) {
+          toast.success('Added to wishlist!');
+        } else {
+          toast.success('Removed from wishlist!');
+        }
+      },
+      onError: () => {
+        toast.error('Failed to update wishlist');
+      }
+    });
   };
 
   // Filter and sort products
@@ -373,14 +390,42 @@ export default function ProductsGrid({
                   <div key={product._id || product.sku} className="group bg-white rounded-lg shadow-sm hover:shadow-lg transition-all duration-300">
                     <div className="relative overflow-hidden rounded-t-lg">
                       <button
-                        onClick={() => toggleWishlist(product._id || product.sku)}
-                        className="absolute top-3 right-3 z-10 p-2 bg-white rounded-full shadow-md hover:shadow-lg transition-all"
-                      >
-                        <Heart
-                          size={20}
-                          className={`transition-all ${wishlist.includes(product._id || product.sku) ? 'fill-red-600 text-red-600' : 'text-gray-600'}`}
-                        />
-                      </button>
+                onClick={(e) => handleToggleWishlist(product._id || product.sku, e)}
+                disabled={isToggling}
+                className="absolute top-3 right-3 z-10 p-2 bg-white rounded-full shadow-md hover:shadow-lg transition-all group/wishlist"
+                title={isInWishlist(product._id || product.sku) ? 'Remove from wishlist' : 'Add to wishlist'}
+              >
+                <Heart
+                  size={20}
+                  className={`transition-all ${
+                    isInWishlist(product._id || product.sku) 
+                      ? 'fill-red-600 text-red-600' 
+                      : 'text-gray-600 group-hover/wishlist:text-red-600'
+                  }`}
+                />
+              </button>
+
+              {/* Badges */}
+              <div className="absolute top-3 left-3 z-10 flex flex-col gap-1">
+                {product.tags?.includes('Best Seller') && (
+                  <span className="bg-green-600 text-white text-xs font-bold px-2 py-1 rounded">BEST SELLER</span>
+                )}
+                {product.tags?.includes('Exclusive Collection') && (
+                  <span className="bg-purple-600 text-white text-xs font-bold px-2 py-1 rounded">EXCLUSIVE</span>
+                )}
+                {product.oldPrice > product.newPrice && (
+                  <span className="bg-red-600 text-white text-xs font-bold px-2 py-1 rounded">SALE</span>
+                )}
+              </div>
+
+              {/* Product Image */}
+              <a href={`/product/${product._id || product.sku}`}>
+                <img
+                  src={product.images?.[0] || 'https://via.placeholder.com/300'}
+                  alt={product.productName}
+                  className="w-full h-72 object-cover group-hover:scale-105 transition-transform duration-300"
+                />
+              </a>
 
                       <div className="absolute top-3 left-3 z-10 flex flex-col gap-1">
                         {product.tags?.includes('Best Seller') && (

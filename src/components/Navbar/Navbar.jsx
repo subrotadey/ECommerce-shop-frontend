@@ -1,4 +1,4 @@
-import { ShoppingCart, UserCheck2 } from "lucide-react";
+import { Heart, ShoppingCart, UserCheck2 } from "lucide-react";
 import { useContext, useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import logo from "../../assets/images/logo.png";
@@ -6,9 +6,11 @@ import avatar from "../../assets/icons/user.svg";
 import { AuthContext } from "../../contexts/AuthContext/AuthContext";
 import useCart from "../../hooks/useCart";
 import useAuth from "../../hooks/useAuth";
+import useWishlist from "../../hooks/useWishlist";
 
 const Navbar = () => {
-  const { items, clearCart } = useCart(); // ⭐ clearCart যোগ করুন
+  const { items, clearCart } = useCart(); // clearCart function
+  const { wishlistCount } = useWishlist();
   const totalCount = items.reduce((sum, it) => sum + it.qty, 0);
 
   const navbarRef = useRef(null);
@@ -124,21 +126,49 @@ const Navbar = () => {
             </Link>
           )}
 
+          {/*  Wishlist Icon */}
+            <Link 
+              to="/wishlist" 
+              className="relative p-2 text-gray-700 hover:text-gray-900 transition-colors group"
+              title="Wishlist"
+            >
+              <Heart className="w-6 h-6 group-hover:fill-red-600 group-hover:text-red-600 transition-all" />
+              {wishlistCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                  {wishlistCount > 9 ? '9+' : wishlistCount}
+                </span>
+              )}
+            </Link>
+
           {/* Shopping Cart Icon */}
-          <Link to="/cart" className="relative cursor-pointer">
-            <ShoppingCart className="w-7 h-7" />
+          <Link to="/cart" className="relative cursor-pointer" title="ShoppingCart">
+            <ShoppingCart className="w-6 h-6" />
             {totalCount > 0 && (
-              <div className="absolute -top-2 -right-2 bg-red-600 text-white 
+              <span className="absolute -top-2 -right-2 bg-red-600 text-white 
                   rounded-full h-5 w-5 flex items-center justify-center 
                   text-xs font-bold">
-                {totalCount}
-              </div>
+                {totalCount > 9 ? '9+' : totalCount}
+              </span>
             )}
           </Link>
         </div>
 
         {/* Mobile Menu Button */}
+        {/* Wishlist */}
         <div className="flex md:hidden items-center gap-3">
+            <Link 
+                  to="/wishlist" 
+                  className="relative p-2 text-gray-700"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  <Heart className="w-6 h-6" />
+                  {wishlistCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                      {wishlistCount > 9 ? '9+' : wishlistCount}
+                    </span>
+                  )}
+                </Link>
+            
           <Link to="/cart" className="relative cursor-pointer">
             <ShoppingCart className="w-6 h-6" />
             {totalCount > 0 && (
