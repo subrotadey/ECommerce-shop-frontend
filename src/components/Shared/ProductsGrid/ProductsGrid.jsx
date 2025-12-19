@@ -1,10 +1,11 @@
 import { useState, useMemo } from 'react';
 import { Heart, X, SlidersHorizontal, Search } from 'lucide-react';
 import useWishlist from '../../../hooks/useWishlist';
-import toast from 'react-hot-toast';
 import Breadcrumb from '../Breadcrumb/Breadcrumb';
-import useCart from '../../../hooks/useCart';
+import QuickViewModal from '../QuickViewModal/QuickViewModal';
 import Swal from 'sweetalert2';
+import { Link } from 'react-router';
+import Loading from '../Loading/Loading';
 
 // Reusable ProductsGrid Component
 export default function ProductsGrid({
@@ -16,7 +17,7 @@ export default function ProductsGrid({
 }) {
   const [showFilters, setShowFilters] = useState(false);
   const { isInWishlist, toggleWishlist, isToggling, userId } = useWishlist();
-  const { addToCart, goToCart } = useCart();
+  const [selectedProduct, setSelectedProduct] = useState(null);
 
   // Filter states
   const [searchQuery, setSearchQuery] = useState('');
@@ -61,20 +62,56 @@ export default function ProductsGrid({
     e.stopPropagation();
 
     if (userId === 'guest') {
-      toast.error('Please login to add to wishlist');
+      Swal.fire({
+        position: "top-end",
+        icon: "warning",
+        title: "Please log in to manage your wishlist",
+        showConfirmButton: false,
+        timer: 2000,
+        toast: true,
+        background: "#f8d7da",
+        color: "#721c24",
+      });
       return;
     }
 
     toggleWishlist(productId, {
       onSuccess: (data) => {
         if (data.inWishlist) {
-          toast.success('Added to wishlist!');
+          Swal.fire({
+            position: "top-end",
+            icon: "success",
+            title: "Added to wishlist!",
+            showConfirmButton: false,
+            timer: 1000,
+            toast: true,
+            background: "#d4edda",
+            color: "#155724",
+          });
         } else {
-          toast.success('Removed from wishlist!');
+          Swal.fire({
+            position: "top-end",
+            icon: "success",
+            title: "Removed from wishlist!",
+            showConfirmButton: false,
+            timer: 1000,
+            toast: true,
+            background: "#d4edda",
+            color: "#155724",
+          });
         }
       },
       onError: () => {
-        toast.error('Failed to update wishlist');
+        Swal.fire({
+          position: "top-end",
+          icon: "error",
+          title: "Failed to update wishlist",
+          showConfirmButton: false,
+          timer: 1000,
+          toast: true,
+          background: "#f8d7da",
+          color: "#721c24",
+        });
       }
     });
   };
@@ -148,12 +185,7 @@ export default function ProductsGrid({
   // Loading State
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-gray-900 border-r-transparent"></div>
-          <p className="mt-4 text-gray-600 font-medium">Loading products...</p>
-        </div>
-      </div>
+      <Loading />
     );
   }
 
@@ -401,13 +433,26 @@ export default function ProductsGrid({
                       </div>
 
                       {/* Product Image */}
-                      <a href={`/product/${product._id || product.sku}`}>
-                        <img
-                          src={product.images?.[0] || 'https://via.placeholder.com/300'}
-                          alt={product.productName}
-                          className="w-full h-72 object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                      </a>
+                      <div>
+
+                        <Link to={`/product/${product._id || product.sku}`}>
+                          <img
+                            src={product.images?.[0] || 'https://via.placeholder.com/300'}
+                            alt={product.productName}
+                            className="w-full h-72 object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                        </Link>
+                        <label
+                          htmlFor="quick_view_modal"
+                          className="absolute bottom-0 left-1/2 -translate-x-1/2
+                                   bg-black text-white px-4 py-1 rounded opacity-0 uppercase
+                                   group-hover:opacity-100 group-hover:-translate-y-2
+                                   transition-all duration-300 cursor-pointer"
+                          onClick={() => setSelectedProduct(product)}
+                        >
+                          Quick View
+                        </label>
+                      </div>
 
                       <div className="absolute top-3 left-3 z-10 flex flex-col gap-1">
                         {product.tags?.includes('Best Seller') && (
@@ -427,11 +472,11 @@ export default function ProductsGrid({
                     <div className="p-4">
                       <p className="text-xs text-gray-500 mb-2">{product.categories?.slice(0, 2).join(' • ')}</p>
 
-                      <a href={`/product/${product._id || product.sku}`}>
+                      <Link to={`/product/${product._id || product.sku}`}>
                         <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 hover:text-gray-600 transition-colors">
                           {product.productName}
                         </h3>
-                      </a>
+                      </Link>
 
                       {product.colors && product.colors.length > 0 && (
                         <div className="flex items-center gap-1 mb-2">
@@ -466,14 +511,15 @@ export default function ProductsGrid({
                       )}
 
                       <div className="space-y-2">
-                        <a
-                          href={`/product/${product._id || product.sku}`}
+                        <Link
+                          to={`/product/${product._id || product.sku}`}
                           className="block w-full py-2.5 text-center border border-gray-300 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-50 transition-colors"
                         >
                           View Details
-                        </a>
+                        </Link>
                       </div>
                     </div>
+                    <QuickViewModal product={selectedProduct} />
                   </div>
                 ))}
               </div>

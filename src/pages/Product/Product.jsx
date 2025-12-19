@@ -39,7 +39,7 @@ const Product = () => {
                   <label
                     htmlFor="my_modal_7"
                     className="absolute bottom-0 left-1/2 -translate-x-1/2 bg-black text-white px-4 py-1 rounded opacity-0 uppercase
-                                    group-hover:opacity-100 group-hover:translate-y-[-10px]
+                                    group-hover:opacity-100 group-hover:translate-y-2.5
                                     transition-all duration-300 ease-in-out cursor-pointer"
                     onClick={() => setSelectedProduct(product)}
                   >

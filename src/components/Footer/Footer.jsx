@@ -1,3 +1,4 @@
+import { Link } from 'react-router';
 import logo from '../../assets/images/logo.png';
 const Footer = () => {
     return (
@@ -12,22 +13,22 @@ const Footer = () => {
                 <div>
                     <p className='text-lg font-bold'>COMPANY</p>
                     <ul className='mt-3 flex flex-col gap-2 text-sm'>
-                        <li><a href="/">About</a></li>
-                        <li><a href="/">Careers</a></li>
-                        <li><a href="/">Press</a></li>
-                        <li><a href="/">Blog</a></li>
-                        <li><a href="/">Partners</a></li>
+                        <li><Link to="/">About</Link></li>
+                        <li><Link to="/">Careers</Link></li>
+                        <li><Link to="/">Press</Link></li>
+                        <li><Link to="/">Blog</Link></li>
+                        <li><Link to="/">Partners</Link></li>
                     </ul>
                 </div>
 
                 <div>
                     <p className='text-lg font-bold'>SUPPORT</p>
                     <ul className='mt-3 flex flex-col gap-2 text-sm'>
-                        <li><a href="/">Help Center</a></li>
-                        <li><a href="/">Safety Information</a></li>
-                        <li><a href="/">Cancellation Options</a></li>
-                        <li><a href="/">Contact Us</a></li>
-                        <li><a href="/">Accessibility</a></li>
+                        <li><Link to="/">Help Center</Link></li>
+                        <li><Link to="/">Safety Information</Link></li>
+                        <li><Link to="/">Cancellation Options</Link></li>
+                        <li><Link to="/">Contact Us</Link></li>
+                        <li><Link to="/">Accessibility</Link></li>
                     </ul>
                 </div>
 
@@ -49,9 +50,9 @@ const Footer = () => {
             <div className='flex flex-col md:flex-row gap-2 items-center justify-between py-5'>
                 <p>© {new Date().getFullYear()} Subrota Dey. All rights reserved.</p>
                 <ul className='flex items-center gap-4'>
-                    <li><a href="/">Privacy</a></li>
-                    <li><a href="/">Terms</a></li>
-                    <li><a href="/">Sitemap</a></li>
+                    <li><Link to="/">Privacy</Link></li>
+                    <li><Link to="/">Terms</Link></li>
+                    <li><Link to="/">Sitemap</Link></li>
                 </ul>
             </div>
         </div>

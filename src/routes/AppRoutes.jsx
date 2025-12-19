@@ -67,7 +67,7 @@ const router = createBrowserRouter([
         element: <HijabAll />
       },
       {
-        path: "product/:productId",
+        path: "/product/:id",
         element: <ProductDetails />,
       },
       {
@@ -82,7 +82,7 @@ const router = createBrowserRouter([
   },
   {
     path: "/dashboard",
-    element: <DashboardLayout/>,
+    element: <DashboardLayout />,
     errorElement: <DisplayError />,
     children: [
       {

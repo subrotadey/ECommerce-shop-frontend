@@ -1,31 +1,6 @@
 import { useLocation, Link } from 'react-router-dom';
 import { ChevronRight, Home } from 'lucide-react';
 
-/**
- * Advanced Breadcrumb Component
- * 
- * @param {Array} customBreadcrumbs - Optional custom breadcrumbs to override auto-generated ones
- * @param {boolean} showHome - Show home link (default: true)
- * @param {Object} dynamicLabels - Dynamic labels for IDs (e.g., product names)
- * 
- * Usage Examples:
- * 
- * 1. Auto-generated breadcrumbs:
- * <Breadcrumb />
- * 
- * 2. Custom breadcrumbs:
- * <Breadcrumb customBreadcrumbs={[
- *   { label: 'Home', path: '/' },
- *   { label: 'Products', path: '/products' },
- *   { label: 'T-Shirt' }
- * ]} />
- * 
- * 3. With dynamic labels (for product names, etc.):
- * <Breadcrumb dynamicLabels={{ 
- *   productId: product.productName,
- *   categoryId: category.name 
- * }} />
- */
 const Breadcrumb = ({ 
   customBreadcrumbs = null, 
   showHome = true,
