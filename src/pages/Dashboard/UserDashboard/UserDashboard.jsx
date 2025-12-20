@@ -1,6 +1,8 @@
+// src/pages/UserDashboard/UserDashboard.jsx (FIXED)
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShoppingCart, Home, User, LogOut } from 'lucide-react';
+import { ShoppingCart, Home, User, LogOut, Package } from 'lucide-react';
 import bgImg from "../../../assets/images/bgImg.png";
 import useAuth from '../../../hooks/useAuth';
 import AccountInfo from '../DashboardComponent/AccountInfo';
@@ -8,6 +10,8 @@ import Addresses from '../DashboardComponent/Addresses';
 import Orders from '../DashboardComponent/Orders';
 import useCart from '../../../hooks/useCart';
 import Breadcrumb from '../../../components/Shared/Breadcrumb/Breadcrumb';
+import ProductForm from '../../../components/ProductForm/ProductForm';
+import { createProduct } from '../../../services/productService';
 
 export default function UserDashboard() {
     const [activeSection, setActiveSection] = useState('orders');
@@ -18,6 +22,7 @@ export default function UserDashboard() {
 
     const menuItems = [
         { id: 'orders', label: 'Orders', icon: ShoppingCart },
+        { id: 'productAdd', label: 'Add Product', icon: Package }, // Changed icon
         { id: 'addresses', label: 'Addresses', icon: Home },
         { id: 'account', label: 'Account Info', icon: User },
         { id: 'logout', label: 'Log Out', icon: LogOut }
@@ -28,9 +33,29 @@ export default function UserDashboard() {
             clearCart();
             await logOut();
             navigate('/');
-            
         } catch (err) {
             console.error("Logout error:", err);
+        }
+    };
+
+    // Handle product creation - THIS WAS MISSING!
+    const handleCreateProduct = async (values) => {
+        console.log('📝 Product form submitted from dashboard');
+        console.log('Form values:', values);
+
+        try {
+            console.log('💾 Saving product to database...');
+            const result = await createProduct(values);
+            
+            console.log('🎉 Product created successfully:', result);
+            alert('✅ Product created successfully!');
+            
+            // Optionally switch back to orders view
+            setActiveSection('orders');
+            
+        } catch (error) {
+            console.error('❌ Failed to create product:', error);
+            alert(`❌ Failed to create product: ${error.message || 'Unknown error'}`);
         }
     };
 
@@ -38,6 +63,13 @@ export default function UserDashboard() {
         switch (activeSection) {
             case 'orders':
                 return <Orders />;
+
+            case 'productAdd':
+                return (
+                    <div className="bg-white rounded-lg shadow-sm p-6">
+                        <ProductForm onSubmit={handleCreateProduct} />
+                    </div>
+                );
 
             case 'addresses':
                 return <Addresses />;
@@ -54,6 +86,7 @@ export default function UserDashboard() {
     const getSectionBreadcrumb = () => {
         const sectionLabels = {
             'orders': 'My Orders',
+            'productAdd': 'Add Product',
             'addresses': 'My Addresses',
             'account': 'Account Information'
         };
@@ -64,7 +97,7 @@ export default function UserDashboard() {
         ];
     };
 
-   return (
+    return (
         <div className="min-h-screen bg-gray-50">
             <Breadcrumb customBreadcrumbs={getSectionBreadcrumb()} />
 
@@ -84,7 +117,7 @@ export default function UserDashboard() {
             {/* Fixed Menu Section */}
             <div className="sticky top-0 z-40 bg-white shadow-md">
                 <div className="container mx-auto px-4 py-4">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                         {menuItems.map((item) => {
                             const Icon = item.icon;
                             return (

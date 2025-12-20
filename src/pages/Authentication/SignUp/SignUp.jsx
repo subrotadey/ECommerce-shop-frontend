@@ -6,8 +6,8 @@ import { Link, useLocation, useNavigate } from "react-router";
 import SectionDivider from "../../../components/SectionDivider/SectionDivider";
 import useToken from "../../../hooks/useToken";
 import useAuth from "../../../hooks/useAuth";
-import toast from "react-hot-toast";
 import SocialLogin from "../SocialLogin/SocialLogin";
+import Swal from "sweetalert2";
 
 const SignUp = () => {
   const {
@@ -52,7 +52,14 @@ const SignUp = () => {
     createUser(data.email, data.password)
       .then((result) => {
         const user = result.user;
-        toast("User Created Successfully");
+        Swal.fire({
+          position: "top-end",
+          icon: "success",
+          title: "User Created Successfully",
+          showConfirmButton: false,
+          timer: 1500,
+          toast: true,
+        });
         verifyEmail(user);
         const userInfo = {
           displayName: data.name,

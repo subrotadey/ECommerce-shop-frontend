@@ -1,8 +1,8 @@
 import { useContext, useState } from "react";
 import { useForm } from "react-hook-form";
-import { toast } from "react-hot-toast";
 import { Link } from "react-router";
 import { AuthContext } from "../../../contexts/AuthContext/AuthContext";
+import Swal from "sweetalert2";
 
 const ForgetPassword = () => {
   const {
@@ -26,7 +26,15 @@ const ForgetPassword = () => {
   const handleForgotPassword = () => {
     resetPassword(userEmail)
       .then(() => {
-        toast("Password Reset Email Sent Successfully");
+        // toast("Password Reset Email Sent Successfully");
+        Swal.fire({
+          position: "top-end",
+          icon: "success",
+          title: "Password Reset Email Sent Successfully",
+          showConfirmButton: false,
+          timer: 1500,
+          toast: true,
+        });
       })
       .catch((error) => {
         const errorMessage = error.message;
