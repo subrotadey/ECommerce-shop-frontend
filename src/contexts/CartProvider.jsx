@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axiosInstance from "../utils/axios";
 import { CartContext } from "./CartContext";
 import useAuth from "../hooks/useAuth";
+import notify from "../utils/notification";
 
 const CART_KEY = "abaya_shop_cart_v1";
 
@@ -55,14 +56,12 @@ const CartProvider = ({ children }) => {
                     if (guestItems.length > 0) {
                         await axiosInstance.post(`/api/cart/${userId}`, { items: merged });
                         localStorage.removeItem(CART_KEY);
-                        // console.log("✅ Guest cart merged and synced");
                     }
                 } else {
                     const raw = localStorage.getItem(CART_KEY);
                     if (raw) {
                         const localItems = JSON.parse(raw);
                         setItems(localItems);
-                        // console.log("Loaded items:", localItems.length);
                     }
                 }
             } catch (err) {
@@ -105,7 +104,7 @@ const CartProvider = ({ children }) => {
         setItems((prev) => {
             const existing = prev.find((it) => it.key === key);
             if (existing) {
-                console.log("📦 Updated quantity for:", product.productName);
+                notify.success('Cart updated', `Increased quantity of "${product.productName}" in your cart`, 1500);
                 return prev.map((it) =>
                     it.key === key ? { ...it, qty: it.qty + qty } : it
                 );
@@ -123,15 +122,14 @@ const CartProvider = ({ children }) => {
                 color: color ?? null,
                 qty,
             };
-
-            console.log("✅ Added to cart:", product.productName);
+            notify.success('Added to cart', `"${product.productName}" has been added to your cart`, 1500);
             return [...prev, newItem];
         });
     };
 
     const removeItem = (key) => {
         setItems((prev) => prev.filter((it) => it.key !== key));
-        console.log("🗑️ Removed item from cart");
+        notify.success('Item removed', 'Item has been removed from cart', 1500);
     };
 
     const updateQty = (key, qty) => {
@@ -142,7 +140,6 @@ const CartProvider = ({ children }) => {
         setItems((prev) =>
             prev.map((it) => it.key === key ? { ...it, qty } : it)
         );
-        console.log("🔄 Updated quantity");
     };
 
     const clearCart = () => {

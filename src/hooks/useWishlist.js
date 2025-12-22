@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import axios from 'axios';
 import useAuth from './useAuth';
+import axiosInstance from '../utils/axios';
 
 const API_URL = 'http://localhost:5000/api/wishlist';
 
@@ -13,18 +13,18 @@ const useWishlist = () => {
   const { data: wishlist = [], isLoading, isError } = useQuery({
     queryKey: ['wishlist', userId],
     queryFn: async () => {
-      const { data } = await axios.get(`${API_URL}/${userId}`);
+      const { data } = await axiosInstance.get(`${API_URL}/${userId}`);
       return data;
     },
     enabled: !!userId && userId !== 'guest', // Only fetch if user is logged in
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
-  // 👇 Fetch wishlist count (for navbar)
+  //  Fetch wishlist count (for navbar)
   const { data: wishlistCount = 0 } = useQuery({
     queryKey: ['wishlistCount', userId],
     queryFn: async () => {
-      const { data } = await axios.get(`${API_URL}/${userId}/count`);
+      const { data } = await axiosInstance.get(`${API_URL}/${userId}/count`);
       return data.count;
     },
     enabled: !!userId && userId !== 'guest',
@@ -34,7 +34,7 @@ const useWishlist = () => {
   // Toggle wishlist mutation
   const toggleMutation = useMutation({
     mutationFn: async (productId) => {
-      const { data } = await axios.post(`${API_URL}/${userId}/toggle`, { productId });
+      const { data } = await axiosInstance.post(`${API_URL}/${userId}/toggle`, { productId });
       return data;
     },
     onSuccess: () => {
@@ -49,7 +49,7 @@ const useWishlist = () => {
   // Remove mutation
   const removeMutation = useMutation({
     mutationFn: async (productId) => {
-      const { data } = await axios.delete(`${API_URL}/${userId}/remove/${productId}`);
+      const { data } = await axiosInstance.delete(`${API_URL}/${userId}/remove/${productId}`);
       return data;
     },
     onSuccess: () => {

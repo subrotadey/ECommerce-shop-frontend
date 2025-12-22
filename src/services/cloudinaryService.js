@@ -1,4 +1,4 @@
-// src/services/cloudinaryService.js
+// src/services/cloudinaryService.js (FIXED VERSION)
 
 import axios from 'axios';
 import {
@@ -8,11 +8,15 @@ import {
   getVideoThumbnailUrl,
 } from '../config/cloudinary';
 
+// Get API base URL (WITHOUT /api suffix)
+const getApiUrl = () => {
+  const url = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+  console.log('🔧 Base API URL:', url);
+  return url;
+};
+
 /**
  * Upload image to Cloudinary
- * @param {File} file - Image file
- * @param {string} folder - Folder path in Cloudinary
- * @returns {Promise<Object>} Upload result
  */
 export const uploadImage = async (file, folder = IMAGE_UPLOAD_CONFIG.folder) => {
   console.log('📤 Starting image upload:', {
@@ -66,7 +70,6 @@ export const uploadImage = async (file, folder = IMAGE_UPLOAD_CONFIG.folder) => 
       format: response.data.format,
     });
 
-    // Return structured data
     return {
       url: response.data.secure_url,
       publicId: response.data.public_id,
@@ -85,9 +88,6 @@ export const uploadImage = async (file, folder = IMAGE_UPLOAD_CONFIG.folder) => 
 
 /**
  * Upload video to Cloudinary
- * @param {File} file - Video file
- * @param {string} folder - Folder path in Cloudinary
- * @returns {Promise<Object>} Upload result
  */
 export const uploadVideo = async (file, folder = VIDEO_UPLOAD_CONFIG.folder) => {
   console.log('🎬 Starting video upload:', {
@@ -117,7 +117,6 @@ export const uploadVideo = async (file, folder = VIDEO_UPLOAD_CONFIG.folder) => 
 
     console.log('📡 Uploading video to Cloudinary...');
 
-    // Upload to Cloudinary
     const response = await axios.post(
       `https://api.cloudinary.com/v1_1/${CLOUDINARY_CONFIG.cloudName}/video/upload`,
       formData,
@@ -138,7 +137,6 @@ export const uploadVideo = async (file, folder = VIDEO_UPLOAD_CONFIG.folder) => 
       duration: response.data.duration,
     });
 
-    // Return structured data
     return {
       url: response.data.secure_url,
       publicId: response.data.public_id,
@@ -157,58 +155,105 @@ export const uploadVideo = async (file, folder = VIDEO_UPLOAD_CONFIG.folder) => 
 };
 
 /**
- * Delete asset from Cloudinary via Backend API
- * @param {string} publicId - Public ID of the asset
- * @param {string} resourceType - 'image' or 'video'
+ * Delete asset from Cloudinary via Backend API (FIXED)
  */
 export const deleteAsset = async (publicId, resourceType = 'image') => {
   try {
-    console.log('🗑️ Deleting asset from Cloudinary:', { publicId, resourceType });
+    console.log('🗑️ Starting deletion process');
+    console.log('📦 Public ID:', publicId);
+    console.log('📂 Resource Type:', resourceType);
 
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+    if (!publicId) {
+      throw new Error('Public ID is required for deletion');
+    }
+
+    const API_URL = getApiUrl();
     const endpoint = resourceType === 'video' 
       ? `${API_URL}/cloudinary/delete/video`
       : `${API_URL}/cloudinary/delete/image`;
 
-    const response = await axios.delete(endpoint, {
-      data: { publicId }
+    console.log('📡 DELETE request to:', endpoint);
+    console.log('📤 Sending data:', { publicId });
+
+    const response = await axios({
+      method: 'DELETE',
+      url: endpoint,
+      data: { publicId },
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      timeout: 10000, // 10 second timeout
     });
 
-    console.log('✅ Asset deleted from Cloudinary:', response.data);
-    return response.data;
+    console.log('✅ Delete response:', response.data);
+
+    if (response.data.success) {
+      console.log('✅ Asset deleted from Cloudinary successfully');
+      return response.data;
+    } else {
+      throw new Error(response.data.message || 'Delete failed');
+    }
+
   } catch (error) {
     console.error('❌ Asset deletion error:', error);
-    throw new Error(error.response?.data?.message || error.message);
+    
+    // Handle network errors
+    if (error.code === 'ECONNABORTED') {
+      throw new Error('Request timeout - server might be slow');
+    }
+    
+    if (error.code === 'ERR_NETWORK') {
+      throw new Error('Network error - check if backend is running');
+    }
+
+    // Handle server errors
+    if (error.response) {
+      console.error('Server error response:', error.response.data);
+      throw new Error(error.response.data?.message || 'Server error during deletion');
+    }
+
+    throw new Error(error.message || 'Failed to delete asset');
   }
 };
 
 /**
- * Delete multiple images from Cloudinary (batch)
- * @param {string[]} publicIds - Array of public IDs
+ * Delete multiple assets from Cloudinary (batch)
  */
 export const deleteMultipleAssets = async (publicIds) => {
   try {
+    if (!Array.isArray(publicIds) || publicIds.length === 0) {
+      throw new Error('Public IDs array is required');
+    }
+
     console.log(`🗑️ Batch deleting ${publicIds.length} assets from Cloudinary`);
 
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+    const API_URL = getApiUrl();
     
-    const response = await axios.post(`${API_URL}/cloudinary/delete/batch`, {
-      publicIds
-    });
+    const response = await axios.post(
+      `${API_URL}/api/cloudinary/delete/batch`,
+      { publicIds },
+      {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 30000, // 30 seconds for batch operations
+      }
+    );
 
     console.log('✅ Batch delete complete:', response.data);
     return response.data;
+
   } catch (error) {
     console.error('❌ Batch delete error:', error);
-    throw new Error(error.response?.data?.message || error.message);
+    
+    if (error.response) {
+      throw new Error(error.response.data?.message || 'Batch delete failed');
+    }
+    
+    throw new Error(error.message || 'Failed to batch delete assets');
   }
 };
 
 /**
  * Batch upload images
- * @param {File[]} files - Array of image files
- * @param {string} folder - Folder path
- * @returns {Promise<Object[]>} Array of upload results
  */
 export const uploadMultipleImages = async (files, folder) => {
   console.log(`📤 Starting batch upload of ${files.length} images`);

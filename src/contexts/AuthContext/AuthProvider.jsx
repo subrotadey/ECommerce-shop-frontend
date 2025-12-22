@@ -15,6 +15,7 @@ import {
 import { useEffect, useState } from 'react';
 import { auth } from '../../firebase/firebase.init';
 import { AuthContext } from './AuthContext';
+import axios from 'axios';
 
 const googleProvider = new GoogleAuthProvider();
 
@@ -37,9 +38,19 @@ const AuthProvider = ({ children }) => {
         return updateProfile(auth.currentUser, userInfo);
     }
 
-    const logOut = () => {
+    const logOut = async () => {
         setLoading(true);
         localStorage.removeItem("abaya_shop_cart_v1");
+        localStorage.removeItem("accessToken"); // Token remove
+
+        // Backend logout
+        try {
+            await axios.post('http://localhost:5000/api/auth/logout', {}, {
+                withCredentials: true,
+            });
+        } catch (error) {
+            console.error('Logout error:', error);
+        }
         return signOut(auth);
     }
 
@@ -59,29 +70,57 @@ const AuthProvider = ({ children }) => {
     // Firebase auth state listener
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-            // console.log('🔥 Firebase user state changed:', firebaseUser?.email);
             setUser(firebaseUser);
 
             if (firebaseUser) {
-                // Backend থেকে user data fetch
                 try {
+                    // Token
+                    const token = await firebaseUser.getIdToken();
+                    localStorage.setItem('accessToken', token);
 
-                    // Firebase user
                     setCurrentUser({
                         _id: firebaseUser.uid,
                         email: firebaseUser.email,
                         displayName: firebaseUser.displayName,
                         photoURL: firebaseUser.photoURL
                     });
+                    // Backend JWT cookie set করুন
+                    // const userData = { email: firebaseUser.email };
+                    // axios.post('http://localhost:5000/jwt', userData, {
+                    //     withCredentials: true,
+                    // })
+                    //     .then(response => {
+                    //         console.log('✅ JWT cookie set:', response.data);
+                    //     })
+                    //     .catch(error => {
+                    //         console.error('❌ Error setting JWT cookie:', error);
+                    //     });
+
                 } catch (error) {
                     console.error(' Error loading user data:', error);
                     setCurrentUser(null);
+                    localStorage.removeItem('accessToken');
                 }
             } else {
                 setCurrentUser(null);
+                localStorage.removeItem('accessToken');
             }
 
             setLoading(false);
+
+            if (firebaseUser?.email) {
+                const userData = { email: firebaseUser.email };
+
+                axios.post('http://localhost:5000/jwt', userData, {
+                    withCredentials: true,
+                })
+                    .then(response => {
+                        
+                    })
+                    .catch(error => {
+                        console.error('Error fetching JWT token:', error);
+                    });
+            }
         });
 
         return () => unsubscribe();
@@ -101,7 +140,7 @@ const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={authInfo}>  {/* ⭐ .Provider যোগ করতে হবে */}
+        <AuthContext.Provider value={authInfo}>
             {children}
         </AuthContext.Provider>
     );

@@ -1,9 +1,10 @@
-// src/components/ProductForm/VideoUploadSection.jsx
+// src/components/ProductForm/VideoUploadSection.jsx (CLEAN VERSION)
 
 import React, { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { uploadVideo, deleteAsset } from '../../services/cloudinaryService';
 import { VIDEO_UPLOAD_CONFIG } from '../../config/cloudinary';
+import notify from '../../utils/notification';
 
 const VideoUploadSection = ({ video, onChange }) => {
   const [uploading, setUploading] = useState(false);
@@ -14,12 +15,6 @@ const VideoUploadSection = ({ video, onChange }) => {
       if (acceptedFiles.length === 0) return;
 
       const file = acceptedFiles[0];
-      console.log('🎬 Video file dropped:', {
-        name: file.name,
-        size: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
-        type: file.type,
-      });
-
       setUploading(true);
       setUploadProgress(0);
 
@@ -29,15 +24,11 @@ const VideoUploadSection = ({ video, onChange }) => {
           setUploadProgress((prev) => Math.min(prev + 10, 90));
         }, 500);
 
-        console.log('📤 Starting video upload...');
         const result = await uploadVideo(file);
-        
+
         clearInterval(progressInterval);
         setUploadProgress(100);
 
-        console.log('✅ Video uploaded successfully:', result);
-
-        // Update parent component
         onChange({
           url: result.url,
           publicId: result.publicId,
@@ -45,11 +36,11 @@ const VideoUploadSection = ({ video, onChange }) => {
           duration: result.duration,
         });
 
-        alert('Video uploaded successfully!');
+        notify.success('Video uploaded successfully!');
         setTimeout(() => setUploadProgress(0), 1000);
+
       } catch (error) {
-        console.error('❌ Video upload failed:', error);
-        alert(`Video upload failed: ${error.message}`);
+        notify.error('Video upload failed', error.message, 3000);
       } finally {
         setUploading(false);
       }
@@ -72,26 +63,22 @@ const VideoUploadSection = ({ video, onChange }) => {
   // Remove video
   const handleRemove = async () => {
     if (!video) return;
-    
-    console.log('🗑️ Removing video:', video.publicId);
-    
-    // Confirm deletion
-    if (!confirm('Are you sure you want to delete this video? This will also remove it from Cloudinary.')) {
-      return;
-    }
+
+    const confirmed = await notify.confirm(
+      'Delete this video?',
+      'This will permanently remove it from Cloudinary.',
+      'Yes, delete it!',
+      'Cancel'
+    );
+
+    if (!confirmed) return;
 
     try {
-      // Delete from Cloudinary first
-      console.log('🔄 Deleting video from Cloudinary...');
       await deleteAsset(video.publicId, 'video');
-      console.log('✅ Video deleted from Cloudinary');
-      
-      // Then remove from UI
       onChange(null);
-      alert('Video deleted successfully from Cloudinary');
+      notify.success('Video deleted successfully!');
     } catch (error) {
-      console.error('❌ Failed to delete video from Cloudinary:', error);
-      alert(`Failed to delete video: ${error.message}`);
+      notify.error('Failed to delete video', error.message, 3000);
     }
   };
 

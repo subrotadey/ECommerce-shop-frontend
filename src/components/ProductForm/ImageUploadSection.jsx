@@ -1,23 +1,23 @@
-// src/components/ProductForm/ImageUploadSection.jsx
+// src/components/ProductForm/ImageUploadSection.jsx (CLEAN VERSION)
 
 import React, { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { uploadImage, deleteAsset } from '../../services/cloudinaryService';
 import { IMAGE_UPLOAD_CONFIG } from '../../config/cloudinary';
+import notify from '../../utils/notification';
 
 const ImageUploadSection = ({ images = [], onChange, error }) => {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({});
+  const [deleting, setDeleting] = useState(null);
 
   const onDrop = useCallback(
     async (acceptedFiles) => {
-      console.log('🖼️ Files dropped:', acceptedFiles.length);
-      console.log('📊 Current images:', images.length);
+      notify.info(`Uploading ${acceptedFiles.length} image(s)...`, '', 1000);
 
       // Check maximum files limit
       if (images.length + acceptedFiles.length > IMAGE_UPLOAD_CONFIG.maxFiles) {
-        alert(`Maximum ${IMAGE_UPLOAD_CONFIG.maxFiles} images allowed!`);
-        console.warn('⚠️ Max files limit exceeded');
+        notify.error(`Maximum ${IMAGE_UPLOAD_CONFIG.maxFiles} images allowed!`);
         return;
       }
 
@@ -25,15 +25,13 @@ const ImageUploadSection = ({ images = [], onChange, error }) => {
 
       try {
         const uploadedImages = [];
-        
+
         for (let i = 0; i < acceptedFiles.length; i++) {
           const file = acceptedFiles[i];
-          console.log(`📤 Uploading image ${i + 1}/${acceptedFiles.length}:`, file.name);
-          
           setUploadProgress({ current: i + 1, total: acceptedFiles.length });
 
           const result = await uploadImage(file);
-          
+
           uploadedImages.push({
             url: result.url,
             publicId: result.publicId,
@@ -41,20 +39,18 @@ const ImageUploadSection = ({ images = [], onChange, error }) => {
             isMain: images.length === 0 && i === 0,
             order: images.length + i,
           });
-
-          console.log(`✅ Image ${i + 1} uploaded:`, result.url);
         }
 
-        // Update parent component
         const updatedImages = [...images, ...uploadedImages];
-        console.log('📦 Total images after upload:', updatedImages.length);
         onChange(updatedImages);
         
-        alert(`${acceptedFiles.length} image(s) uploaded successfully!`);
-        
+        notify.success(
+          `${acceptedFiles.length} image(s) uploaded successfully!`,
+          `Total: ${updatedImages.length} images`
+        );
+
       } catch (error) {
-        console.error('❌ Upload failed:', error);
-        alert(`Upload failed: ${error.message}`);
+        notify.error('Upload failed', error.message, 3000);
       } finally {
         setUploading(false);
         setUploadProgress({});
@@ -77,40 +73,48 @@ const ImageUploadSection = ({ images = [], onChange, error }) => {
   // Remove image
   const handleRemove = async (index) => {
     const imageToRemove = images[index];
-    console.log(`🗑️ Removing image at index ${index}`);
-    console.log('Image to remove:', imageToRemove.publicId);
-    
+
     // Confirm deletion
-    if (!confirm('Are you sure you want to delete this image? This will also remove it from Cloudinary.')) {
-      return;
-    }
+    const confirmed = await notify.confirm(
+      'Delete this image?',
+      `This will permanently remove it from Cloudinary.\n`,
+      'Yes, delete it!',
+      'Cancel'
+    );
+
+    if (!confirmed) return;
+
+    setDeleting(index);
 
     try {
-      // Delete from Cloudinary first
-      console.log('🔄 Deleting from Cloudinary...');
       await deleteAsset(imageToRemove.publicId, 'image');
-      console.log('✅ Deleted from Cloudinary');
-      
-      // Then remove from UI
+
       const updatedImages = images.filter((_, i) => i !== index);
+
+      // Re-assign isMain if we deleted the main image
+      if (imageToRemove.isMain && updatedImages.length > 0) {
+        updatedImages[0].isMain = true;
+        notify.info('Main image deleted. Set image #1 as new main.');
+      }
+
       onChange(updatedImages);
-      
-      console.log('📦 Remaining images:', updatedImages.length);
-      alert('Image deleted successfully from Cloudinary');
+      notify.success('Image deleted!', `Remaining: ${updatedImages.length} images`);
+
     } catch (error) {
-      console.error('❌ Failed to delete from Cloudinary:', error);
-      alert(`Failed to delete image: ${error.message}`);
+      notify.error('Failed to delete image', error.message, 4000);
+    } finally {
+      setDeleting(null);
     }
   };
 
   // Set as main image
   const handleSetMain = (index) => {
-    console.log(`⭐ Setting image ${index} as main`);
     const updatedImages = images.map((img, i) => ({
       ...img,
       isMain: i === index,
     }));
     onChange(updatedImages);
+    notify.success(`Image #${index + 1} set as main image!`);
   };
 
   return (
@@ -132,7 +136,7 @@ const ImageUploadSection = ({ images = [], onChange, error }) => {
           `}
         >
           <input {...getInputProps()} />
-          
+
           {uploading ? (
             <div>
               <div className="text-lg font-medium text-gray-700">
@@ -198,25 +202,38 @@ const ImageUploadSection = ({ images = [], onChange, error }) => {
                 </div>
               )}
 
+              {/* Deleting Overlay */}
+              {deleting === index && (
+                <div className="absolute inset-0 bg-black bg-opacity-75 flex items-center justify-center">
+                  <div className="text-white text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2"></div>
+                    <p className="text-sm">Deleting...</p>
+                  </div>
+                </div>
+              )}
+
               {/* Actions Overlay */}
-              <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                {!image.isMain && (
+              {deleting !== index && (
+                <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                  {!image.isMain && (
+                    <button
+                      type="button"
+                      onClick={() => handleSetMain(index)}
+                      className="px-3 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600"
+                    >
+                      Set Main
+                    </button>
+                  )}
                   <button
                     type="button"
-                    onClick={() => handleSetMain(index)}
-                    className="px-3 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600"
+                    onClick={() => handleRemove(index)}
+                    disabled={deleting !== null}
+                    className="px-3 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Set Main
+                    Remove
                   </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => handleRemove(index)}
-                  className="px-3 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600"
-                >
-                  Remove
-                </button>
-              </div>
+                </div>
+              )}
 
               {/* Order Number */}
               <div className="absolute bottom-2 right-2 bg-gray-800 text-white text-xs px-2 py-1 rounded">

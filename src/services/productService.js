@@ -1,10 +1,9 @@
-// src/services/productService.js
+// src/services/productService.js (IMPROVED)
 
 import axios from 'axios';
+import notify from '../utils/notification';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-
-console.log('🔧 API Base URL:', API_BASE_URL);
+const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -18,13 +17,11 @@ api.interceptors.request.use((config) => {
   const token = localStorage.getItem('authToken');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
-    console.log('🔑 Auth token added to request');
   }
-  console.log('📡 API Request:', config.method.toUpperCase(), config.url);
   return config;
 });
 
-// Log responses
+// Enhanced error handling
 api.interceptors.response.use(
   (response) => {
     console.log('✅ API Response:', response.status, response.config.url);
@@ -33,20 +30,23 @@ api.interceptors.response.use(
   (error) => {
     console.error('❌ API Error:', error.response?.status, error.config?.url);
     console.error('Error details:', error.response?.data);
+    
+    // Show error notification for network errors
+    if (!error.response) {
+      notify.error('Network Error', 'Please check your internet connection', 3000);
+    }
+    
     return Promise.reject(error);
   }
 );
 
 /**
  * Create new product
- * @param {Object} productData - Product data
- * @returns {Promise<Object>} Created product
  */
 export const createProduct = async (productData) => {
   try {
     console.log('📤 Creating product:', productData.productName);
     
-    // Transform data to match backend schema
     const payload = {
       ...productData,
       slug: generateSlug(productData.productName),
@@ -72,10 +72,7 @@ export const createProduct = async (productData) => {
       updatedAt: new Date().toISOString(),
     };
 
-    console.log('📦 Payload:', payload);
-
     const response = await api.post('/products', payload);
-    
     console.log('✅ Product created:', response.data);
     return response.data;
   } catch (error) {
@@ -86,9 +83,6 @@ export const createProduct = async (productData) => {
 
 /**
  * Update existing product
- * @param {string} productId - Product ID
- * @param {Object} productData - Updated product data
- * @returns {Promise<Object>} Updated product
  */
 export const updateProduct = async (productId, productData) => {
   try {
@@ -118,7 +112,6 @@ export const updateProduct = async (productId, productData) => {
     };
 
     const response = await api.put(`/products/${productId}`, payload);
-    
     console.log('✅ Product updated:', response.data);
     return response.data;
   } catch (error) {
@@ -129,8 +122,6 @@ export const updateProduct = async (productId, productData) => {
 
 /**
  * Get product by ID
- * @param {string} productId - Product ID
- * @returns {Promise<Object>} Product data
  */
 export const getProductById = async (productId) => {
   try {
@@ -140,14 +131,13 @@ export const getProductById = async (productId) => {
     return response.data;
   } catch (error) {
     console.error('❌ Get product error:', error);
+    notify.error('Failed to load product', 'Product not found or network error');
     throw error.response?.data || error;
   }
 };
 
 /**
  * Get all products with pagination
- * @param {Object} params - Query parameters
- * @returns {Promise<Object>} Products list
  */
 export const getProducts = async (params = {}) => {
   try {
@@ -157,31 +147,53 @@ export const getProducts = async (params = {}) => {
     return response.data;
   } catch (error) {
     console.error('❌ Get products error:', error);
+    notify.error('Failed to load products', 'Please refresh the page');
     throw error.response?.data || error;
   }
 };
 
 /**
  * Delete product
- * @param {string} productId - Product ID
- * @returns {Promise<Object>} Deletion result
  */
 export const deleteProduct = async (productId) => {
   try {
-    console.log('🗑️ Deleting product:', productId);
+    // Show confirmation dialog
+    const confirmed = await notify.confirm(
+      'Delete Product?',
+      'This action cannot be undone. The product and its media will be permanently deleted.',
+      'Yes, delete it',
+      'Cancel'
+    );
+
+    if (!confirmed) {
+      return { cancelled: true };
+    }
+
+    // Show deleting notification
+    notify.loading('Deleting product...');
+
     const response = await api.delete(`/products/${productId}`);
-    console.log('✅ Product deleted');
+    
+    notify.close();
+    notify.success(
+      'Product deleted successfully!',
+      'The product has been removed from your store'
+    );
+
     return response.data;
   } catch (error) {
-    console.error('❌ Delete product error:', error);
+    notify.close();
+    notify.error(
+      'Failed to delete product',
+      error.response?.data?.message || 'Please try again',
+      3000
+    );
     throw error.response?.data || error;
   }
 };
 
 /**
- * Generate SEO-friendly slug from product name
- * @param {string} name - Product name
- * @returns {string} Slug
+ * Generate SEO-friendly slug
  */
 const generateSlug = (name) => {
   const slug = name

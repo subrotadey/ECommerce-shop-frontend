@@ -1,10 +1,11 @@
-// src/components/ProductForm.jsx
+// src/components/ProductForm.jsx (IMPROVED)
 import React, { useState } from 'react';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import ImageUploadSection from './ImageUploadSection';
 import VideoUploadSection from './VideoUploadSection';
 import DescriptionEditor from './DescriptionEditor';
+import notify from '../../utils/notification';
 
 // Validation Schema
 const validationSchema = Yup.object({
@@ -37,7 +38,6 @@ const validationSchema = Yup.object({
 });
 
 const ProductForm = ({ initialValues, onSubmit, isEditing = false }) => {
-    // Size input state
     const [sizeInput, setSizeInput] = useState('');
     const [colorInput, setColorInput] = useState('');
     const [categoryInput, setCategoryInput] = useState('');
@@ -68,79 +68,100 @@ const ProductForm = ({ initialValues, onSubmit, isEditing = false }) => {
         },
         validationSchema,
         onSubmit: async (values, { setSubmitting }) => {
-            console.log('📤 Form submitted with values:', values);
-            console.log('✅ Validation passed');
-
             try {
+                notify.loading('Saving product...');
                 await onSubmit(values);
-                console.log('🎉 Product saved successfully');
+                notify.close();
+                notify.success(
+                    isEditing ? 'Product updated successfully!' : 'Product created successfully!',
+                    'Your changes have been saved'
+                );
             } catch (error) {
-                console.error('❌ Submission failed:', error);
-                alert('Submission failed: ' + error.message);
+                notify.close();
+                notify.error(
+                    'Failed to save product',
+                    error.message || 'Please try again',
+                    4000
+                );
             } finally {
                 setSubmitting(false);
             }
         },
     });
 
-    // Add size
+    // Add handlers
     const handleAddSize = () => {
         if (sizeInput.trim() && !formik.values.sizes.includes(sizeInput.trim())) {
             formik.setFieldValue('sizes', [...formik.values.sizes, sizeInput.trim()]);
             setSizeInput('');
-            console.log('➕ Size added:', sizeInput);
+            notify.success('Size added!', '', 1000);
+        } else if (formik.values.sizes.includes(sizeInput.trim())) {
+            notify.warning('Size already exists', '', 1500);
         }
     };
 
-    // Remove size
     const handleRemoveSize = (size) => {
         formik.setFieldValue('sizes', formik.values.sizes.filter(s => s !== size));
-        console.log('➖ Size removed:', size);
+        notify.info('Size removed', '', 1000);
     };
 
-    // Add color
     const handleAddColor = () => {
         if (colorInput.trim() && !formik.values.colors.includes(colorInput.trim())) {
             formik.setFieldValue('colors', [...formik.values.colors, colorInput.trim()]);
             setColorInput('');
-            console.log('➕ Color added:', colorInput);
+            notify.success('Color added!', '', 1000);
+        } else if (formik.values.colors.includes(colorInput.trim())) {
+            notify.warning('Color already exists', '', 1500);
         }
     };
 
-    // Remove color
     const handleRemoveColor = (color) => {
         formik.setFieldValue('colors', formik.values.colors.filter(c => c !== color));
-        console.log('➖ Color removed:', color);
+        notify.info('Color removed', '', 1000);
     };
 
-    // Add category
     const handleAddCategory = () => {
         if (categoryInput.trim() && !formik.values.categories.includes(categoryInput.trim())) {
             formik.setFieldValue('categories', [...formik.values.categories, categoryInput.trim()]);
             setCategoryInput('');
-            console.log('➕ Category added:', categoryInput);
+            notify.success('Category added!', '', 1000);
+        } else if (formik.values.categories.includes(categoryInput.trim())) {
+            notify.warning('Category already exists', '', 1500);
         }
     };
 
-    // Remove category
     const handleRemoveCategory = (category) => {
         formik.setFieldValue('categories', formik.values.categories.filter(c => c !== category));
-        console.log('➖ Category removed:', category);
+        notify.info('Category removed', '', 1000);
     };
 
-    // Add tag
     const handleAddTag = () => {
         if (tagInput.trim() && !formik.values.tags.includes(tagInput.trim())) {
             formik.setFieldValue('tags', [...formik.values.tags, tagInput.trim()]);
             setTagInput('');
-            console.log('➕ Tag added:', tagInput);
+            notify.success('Tag added!', '', 1000);
+        } else if (formik.values.tags.includes(tagInput.trim())) {
+            notify.warning('Tag already exists', '', 1500);
         }
     };
 
-    // Remove tag
     const handleRemoveTag = (tag) => {
         formik.setFieldValue('tags', formik.values.tags.filter(t => t !== tag));
-        console.log('➖ Tag removed:', tag);
+        notify.info('Tag removed', '', 1000);
+    };
+
+    const handleReset = async () => {
+        const confirmed = await notify.confirm(
+            'Reset form?',
+            'All unsaved changes will be lost',
+            'Yes, reset',
+            'Cancel'
+        );
+
+        if (confirmed) {
+            formik.resetForm();
+            notify.info('Form reset', '', 1500);
+        }
     };
 
     return (
@@ -151,7 +172,7 @@ const ProductForm = ({ initialValues, onSubmit, isEditing = false }) => {
                     {isEditing ? 'Edit Product' : 'Add New Product'}
                 </h1>
                 <p className="text-gray-600 mt-1">
-                    Fill in the details below to create a new product
+                    Fill in the details below to {isEditing ? 'update' : 'create'} a product
                 </p>
             </div>
 
@@ -584,15 +605,16 @@ const ProductForm = ({ initialValues, onSubmit, isEditing = false }) => {
             <div className="flex justify-end gap-4 pt-6 border-t">
                 <button
                     type="button"
-                    className="px-6 py-2 border rounded-lg hover:bg-gray-50"
-                    onClick={() => formik.resetForm()}
+                    className="px-6 py-2 border rounded-lg hover:bg-gray-50 transition-colors"
+                    onClick={handleReset}
+                    disabled={formik.isSubmitting}
                 >
                     Reset
                 </button>
                 <button
                     type="submit"
                     disabled={formik.isSubmitting || !formik.isValid}
-                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                     {formik.isSubmitting
                         ? 'Saving...'

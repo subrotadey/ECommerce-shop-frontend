@@ -12,6 +12,7 @@ import useCart from '../../../hooks/useCart';
 import Breadcrumb from '../../../components/Shared/Breadcrumb/Breadcrumb';
 import ProductForm from '../../../components/ProductForm/ProductForm';
 import { createProduct } from '../../../services/productService';
+import Swal from 'sweetalert2';
 
 export default function UserDashboard() {
     const [activeSection, setActiveSection] = useState('orders');
@@ -38,24 +39,46 @@ export default function UserDashboard() {
         }
     };
 
-    // Handle product creation - THIS WAS MISSING!
+    // Handle product creation from ProductForm
     const handleCreateProduct = async (values) => {
-        console.log('📝 Product form submitted from dashboard');
-        console.log('Form values:', values);
+        Swal.fire({
+            position: "top-end",
+            icon: "info",
+            title: `Creating product "${values.productName}"...`,
+            showConfirmButton: false,
+            timer: 2000,
+            toast: true,
+            background: "#d4edda",
+            color: "#155724",
+        });
 
         try {
-            console.log('💾 Saving product to database...');
             const result = await createProduct(values);
-            
-            console.log('🎉 Product created successfully:', result);
-            alert('✅ Product created successfully!');
-            
+            Swal.fire({
+                position: "top-end",
+                icon: "success",
+                title: `Product "${values.productName}" created successfully!`,
+                showConfirmButton: false,
+                timer: 2000,
+                toast: true,
+                background: "#d4edda",
+                color: "#155724",
+            });
+
             // Optionally switch back to orders view
             setActiveSection('orders');
-            
+
         } catch (error) {
-            console.error('❌ Failed to create product:', error);
-            alert(`❌ Failed to create product: ${error.message || 'Unknown error'}`);
+            Swal.fire({
+                position: "top-end",
+                icon: "error",
+                title: `Failed to create product: ${error.message || 'Unknown error'}`,
+                showConfirmButton: false,
+                timer: 3000,
+                toast: true,
+                background: "#f8d7da",
+                color: "#721c24",
+            });
         }
     };
 
@@ -130,11 +153,10 @@ export default function UserDashboard() {
                                             setActiveSection(item.id);
                                         }
                                     }}
-                                    className={`btn btn-lg h-auto py-6 flex-col gap-2 ${
-                                        activeSection === item.id && item.id !== 'logout'
+                                    className={`btn btn-lg h-auto py-6 flex-col gap-2 ${activeSection === item.id && item.id !== 'logout'
                                             ? 'btn-primary'
                                             : 'btn-ghost hover:bg-gray-100 text-gray-700'
-                                    } ${item.id === 'logout' ? 'hover:text-error' : ''}`}
+                                        } ${item.id === 'logout' ? 'hover:text-error' : ''}`}
                                 >
                                     <Icon className="w-8 h-8" />
                                     <span className="text-sm font-semibold">{item.label}</span>
