@@ -16,9 +16,18 @@ import NotFound from "../pages/NotFound/NotFound";
 import AbayaAll from "../pages/AbayaAll/AbayaAll";
 import HijabAll from "../pages/HijabAll/HijabAll";
 import Checkout from "../pages/Checkout/Checkout";
-import DashboardLayout from "../layouts/DashboardLayout";
-import UserDashboard from "../pages/Dashboard/UserDashboard/UserDashboard";
 import Wishlist from "../pages/Wishlist/Wishlist";
+import AdminLayout from "../layouts/AdminLayout";
+import DashboardHome from "../pages/Dashboard/Admin/DashboardHome/DashboardHome";
+import Products from "../pages/Dashboard/Admin/Products/Products";
+import Orders from "../pages/Dashboard/Admin/Orders/Orders";
+import Customers from "../pages/Dashboard/Admin/Customers/Customers";
+import Analytics from "../pages/Dashboard/Admin/Analytics/Analytics";
+import Categories from "../pages/Dashboard/Admin/Categories/Categories";
+import Coupons from "../pages/Dashboard/Admin/Coupons/Coupons";
+import Reviews from "../pages/Dashboard/Admin/Reviews/Reviews";
+import Staff from "../pages/Dashboard/Admin/Staff/Staff";
+import Settings from "../pages/Dashboard/Admin/Settings/Settings";
 
 const router = createBrowserRouter([
   {
@@ -81,17 +90,53 @@ const router = createBrowserRouter([
     ],
   },
   {
-    path: "/dashboard",
-    element: <DashboardLayout />,
+    path: "/admin",
+    element: <AdminLayout />,
     errorElement: <DisplayError />,
     children: [
       {
         index: true,
-        element: <UserDashboard />,
+        element: <DashboardHome />,
       },
-      // ... other dashboard routes
+      {
+        path: "products",
+        element: <Products />
+      },
+      {
+        path: "orders",
+        element: <Orders />
+      },
+      {
+        path: "customers",
+        element: <Customers />
+      },
+      {
+        path: "analytics",
+        element: <Analytics />
+      },
+      {
+        path: "categories",
+        element: <Categories />
+      },
+      {
+        path: "coupons",
+        element: <Coupons />
+      },
+      {
+        path: "reviews",
+        element: <Reviews />
+      },
+      {
+        path: "staff",
+        element: <Staff />
+      },
+      {
+        path: "settings",
+        element: <Settings />
+      }
     ],
   },
+
   {
     path: "*",
     element: <NotFound />,

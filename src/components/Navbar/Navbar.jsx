@@ -1,41 +1,40 @@
-import { Heart, ShoppingCart, UserCheck2 } from "lucide-react";
-import { useContext, useEffect, useRef, useState } from "react";
-import { Link } from "react-router";
+import { Heart, ShoppingCart, LogOut, User } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import logo from "../../assets/images/logo.png";
 import avatar from "../../assets/icons/user.svg";
-import { AuthContext } from "../../contexts/AuthContext/AuthContext";
 import useCart from "../../hooks/useCart";
 import useAuth from "../../hooks/useAuth";
 import useWishlist from "../../hooks/useWishlist";
 
 const Navbar = () => {
-  const { items, clearCart } = useCart(); // clearCart function
+  const { items } = useCart();
   const { wishlistCount } = useWishlist();
+  const { user, logOut } = useAuth();
   const totalCount = items.reduce((sum, it) => sum + it.qty, 0);
 
   const navbarRef = useRef(null);
   const [navHeight, setNavHeight] = useState(0);
-
-  const { user} = useAuth();
-
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const userMenuRef = useRef(null);
+  const navigate = useNavigate();
 
+  // Calculate navbar height
   useEffect(() => {
-    if (navbarRef.current) {
-      setNavHeight(navbarRef.current.offsetHeight);
-    }
-
-    const handleResize = () => {
+    const updateHeight = () => {
       if (navbarRef.current) {
         setNavHeight(navbarRef.current.offsetHeight);
       }
     };
 
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+    updateHeight();
+    window.addEventListener("resize", updateHeight);
+    return () => window.removeEventListener("resize", updateHeight);
   }, []);
 
+  // Handle scroll
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 10);
@@ -44,6 +43,19 @@ const Navbar = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // Close user menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+        setShowUserMenu(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Prevent body scroll when mobile menu is open
   useEffect(() => {
     if (isMenuOpen) {
       document.body.style.overflow = "hidden";
@@ -55,6 +67,17 @@ const Navbar = () => {
       document.body.style.overflow = "auto";
     };
   }, [isMenuOpen]);
+
+  const handleLogout = async () => {
+    try {
+      await logOut();
+      navigate('/');
+      setShowUserMenu(false);
+      setIsMenuOpen(false);
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+  };
 
   const navLinks = [
     { name: "Home", path: "/" },
@@ -68,169 +91,295 @@ const Navbar = () => {
     <>
       <nav
         ref={navbarRef}
-        className={`fixed top-0 left-0 w-full z-50 transition-all duration-500 px-4 md:px-16 lg:px-24 xl:px-32 flex items-center justify-between ${isScrolled
-          ? " shadow-md text-gray-950 backdrop-blur-lg py-3 md:py-4"
-          : "bg-amber-500 text-white py-3 md:py-4"
-          }`}
+        className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 px-4 md:px-8 lg:px-16 xl:px-24 flex items-center justify-between ${
+          isScrolled
+            ? "bg-white/95 backdrop-blur-md shadow-lg text-gray-900 py-3"
+            : "bg-amber-500 text-white py-4"
+        }`}
       >
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-2">
+        <Link to="/" className="flex items-center gap-2 z-10">
           <img
             src={logo}
-            alt="logo"
-            className={`h-9 transition duration-300 ${isScrolled ? "invert opacity-80" : ""}`}
+            alt="Anis Abaiya"
+            className={`h-8 md:h-9 transition-all duration-300 ${
+              isScrolled ? "invert brightness-0" : ""
+            }`}
           />
         </Link>
 
-        {/* Desktop Nav */}
-        <div className="hidden md:flex items-center gap-4 lg:gap-8">
-          {navLinks.map((link, i) => (
+        {/* Desktop Navigation Links */}
+        <div className="hidden md:flex items-center gap-6 lg:gap-8">
+          {navLinks.map((link) => (
             <Link
-              key={i}
+              key={link.path}
               to={link.path}
-              className={`group flex flex-col gap-0.5 ${isScrolled ? "text-gray-950 " : "text-white"
-                }`}
+              className="group relative text-sm lg:text-base font-medium transition-colors duration-200 hover:opacity-80"
             >
               {link.name}
-              <div
-                className={`h-0.5 w-0 group-hover:w-full transition-all duration-300 ${isScrolled ? "bg-gray-700" : "bg-white"
-                  }`}
+              <span
+                className={`absolute -bottom-1 left-0 h-0.5 w-0 group-hover:w-full transition-all duration-300 ${
+                  isScrolled ? "bg-gray-900" : "bg-white"
+                }`}
               />
             </Link>
           ))}
         </div>
 
-        {/* Right Side */}
-        <div className="hidden md:flex items-center gap-4">
-          {/* User Profile */}
+        {/* Desktop Right Side */}
+        <div className="hidden md:flex items-center gap-4 lg:gap-5">
+          {/* Wishlist */}
+          <Link
+            to="/wishlist"
+            className="relative group p-2 hover:bg-black/5 rounded-full transition-all"
+            title="Wishlist"
+          >
+            <Heart
+              className={`w-5 h-5 lg:w-6 lg:h-6 transition-all duration-200 ${
+                isScrolled
+                  ? "text-gray-700 group-hover:text-red-600 group-hover:fill-red-600"
+                  : "text-white group-hover:text-red-600 group-hover:fill-red-600"
+              }`}
+            />
+            {wishlistCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs font-bold rounded-full min-w-[20px] h-5 px-1.5 flex items-center justify-center">
+                {wishlistCount > 9 ? "9+" : wishlistCount}
+              </span>
+            )}
+          </Link>
+
+          {/* Shopping Cart */}
+          <Link
+            to="/cart"
+            className="relative group p-2 hover:bg-black/5 rounded-full transition-all"
+            title="Shopping Cart"
+          >
+            <ShoppingCart
+              className={`w-5 h-5 lg:w-6 lg:h-6 transition-colors duration-200 ${
+                isScrolled ? "text-gray-700" : "text-white"
+              }`}
+            />
+            {totalCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs font-bold rounded-full min-w-[20px] h-5 px-1.5 flex items-center justify-center">
+                {totalCount > 9 ? "9+" : totalCount}
+              </span>
+            )}
+          </Link>
+
+          {/* User Menu */}
           {user?.uid ? (
-            <div>
-              <label tabIndex={0} className="btn btn-ghost btn-circle border-0 avatar bg-transparent shadow-none">
-                <Link to="/dashboard" className="flex items-center justify-center relative cursor-pointer">
-                  {/* <img src={user?.photoURL || avatar} alt="profile" /> */}
-                  <UserCheck2 className="w-7 h-7" />
-                </Link>
-              </label>
+            <div className="relative" ref={userMenuRef}>
+              <button
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className={`flex items-center gap-2 p-2 rounded-full hover:bg-black/5 transition-all ${
+                  isScrolled ? "text-gray-900" : "text-white"
+                }`}
+              >
+                <img
+                  src={user?.photoURL || avatar}
+                  alt="Profile"
+                  className="w-8 h-8 rounded-full object-cover border-2 border-current"
+                />
+              </button>
 
-
+              {/* Dropdown Menu */}
+              {showUserMenu && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl py-2 border border-gray-100 animate-fadeIn">
+                  <Link
+                    to="/admin"
+                    onClick={() => setShowUserMenu(false)}
+                    className="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    <User size={18} />
+                    <span>Admin</span>
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-red-600 hover:bg-red-50 transition-colors"
+                  >
+                    <LogOut size={18} />
+                    <span>Logout</span>
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <Link to="/login">
               <button
-                className={`px-8 py-2.5 rounded-full ml-4 transition-all duration-500 cursor-pointer ${isScrolled ? "text-white bg-black" : "bg-white text-black"
-                  }`}
+                className={`px-6 lg:px-8 py-2 lg:py-2.5 rounded-full font-medium transition-all duration-300 hover:opacity-90 ${
+                  isScrolled
+                    ? "bg-gray-900 text-white hover:bg-gray-800"
+                    : "bg-white text-gray-900 hover:bg-gray-100"
+                }`}
               >
                 Login
-
               </button>
             </Link>
           )}
+        </div>
 
-          {/*  Wishlist Icon */}
-            <Link 
-              to="/wishlist" 
-              className="relative p-2 text-gray-700 hover:text-gray-900 transition-colors group"
-              title="Wishlist"
-            >
-              <Heart className="w-6 h-6 group-hover:fill-red-600 group-hover:text-red-600 transition-all" />
-              {wishlistCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                  {wishlistCount > 9 ? '9+' : wishlistCount}
-                </span>
-              )}
-            </Link>
-
-          {/* Shopping Cart Icon */}
-          <Link to="/cart" className="relative cursor-pointer" title="ShoppingCart">
-            <ShoppingCart className="w-6 h-6" />
-            {totalCount > 0 && (
-              <span className="absolute -top-2 -right-2 bg-red-600 text-white 
-                  rounded-full h-5 w-5 flex items-center justify-center 
-                  text-xs font-bold">
-                {totalCount > 9 ? '9+' : totalCount}
+        {/* Mobile Right Side */}
+        <div className="flex md:hidden items-center gap-3">
+          {/* Wishlist */}
+          <Link
+            to="/wishlist"
+            className="relative p-2"
+            onClick={() => setIsMenuOpen(false)}
+          >
+            <Heart
+              className={`w-5 h-5 transition-colors ${
+                isScrolled ? "text-gray-700" : "text-white"
+              }`}
+            />
+            {wishlistCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center">
+                {wishlistCount > 9 ? "9+" : wishlistCount}
               </span>
             )}
           </Link>
-        </div>
 
-        {/* Mobile Menu Button */}
-        {/* Wishlist */}
-        <div className="flex md:hidden items-center gap-3">
-            <Link 
-                  to="/wishlist" 
-                  className="relative p-2 text-gray-700"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  <Heart className="w-6 h-6" />
-                  {wishlistCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                      {wishlistCount > 9 ? '9+' : wishlistCount}
-                    </span>
-                  )}
-                </Link>
-            
-          <Link to="/cart" className="relative cursor-pointer">
-            <ShoppingCart className="w-6 h-6" />
+          {/* Cart */}
+          <Link
+            to="/cart"
+            className="relative p-2"
+            onClick={() => setIsMenuOpen(false)}
+          >
+            <ShoppingCart
+              className={`w-5 h-5 transition-colors ${
+                isScrolled ? "text-gray-700" : "text-white"
+              }`}
+            />
             {totalCount > 0 && (
-              <div className="absolute -top-2 -right-2 bg-red-600 text-white 
-                  rounded-full h-4 w-4 flex items-center justify-center 
-                  text-xs font-bold">
-                {totalCount}
-              </div>
+              <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center">
+                {totalCount > 9 ? "9+" : totalCount}
+              </span>
             )}
           </Link>
 
-          <svg
+          {/* Menu Button */}
+          <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className={`h-6 w-6 cursor-pointer transition-all duration-500 ${isScrolled ? "text-black" : "text-white"
-              }`}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            viewBox="0 0 24 24"
+            className={`p-2 transition-colors ${
+              isScrolled ? "text-gray-900" : "text-white"
+            }`}
+            aria-label="Toggle menu"
           >
-            <line x1="4" y1="6" x2="20" y2="6" />
-            <line x1="4" y1="12" x2="20" y2="12" />
-            <line x1="4" y1="18" x2="20" y2="18" />
-          </svg>
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              viewBox="0 0 24 24"
+            >
+              <line x1="4" y1="6" x2="20" y2="6" />
+              <line x1="4" y1="12" x2="20" y2="12" />
+              <line x1="4" y1="18" x2="20" y2="18" />
+            </svg>
+          </button>
         </div>
       </nav>
 
+      {/* Mobile Menu Overlay */}
+      {isMenuOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden transition-opacity duration-300"
+          onClick={() => setIsMenuOpen(false)}
+        />
+      )}
+
       {/* Mobile Menu */}
       <div
-        className={`text-black bg-white fixed top-0 left-0 w-full h-screen text-center z-50 py-6 flex flex-col md:hidden items-start px-6 justify-start gap-6 font-medium transition-transform duration-500 ${isMenuOpen ? "translate-x-0" : "-translate-x-full"
-          }`}
+        className={`fixed top-0 left-0 w-[85%] max-w-sm h-screen bg-white z-50 md:hidden transition-transform duration-300 ease-out ${
+          isMenuOpen ? "translate-x-0" : "-translate-x-full"
+        } shadow-2xl`}
       >
-        <button className="absolute top-4 right-4" onClick={() => setIsMenuOpen(false)}>
-          <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
-        </button>
-
-        {/* User Info or Login */}
-        {user?.uid ? (
-          <div className="text-center w-full flex flex-col items-center">
-            <div className="flex items-center gap-3 mt-10">
-              <img src={user?.photoURL || avatar} className="w-10 h-10 rounded-full" alt="User" />
-            </div>
+        <div className="flex flex-col h-full">
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 border-b bg-amber-500 text-white">
+            <img src={logo} alt="Logo" className="h-8 invert" />
+            <button
+              onClick={() => setIsMenuOpen(false)}
+              className="p-2 hover:bg-white/20 rounded-full transition-colors"
+              aria-label="Close menu"
+            >
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+              >
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
           </div>
-        ) : (
-          <Link to="/login" onClick={() => setIsMenuOpen(false)} className="mx-auto">
-            <button className="px-6 py-2.5 rounded-full mt-10 bg-indigo-500 text-white">Login</button>
-          </Link>
-        )}
 
-        {/* Nav Links */}
-        <div className="mt-6 flex flex-col gap-4 w-full relative">
-          {navLinks.map((link, i) => (
-            <Link key={i} to={link.path} onClick={() => setIsMenuOpen(false)} className="hover:underline">
-              {link.name}
-            </Link>
-          ))}
+          {/* User Section */}
+          <div className="p-4 border-b bg-gray-50">
+            {user?.uid ? (
+              <div className="flex items-center gap-3">
+                <img
+                  src={user?.photoURL || avatar}
+                  alt="Profile"
+                  className="w-12 h-12 rounded-full object-cover border-2 border-amber-500"
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-gray-900 truncate">
+                    {user?.displayName || "User"}
+                  </p>
+                  <p className="text-sm text-gray-500 truncate">{user?.email}</p>
+                </div>
+              </div>
+            ) : (
+              <Link
+                to="/login"
+                onClick={() => setIsMenuOpen(false)}
+                className="block w-full"
+              >
+                <button className="w-full px-6 py-3 bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600 transition-colors">
+                  Login
+                </button>
+              </Link>
+            )}
+          </div>
+
+          {/* Navigation Links */}
+          <nav className="flex-1 overflow-y-auto py-4">
+            {navLinks.map((link) => (
+              <Link
+                key={link.path}
+                to={link.path}
+                onClick={() => setIsMenuOpen(false)}
+                className="block px-6 py-3 text-gray-700 hover:bg-amber-50 hover:text-amber-600 transition-colors font-medium"
+              >
+                {link.name}
+              </Link>
+            ))}
+
+            {user?.uid && (
+              <>
+                <Link
+                  to="/dashboard"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="block px-6 py-3 text-gray-700 hover:bg-amber-50 hover:text-amber-600 transition-colors font-medium border-t mt-2 pt-4"
+                >
+                  Dashboard
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="w-full text-left px-6 py-3 text-red-600 hover:bg-red-50 transition-colors font-medium"
+                >
+                  Logout
+                </button>
+              </>
+            )}
+          </nav>
         </div>
       </div>
-      <div style={{ height: navHeight }}></div>
+
+      {/* Spacer */}
+      <div style={{ height: navHeight }} />
     </>
   );
 };

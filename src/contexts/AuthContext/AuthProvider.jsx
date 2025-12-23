@@ -93,7 +93,7 @@ const AuthProvider = ({ children }) => {
                     //         console.log('✅ JWT cookie set:', response.data);
                     //     })
                     //     .catch(error => {
-                    //         console.error('❌ Error setting JWT cookie:', error);
+                    //         console.error('Error setting JWT cookie:', error);
                     //     });
 
                 } catch (error) {

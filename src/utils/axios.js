@@ -7,12 +7,13 @@ const axiosInstance = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 10000*60,
+  timeout: 10000,
 });
 
 // REQUEST INTERCEPTOR - প্রতিটা request এ token add হবে
 axiosInstance.interceptors.request.use(
   (config) => {
+
     const token = localStorage.getItem('accessToken');
     
     if (token) {
