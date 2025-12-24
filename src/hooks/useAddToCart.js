@@ -1,10 +1,10 @@
-// hooks/useAddToCart.js
+// hooks/useAddToCart.js - PRODUCTION READY
 import { useState } from "react";
 import Swal from "sweetalert2";
 import useCart from "./useCart";
 
 export default function useAddToCart(product) {
-    const { addToCart } = useCart();
+    const { addToCart, isAdding } = useCart();
 
     const [selectedSize, setSelectedSize] = useState("");
     const [selectedColor, setSelectedColor] = useState("");
@@ -29,29 +29,34 @@ export default function useAddToCart(product) {
             setError("Quantity must be at least 1.");
             return false;
         }
+        if (product.stock && qty > product.stock) {
+            setError(`Only ${product.stock} items available in stock.`);
+            return false;
+        }
         return true;
     };
 
     const handleAddToCart = () => {
-        if (!validate()) return;
+        if (!validate()) return false;
 
+        // Add to cart using React Query mutation
         addToCart(product, {
             size: selectedSize,
             color: selectedColor,
             qty: Number(qty),
         });
 
-        // SweetAlert
+        // Success notification
         Swal.fire({
-                    position: "top-end",
-                    icon: "success",
-                    title: "Added to wishlist!",
-                    showConfirmButton: false,
-                    timer: 1000,
-                    toast: true,
-                    background: "#d4edda",
-                    color: "#155724",
-                  });
+            position: "top-end",
+            icon: "success",
+            title: `"${product.productName}" added to cart!`,
+            showConfirmButton: false,
+            timer: 1500,
+            toast: true,
+            background: "#d4edda",
+            color: "#155724",
+        });
 
         return true;
     };
@@ -73,6 +78,7 @@ export default function useAddToCart(product) {
         error,
         handleAddToCart,
         resetSelections,
+        isAdding,
         sizes,
         colors
     };

@@ -1,4 +1,4 @@
-import { Heart, ShoppingCart, LogOut, User } from "lucide-react";
+import { Heart, ShoppingCart, LogOut, User, Shield, Settings } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import logo from "../../assets/images/logo.png";
@@ -6,11 +6,13 @@ import avatar from "../../assets/icons/user.svg";
 import useCart from "../../hooks/useCart";
 import useAuth from "../../hooks/useAuth";
 import useWishlist from "../../hooks/useWishlist";
+import useRole from "../../hooks/useRole";
 
 const Navbar = () => {
   const { items } = useCart();
   const { wishlistCount } = useWishlist();
-  const { user, logOut } = useAuth();
+  const { currentUser, logOut } = useAuth();
+  const { role, isAdmin, isStaff } = useRole(currentUser?.email);
   const totalCount = items.reduce((sum, it) => sum + it.qty, 0);
 
   const navbarRef = useRef(null);
@@ -28,7 +30,6 @@ const Navbar = () => {
         setNavHeight(navbarRef.current.offsetHeight);
       }
     };
-
     updateHeight();
     window.addEventListener("resize", updateHeight);
     return () => window.removeEventListener("resize", updateHeight);
@@ -50,7 +51,6 @@ const Navbar = () => {
         setShowUserMenu(false);
       }
     };
-
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
@@ -62,7 +62,6 @@ const Navbar = () => {
     } else {
       document.body.style.overflow = "auto";
     }
-
     return () => {
       document.body.style.overflow = "auto";
     };
@@ -86,6 +85,25 @@ const Navbar = () => {
     { name: "About", path: "/about" },
     { name: "Contact", path: "/contact" }
   ];
+
+  // Role badge component
+  const RoleBadge = () => {
+    if (isAdmin) {
+      return (
+        <span className="px-2 py-0.5 text-xs font-semibold bg-red-100 text-red-700 rounded-full">
+          Admin
+        </span>
+      );
+    }
+    if (isStaff) {
+      return (
+        <span className="px-2 py-0.5 text-xs font-semibold bg-blue-100 text-blue-700 rounded-full">
+          Staff
+        </span>
+      );
+    }
+    return null;
+  };
 
   return (
     <>
@@ -167,7 +185,7 @@ const Navbar = () => {
           </Link>
 
           {/* User Menu */}
-          {user?.uid ? (
+          {currentUser?.uid ? (
             <div className="relative" ref={userMenuRef}>
               <button
                 onClick={() => setShowUserMenu(!showUserMenu)}
@@ -176,7 +194,7 @@ const Navbar = () => {
                 }`}
               >
                 <img
-                  src={user?.photoURL || avatar}
+                  src={currentUser?.photoURL || avatar}
                   alt="Profile"
                   className="w-8 h-8 rounded-full object-cover border-2 border-current"
                 />
@@ -184,18 +202,54 @@ const Navbar = () => {
 
               {/* Dropdown Menu */}
               {showUserMenu && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl py-2 border border-gray-100 animate-fadeIn">
+                <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-xl py-2 border border-gray-100 animate-fadeIn">
+                  {/* User Info */}
+                  <div className="px-4 py-3 border-b border-gray-100">
+                    <p className="font-semibold text-gray-900 truncate">
+                      {currentUser?.displayName || "User"}
+                    </p>
+                    <p className="text-sm text-gray-500 truncate mb-2">
+                      {currentUser?.email}
+                    </p>
+                    <RoleBadge />
+                  </div>
+
+                  {/* Profile Link */}
                   <Link
-                    to="/admin"
+                    to="/profile"
                     onClick={() => setShowUserMenu(false)}
                     className="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50 transition-colors"
                   >
                     <User size={18} />
-                    <span>Admin</span>
+                    <span>My Profile</span>
                   </Link>
+
+                  {/* Admin/Staff Dashboard - শুধুমাত্র admin/staff দেখবে */}
+                  {(isAdmin || isStaff) && (
+                    <Link
+                      to="/admin"
+                      onClick={() => setShowUserMenu(false)}
+                      className="flex items-center gap-3 px-4 py-2.5 text-blue-600 hover:bg-blue-50 transition-colors"
+                    >
+                      <Shield size={18} />
+                      <span>{isAdmin ? 'Admin Dashboard' : 'Staff Dashboard'}</span>
+                    </Link>
+                  )}
+
+                  {/* Settings */}
+                  <Link
+                    to="/settings"
+                    onClick={() => setShowUserMenu(false)}
+                    className="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    <Settings size={18} />
+                    <span>Settings</span>
+                  </Link>
+
+                  {/* Logout */}
                   <button
                     onClick={handleLogout}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-red-600 hover:bg-red-50 transition-colors"
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-red-600 hover:bg-red-50 transition-colors border-t border-gray-100 mt-2"
                   >
                     <LogOut size={18} />
                     <span>Logout</span>
@@ -317,19 +371,24 @@ const Navbar = () => {
 
           {/* User Section */}
           <div className="p-4 border-b bg-gray-50">
-            {user?.uid ? (
-              <div className="flex items-center gap-3">
-                <img
-                  src={user?.photoURL || avatar}
-                  alt="Profile"
-                  className="w-12 h-12 rounded-full object-cover border-2 border-amber-500"
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-900 truncate">
-                    {user?.displayName || "User"}
-                  </p>
-                  <p className="text-sm text-gray-500 truncate">{user?.email}</p>
+            {currentUser?.uid ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <img
+                    src={currentUser?.photoURL || avatar}
+                    alt="Profile"
+                    className="w-12 h-12 rounded-full object-cover border-2 border-amber-500"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-gray-900 truncate">
+                      {currentUser?.displayName || "User"}
+                    </p>
+                    <p className="text-sm text-gray-500 truncate">
+                      {currentUser?.email}
+                    </p>
+                  </div>
                 </div>
+                <RoleBadge />
               </div>
             ) : (
               <Link
@@ -357,15 +416,36 @@ const Navbar = () => {
               </Link>
             ))}
 
-            {user?.uid && (
+            {currentUser?.uid && (
               <>
                 <Link
-                  to="/dashboard"
+                  to="/profile"
                   onClick={() => setIsMenuOpen(false)}
                   className="block px-6 py-3 text-gray-700 hover:bg-amber-50 hover:text-amber-600 transition-colors font-medium border-t mt-2 pt-4"
                 >
-                  Dashboard
+                  My Profile
                 </Link>
+
+                {/* Admin/Staff Dashboard - conditional */}
+                {(isAdmin || isStaff) && (
+                  <Link
+                    to="/admin"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="block px-6 py-3 text-blue-600 hover:bg-blue-50 transition-colors font-medium flex items-center gap-2"
+                  >
+                    <Shield size={18} />
+                    {isAdmin ? 'Admin Dashboard' : 'Staff Dashboard'}
+                  </Link>
+                )}
+
+                <Link
+                  to="/settings"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="block px-6 py-3 text-gray-700 hover:bg-amber-50 hover:text-amber-600 transition-colors font-medium"
+                >
+                  Settings
+                </Link>
+
                 <button
                   onClick={handleLogout}
                   className="w-full text-left px-6 py-3 text-red-600 hover:bg-red-50 transition-colors font-medium"

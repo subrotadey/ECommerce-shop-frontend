@@ -1,34 +1,40 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import useAuth from './useAuth';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../utils/axios';
+import useAuth from './useAuth';
 
 const API_URL = 'http://localhost:5000/api/wishlist';
 
 const useWishlist = () => {
   const queryClient = useQueryClient();
-  const { user } = useAuth(); // Get current user
-  const userId = user?.email || user?.uid || 'guest'; // Use email or uid as userId
+  const { user } = useAuth();
+  const userId = user?.email || user?.uid || 'guest';
 
   // Fetch wishlist
   const { data: wishlist = [], isLoading, isError } = useQuery({
     queryKey: ['wishlist', userId],
     queryFn: async () => {
       const { data } = await axiosInstance.get(`${API_URL}/${userId}`);
-      return data;
+      // Backend এখন {success: true, data: [...]} return করে
+      return data.success ? data.data : [];
     },
-    enabled: !!userId && userId !== 'guest', // Only fetch if user is logged in
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    enabled: !!userId && userId !== 'guest',
+    staleTime: 1000 * 60 * 5,
+    retry: 1, // শুধু 1 বার retry করবে
+    onError: (error) => {
+      console.error('Wishlist fetch error:', error);
+    }
   });
 
-  //  Fetch wishlist count (for navbar)
+  // Fetch wishlist count
   const { data: wishlistCount = 0 } = useQuery({
     queryKey: ['wishlistCount', userId],
     queryFn: async () => {
       const { data } = await axiosInstance.get(`${API_URL}/${userId}/count`);
-      return data.count;
+      return data.success ? data.count : 0;
     },
     enabled: !!userId && userId !== 'guest',
-    staleTime: 1000 * 60 * 2, // 2 minutes
+    staleTime: 1000 * 60 * 2,
+    retry: 1
   });
 
   // Toggle wishlist mutation
@@ -39,10 +45,10 @@ const useWishlist = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries(['wishlist', userId]);
-        queryClient.invalidateQueries(['wishlistCount', userId]);
+      queryClient.invalidateQueries(['wishlistCount', userId]);
     },
     onError: (error) => {
-      console.error('Toggle wishlist error:', error);
+      console.error('Toggle wishlist error:', error.response?.data || error.message);
     }
   });
 
@@ -54,9 +60,10 @@ const useWishlist = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries(['wishlist', userId]);
+      queryClient.invalidateQueries(['wishlistCount', userId]);
     },
     onError: (error) => {
-      console.error('Remove from wishlist error:', error);
+      console.error('Remove from wishlist error:', error.response?.data || error.message);
     }
   });
 

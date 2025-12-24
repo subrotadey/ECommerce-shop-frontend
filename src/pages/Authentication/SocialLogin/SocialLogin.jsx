@@ -10,8 +10,7 @@ const SocialLogin = () => {
     const handleGoogleSignIn = () => {
         signInWithGoogle()
             .then((result) => {
-                // console.log(result.user);
-                navigate("/dashboard");
+                navigate("/admin");
 
             })
             .catch((error) => console.error(error));

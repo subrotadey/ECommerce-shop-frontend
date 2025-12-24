@@ -1,9 +1,9 @@
-import CartProvider from "../contexts/CartProvider";
+// import CartProvider from "../contexts/CartProvider";
 
-export default function AppProviders({ children }) {
-  return (
-    <CartProvider>
-      {children}
-    </CartProvider>
-  );
-}   
+// export default function AppProviders({ children }) {
+//   return (
+//     <CartProvider>
+//       {children}
+//     </CartProvider>
+//   );
+// }   

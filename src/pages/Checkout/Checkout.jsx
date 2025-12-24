@@ -1,5 +1,5 @@
 // src/pages/Checkout/Checkout.jsx
-import React, { useState } from "react";
+import { useState } from "react";
 import useCart from "../../hooks/useCart";
 // import { useCart } from "../../contexts/CartContext";
 

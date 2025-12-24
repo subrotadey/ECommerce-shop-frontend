@@ -1,6 +1,4 @@
-// ============================================
-// Routes/AppRoutes.jsx
-// ============================================
+// Routes/AppRoutes.jsx - PROTECTED ROUTES
 import { createBrowserRouter } from "react-router";
 import MainLayout from "../layouts/MainLayout";
 import DisplayError from "../components/Shared/DisplayError/DisplayError";
@@ -28,6 +26,11 @@ import Coupons from "../pages/Dashboard/Admin/Coupons/Coupons";
 import Reviews from "../pages/Dashboard/Admin/Reviews/Reviews";
 import Staff from "../pages/Dashboard/Admin/Staff/Staff";
 import Settings from "../pages/Dashboard/Admin/Settings/Settings";
+
+// Import Route Guards
+import PrivateRoute from "./PrivateRoute";
+import AdminRoute from "./AdminRoute";
+import StaffRoute from "./StaffRoute";
 
 const router = createBrowserRouter([
   {
@@ -81,17 +84,51 @@ const router = createBrowserRouter([
       },
       {
         path: "/checkout",
-        element: <Checkout />
+        element: (
+          <PrivateRoute>
+            <Checkout />
+          </PrivateRoute>
+        )
       },
       {
         path: "/wishlist",
-        element: <Wishlist />
+        element: (
+          <PrivateRoute>
+            <Wishlist />
+          </PrivateRoute>
+        )
+      },
+      {
+        path: "/profile",
+        element: (
+          <PrivateRoute>
+            {/* Profile page component যুক্ত করুন */}
+            <div className="min-h-screen flex items-center justify-center">
+              <h1>User Profile Page</h1>
+            </div>
+          </PrivateRoute>
+        )
+      },
+      {
+        path: "/settings",
+        element: (
+          <PrivateRoute>
+            {/* Settings page component যুক্ত করুন */}
+            <div className="min-h-screen flex items-center justify-center">
+              <h1>Settings Page</h1>
+            </div>
+          </PrivateRoute>
+        )
       }
     ],
   },
   {
     path: "/admin",
-    element: <AdminLayout />,
+    element: (
+      <AdminRoute>
+        <AdminLayout />
+      </AdminRoute>
+    ),
     errorElement: <DisplayError />,
     children: [
       {

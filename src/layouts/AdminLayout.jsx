@@ -5,7 +5,6 @@ import { Outlet, NavLink, useNavigate, Link } from "react-router-dom";
 import { useState } from "react";
 import { LayoutDashboard, Package, ShoppingCart, Users, BarChart3, Tag, Star, Settings, Menu, X, LogOut, Bell, ChevronDown, UserCircle2, Ticket, UserCog } from "lucide-react";
 import useAuth from "../hooks/useAuth";
-import useCart from "../hooks/useCart";
 
 const AdminLayout = () => {
     const [sidebarOpen, setSidebarOpen] = useState(true);

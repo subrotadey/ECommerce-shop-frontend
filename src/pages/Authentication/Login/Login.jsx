@@ -45,7 +45,7 @@ function Login() {
     signIn(data.email, data.password)
       .then(() => {
         setLoginUserEmail(data.email);
-        navigate("/dashboard");
+        navigate("/admin");
       })
       .catch((error) => {
         setLoginError(error.message);
@@ -86,7 +86,6 @@ function Login() {
                   User
                 </button>
               </div> */}
-
 
         <form onSubmit={handleSubmit(handleLogin)}>
           {/* Email Input */}

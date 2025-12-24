@@ -2,10 +2,10 @@
 
 import axios from 'axios';
 import {
-  CLOUDINARY_CONFIG,
-  IMAGE_UPLOAD_CONFIG,
-  VIDEO_UPLOAD_CONFIG,
-  getVideoThumbnailUrl,
+    CLOUDINARY_CONFIG,
+    IMAGE_UPLOAD_CONFIG,
+    VIDEO_UPLOAD_CONFIG,
+    getVideoThumbnailUrl,
 } from '../config/cloudinary';
 
 // Get API base URL (WITHOUT /api suffix)
