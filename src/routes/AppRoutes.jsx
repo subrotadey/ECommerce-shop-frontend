@@ -25,12 +25,13 @@ import Categories from "../pages/Dashboard/Admin/Categories/Categories";
 import Coupons from "../pages/Dashboard/Admin/Coupons/Coupons";
 import Reviews from "../pages/Dashboard/Admin/Reviews/Reviews";
 import Staff from "../pages/Dashboard/Admin/Staff/Staff";
-import Settings from "../pages/Dashboard/Admin/Settings/Settings";
+import UserProfile from "../pages/UserProfile/UserProfile";
 
 // Import Route Guards
 import PrivateRoute from "./PrivateRoute";
 import AdminRoute from "./AdminRoute";
 import StaffRoute from "./StaffRoute";
+import Settings from "../pages/Settings/Settings";
 
 const router = createBrowserRouter([
   {
@@ -102,22 +103,16 @@ const router = createBrowserRouter([
         path: "/profile",
         element: (
           <PrivateRoute>
-            {/* Profile page component যুক্ত করুন */}
-            <div className="min-h-screen flex items-center justify-center">
-              <h1>User Profile Page</h1>
-            </div>
+            <UserProfile />
           </PrivateRoute>
         )
       },
       {
         path: "/settings",
         element: (
-          <PrivateRoute>
-            {/* Settings page component যুক্ত করুন */}
-            <div className="min-h-screen flex items-center justify-center">
-              <h1>Settings Page</h1>
-            </div>
-          </PrivateRoute>
+          // <PrivateRoute>
+            <Settings/>
+          // </PrivateRoute>
         )
       }
     ],
