@@ -1,176 +1,106 @@
-// src/pages/UserDashboard/UserDashboard.jsx (FIXED)
+import { AlertCircle, Loader } from "lucide-react";
+import AccountOverview from "../../../components/UserDashboard/AccountOverview";
+import ActivityTimeline from "../../../components/UserDashboard/ActivityTimeline";
+import DashboardStats from "../../../components/UserDashboard/DashboardStats";
+import QuickActions from "../../../components/UserDashboard/QuickActions";
+import RecentOrdersWidget from "../../../components/UserDashboard/RecentOrdersWidget";
+import RewardsCard from "../../../components/UserDashboard/RewardsCard";
+import SupportCard from "../../../components/UserDashboard/SupportCard";
+import WishlistWidget from "../../../components/UserDashboard/WishlistWidget";
+import Settings from "../../Settings/Settings";
+import useAuth from "../../../hooks/useAuth";
+import useRole from "../../../hooks/useRole";
+import useDashboard from "../../../hooks/useDashboard";
+import { Link } from "react-router";
 
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ShoppingCart, Home, User, LogOut, Package } from 'lucide-react';
-import bgImg from "../../../assets/images/bgImg.png";
-import useAuth from '../../../hooks/useAuth';
-import AccountInfo from '../DashboardComponent/AccountInfo';
-import Addresses from '../DashboardComponent/Addresses';
-import Orders from '../DashboardComponent/Orders';
-import useCart from '../../../hooks/useCart';
-import Breadcrumb from '../../../components/Shared/Breadcrumb/Breadcrumb';
-import ProductForm from '../../../components/ProductForm/ProductForm';
-import { createProduct } from '../../../services/productService';
-import Swal from 'sweetalert2';
+const UserDashboard = () => {
+    const { currentUser } = useAuth();
+    const { role } = useRole(currentUser?.email);
+    const { userData, loading, error, refreshDashboard } = useDashboard();
 
-export default function UserDashboard() {
-    const [activeSection, setActiveSection] = useState('orders');
-    const navigate = useNavigate();
+    // Loading State
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
+                <div className="text-center">
+                    <Loader className="w-16 h-16 text-blue-600 animate-spin mx-auto mb-4" />
+                    <p className="text-gray-700 font-semibold text-lg">Loading your dashboard...</p>
+                </div>
+            </div>
+        );
+    }
 
-    const { clearCart } = useCart();
-    const { logOut } = useAuth();
-
-    const menuItems = [
-        { id: 'orders', label: 'Orders', icon: ShoppingCart },
-        { id: 'productAdd', label: 'Add Product', icon: Package }, // Changed icon
-        { id: 'addresses', label: 'Addresses', icon: Home },
-        { id: 'account', label: 'Account Info', icon: User },
-        { id: 'logout', label: 'Log Out', icon: LogOut }
-    ];
-
-    const handleLogOut = async () => {
-        try {
-            clearCart();
-            await logOut();
-            navigate('/');
-        } catch (err) {
-            console.error("Logout error:", err);
-        }
-    };
-
-    // Handle product creation from ProductForm
-    const handleCreateProduct = async (values) => {
-        Swal.fire({
-            position: "top-end",
-            icon: "info",
-            title: `Creating product "${values.productName}"...`,
-            showConfirmButton: false,
-            timer: 2000,
-            toast: true,
-            background: "#d4edda",
-            color: "#155724",
-        });
-
-        try {
-            const result = await createProduct(values);
-            Swal.fire({
-                position: "top-end",
-                icon: "success",
-                title: `Product "${values.productName}" created successfully!`,
-                showConfirmButton: false,
-                timer: 2000,
-                toast: true,
-                background: "#d4edda",
-                color: "#155724",
-            });
-
-            // Optionally switch back to orders view
-            setActiveSection('orders');
-
-        } catch (error) {
-            Swal.fire({
-                position: "top-end",
-                icon: "error",
-                title: `Failed to create product: ${error.message || 'Unknown error'}`,
-                showConfirmButton: false,
-                timer: 3000,
-                toast: true,
-                background: "#f8d7da",
-                color: "#721c24",
-            });
-        }
-    };
-
-    const renderContent = () => {
-        switch (activeSection) {
-            case 'orders':
-                return <Orders />;
-
-            case 'productAdd':
-                return (
-                    <div className="bg-white rounded-lg shadow-sm p-6">
-                        <ProductForm onSubmit={handleCreateProduct} />
-                    </div>
-                );
-
-            case 'addresses':
-                return <Addresses />;
-
-            case 'account':
-                return <AccountInfo />;
-
-            default:
-                return null;
-        }
-    };
-
-    // Dynamic breadcrumb based on active section
-    const getSectionBreadcrumb = () => {
-        const sectionLabels = {
-            'orders': 'My Orders',
-            'productAdd': 'Add Product',
-            'addresses': 'My Addresses',
-            'account': 'Account Information'
-        };
-
-        return [
-            { label: 'My Account', path: '/dashboard' },
-            { label: sectionLabels[activeSection] || 'Dashboard' }
-        ];
-    };
+    // Error State
+    if (error || !userData) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
+                <div className="text-center bg-white rounded-3xl shadow-2xl p-12 max-w-md">
+                    <AlertCircle className="w-20 h-20 text-red-500 mx-auto mb-6" />
+                    <h2 className="text-3xl font-bold text-gray-900 mb-3">Oops!</h2>
+                    <p className="text-gray-600 mb-8">{error || 'Unable to load dashboard.'}</p>
+                    <button
+                        onClick={refreshDashboard}
+                        className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-all shadow-lg"
+                    >
+                        Try Again
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            <Breadcrumb customBreadcrumbs={getSectionBreadcrumb()} />
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
-            {/* Hero Section with Title */}
-            <div className="relative bg-linear-to-r from-gray-800 to-gray-900 text-white py-16">
-                <div className="absolute inset-0 opacity-50">
-                    <div
-                        className="bg-cover bg-center h-full w-full"
-                        style={{ backgroundImage: `url(${bgImg})` }}
-                    ></div>
-                </div>
-                <div className="container mx-auto px-4 relative z-10">
-                    <h1 className="text-4xl md:text-5xl font-bold text-center">MY ACCOUNT</h1>
-                </div>
-            </div>
+                {/* Welcome Header */}
+                <div className="mb-8">
+                        <div>
+                            <h1 className="text-4xl font-bold text-gray-900 mb-2">
+                                Welcome back, {userData.displayName?.split(' ')[0]}! 👋
+                            </h1>
+                            <p className="text-gray-600">Here's what's happening with your account today.</p>
+                        </div>
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
 
-            {/* Fixed Menu Section */}
-            <div className="sticky top-0 z-40 bg-white shadow-md">
-                <div className="container mx-auto px-4 py-4">
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                        {menuItems.map((item) => {
-                            const Icon = item.icon;
-                            return (
-                                <button
-                                    key={item.id}
-                                    onClick={() => {
-                                        if (item.id === 'logout') {
-                                            handleLogOut();
-                                        } else {
-                                            setActiveSection(item.id);
-                                        }
-                                    }}
-                                    className={`btn btn-lg h-auto py-6 flex-col gap-2 ${activeSection === item.id && item.id !== 'logout'
-                                            ? 'btn-primary'
-                                            : 'btn-ghost hover:bg-gray-100 text-gray-700'
-                                        } ${item.id === 'logout' ? 'hover:text-error' : ''}`}
+                        {/* <div className="flex gap-3">
+                            {(role === 'admin' || role === 'staff') && (
+                                <Link
+                                    to="/admin"
+                                    className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl flex items-center gap-2"
                                 >
-                                    <Icon className="w-8 h-8" />
-                                    <span className="text-sm font-semibold">{item.label}</span>
-                                </button>
-                            );
-                        })}
+                                    <Settings size={20} />
+                                    Admin Panel
+                                </Link>
+                            )}
+                        </div> */}
                     </div>
                 </div>
-            </div>
 
-            {/* Dynamic Content Section */}
-            <div className="container mx-auto px-4 py-8">
-                {renderContent()}
+                {/* Stats */}
+                <DashboardStats userData={userData} />
+
+                {/* Main Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+
+                    {/* Left Column */}
+                    <div className="lg:col-span-2 space-y-6">
+                        <QuickActions />
+                        <RecentOrdersWidget orders={userData.recentOrders || []} />
+                        <ActivityTimeline userData={userData} />
+                    </div>
+
+                    {/* Right Column */}
+                    <div className="lg:col-span-1 space-y-6">
+                        <AccountOverview userData={userData} />
+                        <WishlistWidget />
+                        <RewardsCard points={1250} progress={62} />
+                        <SupportCard />
+                    </div>
+                </div>
             </div>
         </div>
     );
-}
+};
+
+export default UserDashboard;

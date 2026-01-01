@@ -32,6 +32,9 @@ import PrivateRoute from "./PrivateRoute";
 import AdminRoute from "./AdminRoute";
 import StaffRoute from "./StaffRoute";
 import Settings from "../pages/Settings/Settings";
+import UserDashboard from "../pages/Dashboard/UserDashboard/UserDashboard";
+import CheckoutSuccess from "../pages/CheckoutSuccess/CheckoutSuccess";
+import CheckoutCancel from "../pages/CheckoutCancel/CheckoutCancel";
 
 const router = createBrowserRouter([
   {
@@ -84,10 +87,34 @@ const router = createBrowserRouter([
         element: <ProductDetails />,
       },
       {
+        path: "dashboard",
+        element: (
+          <PrivateRoute>
+            <UserDashboard />
+          </PrivateRoute>
+        )
+      },
+      {
         path: "/checkout",
         element: (
           <PrivateRoute>
             <Checkout />
+          </PrivateRoute>
+        )
+      },
+      {
+        path: "/checkout/success",
+        element: (
+          <PrivateRoute>
+            <CheckoutSuccess />
+          </PrivateRoute>
+        )
+      },
+      {
+        path: "/checkout/cancel",
+        element: (
+          <PrivateRoute>
+            <CheckoutCancel />
           </PrivateRoute>
         )
       },
@@ -111,7 +138,7 @@ const router = createBrowserRouter([
         path: "/settings",
         element: (
           // <PrivateRoute>
-            <Settings/>
+          <Settings />
           // </PrivateRoute>
         )
       }
@@ -136,7 +163,12 @@ const router = createBrowserRouter([
       },
       {
         path: "orders",
-        element: <Orders />
+        element: (
+          <StaffRoute> {/* Staff can also access orders */}
+            <Orders />
+          </StaffRoute>
+
+        )
       },
       {
         path: "customers",
@@ -156,7 +188,11 @@ const router = createBrowserRouter([
       },
       {
         path: "reviews",
-        element: <Reviews />
+        element: (
+          <StaffRoute> {/* Staff can manage reviews */}
+            <Reviews />
+          </StaffRoute>
+        )
       },
       {
         path: "staff",

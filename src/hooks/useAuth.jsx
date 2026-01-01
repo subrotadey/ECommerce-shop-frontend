@@ -1,9 +1,17 @@
+// ============================================
+// hooks/useAuth.jsx - IMPROVED (Simplified)
+// ============================================
 import { useContext } from 'react';
 import { AuthContext } from '../contexts/AuthContext/AuthContext';
 
 const useAuth = () => {
-    const authInfo = useContext(AuthContext)
-    return authInfo;
+  const context = useContext(AuthContext);
+  
+  if (!context) {
+    throw new Error('useAuth must be used within AuthProvider');
+  }
+  
+  return context;
 };
 
 export default useAuth;

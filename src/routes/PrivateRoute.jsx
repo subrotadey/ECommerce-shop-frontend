@@ -1,21 +1,24 @@
-// Routes/PrivateRoute.jsx
+// ============================================
+// 1. Routes/PrivateRoute.jsx - IMPROVED
+// ============================================
 import { Navigate, useLocation } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
 import Loading from '../components/Shared/Loading/Loading';
 
 const PrivateRoute = ({ children }) => {
-    const { currentUser, loading } = useAuth();
-    const location = useLocation();
+  const { currentUser, loading } = useAuth();
+  const location = useLocation();
 
-    if (loading) {
-        return <Loading />;
-    }
+  if (loading) {
+    return <Loading />;
+  }
 
-    if (!currentUser) {
-        return <Navigate to="/login" state={{ from: location }} replace />;
-    }
+  if (!currentUser) {
+    // ✅ Save the attempted location for redirect after login
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
 
-    return children;
+  return children;
 };
 
 export default PrivateRoute;

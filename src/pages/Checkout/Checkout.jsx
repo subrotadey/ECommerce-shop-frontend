@@ -1,73 +1,95 @@
-import { useState, useEffect } from "react";
+// pages/Checkout/Checkout.jsx - IMPROVED VERSION
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { CreditCard, Package, Mail, Loader2, ShoppingBag, Truck, Shield, ArrowRight, Trash2 } from "lucide-react";
 import useCart from "../../hooks/useCart";
 import useAuth from "../../hooks/useAuth";
+import { authenticatedFetch } from "../../utils/tokenHelper"; // ✅ Use centralized helper
+import Swal from "sweetalert2";
 
 const Checkout = () => {
   const navigate = useNavigate();
-  const { items, updateQty, removeFromCart, clearCart } = useCart();
+  const { items, updateQty, removeItem } = useCart();
+  const { currentUser } = useAuth(); // ✅ Use currentUser instead of user
   const [processing, setProcessing] = useState(false);
-  // const [user, setUser] = useState(null);
-  const {user} = useAuth();
-
-  // Load user data
-  // useEffect(() => {
-  //   const userData = JSON.parse(localStorage.getItem("user") || "{}");
-  //   setUser(userData);
-  // }, []);
 
   // Calculate totals
   const subtotal = items.reduce((sum, item) => sum + (item.price * item.qty), 0);
-  const tax = subtotal * 0.05; // 5% tax
-  const shipping = subtotal > 1000 ? 0 : 100; // Free shipping over 1000 BDT
+  const tax = subtotal * 0.05;
+  const shipping = subtotal > 1000 ? 0 : 100;
   const total = subtotal + tax + shipping;
 
-  // Handle Stripe Checkout
+  // ✅ IMPROVED: Simplified checkout using centralized token helper
   const handleCheckout = async () => {
-    if (!user?.email) {
-      alert("Please login to continue");
+    // Validation
+    if (!currentUser?.email) {
+      Swal.fire({
+        icon: "warning",
+        title: "Authentication Required",
+        text: "Please login to continue",
+        confirmButtonColor: "#3B82F6"
+      });
       navigate("/login");
       return;
     }
 
     if (!items || items.length === 0) {
-      alert("Your cart is empty");
+      Swal.fire({
+        icon: "warning",
+        title: "Cart is Empty",
+        text: "Add items to cart before checkout",
+        confirmButtonColor: "#3B82F6"
+      });
       return;
     }
 
     setProcessing(true);
 
     try {
-      // Get Firebase token
-      const token = localStorage.getItem("firebaseToken");
-      console.log("token",token);
+      // ✅ Use authenticatedFetch from tokenHelper
+      const response = await authenticatedFetch(
+        `${import.meta.env.VITE_API_URL}/create-checkout-session`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            items: items,
+            userId: currentUser.email,
+            customerEmail: currentUser.email
+          })
+        }
+      );
 
-      const response = await fetch("http://localhost:5000/api/create-checkout-session", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          items: items,
-          userId: user.email,
-          customerEmail: user.email
-        })
-      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to create checkout session");
+      }
 
       const data = await response.json();
 
       if (data.success && data.url) {
-        // Redirect to Stripe Checkout
+        // Redirect to Stripe
         window.location.href = data.url;
       } else {
         throw new Error(data.message || "Failed to create checkout session");
       }
+
     } catch (error) {
       console.error("Checkout error:", error);
-      alert("Failed to proceed to checkout. Please try again.");
       setProcessing(false);
+
+      Swal.fire({
+        icon: "error",
+        title: "Checkout Failed",
+        html: `
+          <p>${error.message}</p>
+          <small class="text-gray-500">
+            ${error.message.includes("token") || error.message.includes("401") 
+              ? "Please try logging out and logging back in." 
+              : "Please try again or contact support."}
+          </small>
+        `,
+        confirmButtonColor: "#3B82F6"
+      });
     }
   };
 
@@ -77,9 +99,30 @@ const Checkout = () => {
     updateQty(itemKey, newQty);
   };
 
-  // Remove item
-  const handleRemoveItem = (itemKey) => {
-    removeFromCart(itemKey);
+  // Remove item with confirmation
+  const handleRemoveItem = (itemKey, itemName) => {
+    Swal.fire({
+      title: 'Remove item?',
+      text: `Remove "${itemName}" from cart?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#EF4444',
+      cancelButtonColor: '#6B7280',
+      confirmButtonText: 'Yes, remove',
+      cancelButtonText: 'Cancel'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        removeItem(itemKey);
+        Swal.fire({
+          position: "top-end",
+          icon: "success",
+          title: "Item removed",
+          showConfirmButton: false,
+          timer: 1500,
+          toast: true
+        });
+      }
+    });
   };
 
   // Empty cart UI
@@ -92,7 +135,7 @@ const Checkout = () => {
             <h2 className="text-3xl font-bold text-slate-800 mb-4">Your Cart is Empty</h2>
             <p className="text-slate-600 mb-8">Add some products to get started!</p>
             <button
-              onClick={() => navigate("/shop")}
+              onClick={() => navigate("/abaya")}
               className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-8 py-4 rounded-xl font-semibold hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg hover:shadow-xl inline-flex items-center gap-2"
             >
               Continue Shopping
@@ -145,15 +188,16 @@ const Checkout = () => {
                         {item.name}
                       </h3>
                       <div className="text-sm text-slate-600 space-y-1">
-                        {item.size && <p>Size: {item.size}</p>}
-                        {item.color && <p>Color: {item.color}</p>}
+                        {item.size && item.size !== "NOSIZE" && <p>Size: {item.size}</p>}
+                        {item.color && item.color !== "NOCOLOR" && <p>Color: {item.color}</p>}
                       </div>
                       
                       {/* Quantity Controls */}
                       <div className="flex items-center gap-2 mt-2">
                         <button
                           onClick={() => handleUpdateQuantity(item.key, item.qty - 1)}
-                          className="w-8 h-8 rounded-lg border border-slate-300 hover:bg-slate-100 transition-colors flex items-center justify-center"
+                          disabled={item.qty <= 1}
+                          className="w-8 h-8 rounded-lg border border-slate-300 hover:bg-slate-100 transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           -
                         </button>
@@ -179,7 +223,7 @@ const Checkout = () => {
                       </div>
                       
                       <button
-                        onClick={() => handleRemoveItem(item.key)}
+                        onClick={() => handleRemoveItem(item.key, item.name)}
                         className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded-lg transition-colors"
                       >
                         <Trash2 className="w-5 h-5" />
@@ -213,15 +257,15 @@ const Checkout = () => {
               <h2 className="text-2xl font-bold text-slate-800 mb-6">Order Summary</h2>
 
               {/* Customer Info */}
-              {user?.email && (
+              {currentUser?.email && (
                 <div className="mb-6 p-4 bg-blue-50 rounded-xl">
                   <div className="flex items-center gap-2 text-sm text-slate-700 mb-2">
                     <Mail className="w-4 h-4 text-blue-600" />
-                    <span className="font-medium">{user.email}</span>
+                    <span className="font-medium">{currentUser.email}</span>
                   </div>
-                  {user.displayName && (
+                  {currentUser.displayName && (
                     <div className="flex items-center gap-2 text-sm text-slate-700">
-                      <span className="font-medium">{user.displayName}</span>
+                      <span className="font-medium">{currentUser.displayName}</span>
                     </div>
                   )}
                 </div>

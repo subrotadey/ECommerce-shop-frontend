@@ -48,7 +48,7 @@ api.interceptors.response.use(
  */
 export const fetchUserProfile = async () => {
   try {
-    const response = await api.get('/api/users/profile/full');
+    const response = await api.get('/users/profile/full');
     if (!response.data.success) {
       throw new Error(response.data.message || 'Failed to fetch profile');
     }

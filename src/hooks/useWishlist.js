@@ -1,28 +1,27 @@
+// ============================================
+// hooks/useWishlist.js - IMPROVED
+// ============================================
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../utils/axios';
 import useAuth from './useAuth';
 
-const API_URL = 'http://localhost:5000/api/wishlist';
+const API_URL = '/api/wishlist'; // ✅ Use relative path
 
 const useWishlist = () => {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
-  const userId = user?.email || user?.uid || 'guest';
+  const { currentUser } = useAuth();
+  const userId = currentUser?.email || 'guest';
 
   // Fetch wishlist
   const { data: wishlist = [], isLoading, isError } = useQuery({
     queryKey: ['wishlist', userId],
     queryFn: async () => {
       const { data } = await axiosInstance.get(`${API_URL}/${userId}`);
-      // Backend এখন {success: true, data: [...]} return করে
       return data.success ? data.data : [];
     },
     enabled: !!userId && userId !== 'guest',
     staleTime: 1000 * 60 * 5,
-    retry: 1, // শুধু 1 বার retry করবে
-    onError: (error) => {
-      console.error('Wishlist fetch error:', error);
-    }
+    retry: 1,
   });
 
   // Fetch wishlist count
@@ -46,9 +45,6 @@ const useWishlist = () => {
     onSuccess: () => {
       queryClient.invalidateQueries(['wishlist', userId]);
       queryClient.invalidateQueries(['wishlistCount', userId]);
-    },
-    onError: (error) => {
-      console.error('Toggle wishlist error:', error.response?.data || error.message);
     }
   });
 
@@ -61,9 +57,6 @@ const useWishlist = () => {
     onSuccess: () => {
       queryClient.invalidateQueries(['wishlist', userId]);
       queryClient.invalidateQueries(['wishlistCount', userId]);
-    },
-    onError: (error) => {
-      console.error('Remove from wishlist error:', error.response?.data || error.message);
     }
   });
 
