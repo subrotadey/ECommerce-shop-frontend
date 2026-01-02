@@ -7,18 +7,6 @@ const AccountInfo = () => {
     const { user } = useAuth();
     const { email, displayName } = user || {};
 
-
-    // const handleLogOut = async () => {
-    //     try {
-    //         console.log("🚪 Logging out...");
-    //         // clearCart();
-    //         await logOut();
-    //         console.log("✅ Logged out successfully");
-    //     } catch (err) {
-    //         console.error("❌ Logout error:", err);
-    //     }
-    // };
-
     return (
         <div className="space-y-4">
             <h2 className="text-2xl font-bold text-gray-800">Account Information</h2>

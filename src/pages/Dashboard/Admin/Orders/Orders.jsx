@@ -123,7 +123,7 @@ const Orders = () => {
 
         return (
             <div className="modal modal-open">
-                <div className="modal-box max-w-3xl">
+                <div className="modal-box max-w-3xl bg-gray-300">
                     <div className="flex items-center justify-between mb-6">
                         <h3 className="font-bold text-xl">Order Details - {order.id}</h3>
                         <button onClick={onClose} className="btn btn-ghost btn-sm btn-circle">
@@ -339,7 +339,7 @@ const Orders = () => {
                 <div className="overflow-x-auto">
                     <table className="table w-full">
                         <thead>
-                            <tr>
+                            <tr className='text-black'>
                                 <th>
                                     <input type="checkbox" className="checkbox checkbox-sm" />
                                 </th>

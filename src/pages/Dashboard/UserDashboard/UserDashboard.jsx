@@ -55,25 +55,11 @@ const UserDashboard = () => {
 
                 {/* Welcome Header */}
                 <div className="mb-8">
-                        <div>
-                            <h1 className="text-4xl font-bold text-gray-900 mb-2">
-                                Welcome back, {userData.displayName?.split(' ')[0]}! 👋
-                            </h1>
-                            <p className="text-gray-600">Here's what's happening with your account today.</p>
-                        </div>
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-
-                        {/* <div className="flex gap-3">
-                            {(role === 'admin' || role === 'staff') && (
-                                <Link
-                                    to="/admin"
-                                    className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl flex items-center gap-2"
-                                >
-                                    <Settings size={20} />
-                                    Admin Panel
-                                </Link>
-                            )}
-                        </div> */}
+                    <div>
+                        <h1 className="text-4xl font-bold text-gray-900 mb-2">
+                            Welcome back, {userData.displayName?.split(' ')[0]}! 👋
+                        </h1>
+                        <p className="text-gray-600">Here's what's happening with your account today.</p>
                     </div>
                 </div>
 

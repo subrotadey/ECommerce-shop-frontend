@@ -75,21 +75,6 @@ const SignUp = () => {
       });
   };
 
-  // const saveUser = (name, email) => {
-  //   const user = { name, email };
-  //   fetch("https://e-learning-server-hazel.vercel.app/users", {
-  //     method: "POST",
-  //     headers: {
-  //       "content-type": "application/json",
-  //     },
-  //     body: JSON.stringify(user),
-  //   })
-  //     .then((res) => res.json())
-  //     .then(() => {
-  //       setUserCreatedEmail(email);
-  //     });
-  // };
-
   return (
     <div className="mx-auto pt-20 flex items-center justify-center w-11/12 my-6">
       {/* Sign Up Form */}

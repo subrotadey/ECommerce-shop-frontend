@@ -1,5 +1,5 @@
 // ============================================
-// hooks/useAuth.jsx - IMPROVED (Simplified)
+// hooks/useAuth.jsx
 // ============================================
 import { useContext } from 'react';
 import { AuthContext } from '../contexts/AuthContext/AuthContext';

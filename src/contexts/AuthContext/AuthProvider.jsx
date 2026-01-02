@@ -13,8 +13,8 @@ import {
 } from 'firebase/auth';
 import { useEffect, useState } from 'react';
 import { auth } from '../../firebase/firebase.init';
-import { AuthContext } from './AuthContext';
 import { clearToken } from '../../utils/tokenHelper';
+import { AuthContext } from './AuthContext';
 
 const googleProvider = new GoogleAuthProvider();
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -44,11 +44,11 @@ const AuthProvider = ({ children }) => {
   // ✅ IMPROVED: Clean logout
   const logOut = async () => {
     setLoading(true);
-    
+
     // Clear local data
     localStorage.removeItem("guest_cart");
     clearToken(); // ✅ Use centralized token helper
-    
+
     try {
       // Backend logout
       await axios.post(`${API_URL}/api/auth/logout`, {}, {
@@ -57,7 +57,7 @@ const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error('Backend logout error:', error);
     }
-    
+
     return signOut(auth);
   };
 
@@ -81,7 +81,7 @@ const AuthProvider = ({ children }) => {
   const registerUserInBackend = async (firebaseUser) => {
     try {
       const token = await firebaseUser.getIdToken();
-      
+
       const response = await axios.post(
         `${API_URL}/users/register`,
         {
