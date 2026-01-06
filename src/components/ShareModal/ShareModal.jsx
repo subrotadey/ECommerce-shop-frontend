@@ -1,5 +1,5 @@
 // components/ShareModal.jsx
-import { X, Copy, Check } from "lucide-react";
+import { Check, Copy, X } from "lucide-react";
 import { useState } from "react";
 
 const ShareModal = ({ isOpen, onClose, product }) => {
@@ -153,7 +153,7 @@ const ShareModal = ({ isOpen, onClose, product }) => {
               {product.productName}
             </p>
             <p className="text-xs text-gray-500">
-              {product.mainCategory} • ৳{product.newPrice}
+              {product.mainCategory} • ${product.newPrice}
             </p>
           </div>
         )}

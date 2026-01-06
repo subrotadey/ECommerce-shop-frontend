@@ -1,16 +1,16 @@
 // components/Cart/Cart.jsx - PRODUCTION READY
+import { Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import { Trash2, ShoppingBag, Minus, Plus } from "lucide-react";
-import useCart from "../../hooks/useCart";
 import Swal from "sweetalert2";
 import Breadcrumb from "../../components/Shared/Breadcrumb/Breadcrumb";
 import Loading from "../../components/Shared/Loading/Loading";
+import useCart from "../../hooks/useCart";
 
 const Cart = () => {
-  const { 
-    items, 
-    updateQty, 
-    removeItem, 
+  const {
+    items,
+    updateQty,
+    removeItem,
     clearCart,
     isLoading,
     isError,
@@ -18,7 +18,7 @@ const Cart = () => {
     isRemoving,
     isClearing
   } = useCart();
-  
+
   const navigate = useNavigate();
 
   // Calculate subtotal
@@ -119,7 +119,7 @@ const Cart = () => {
         <div className="min-h-screen flex items-center justify-center">
           <div className="text-center">
             <p className="text-red-600 text-xl mb-4">Error loading cart</p>
-            <button 
+            <button
               onClick={() => window.location.reload()}
               className="bg-gray-900 text-white px-6 py-2 rounded-lg hover:bg-gray-800"
             >
@@ -143,8 +143,8 @@ const Cart = () => {
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Your cart is empty</h2>
             <p className="text-gray-600 mb-6">Start adding products you love!</p>
-            <Link 
-              to="/abaya" 
+            <Link
+              to="/abaya"
               className="inline-block bg-gray-900 text-white hover:bg-gray-800 px-6 py-3 rounded-lg font-medium transition-colors"
             >
               Browse Products
@@ -181,17 +181,17 @@ const Cart = () => {
           {/* Cart Items */}
           <div className="space-y-4 mb-8">
             {items.map((item) => (
-              <div 
-                key={item.key} 
+              <div
+                key={item.key}
                 className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow p-4"
               >
                 <div className="flex flex-col sm:flex-row gap-4">
                   {/* Product Image */}
                   <Link to={`/product/${item.productId}`} className="shrink-0">
-                    <img 
-                      src={item.image} 
-                      alt={item.name} 
-                      className="w-full sm:w-32 h-32 object-cover rounded-lg" 
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      className="w-full sm:w-32 h-32 object-cover rounded-lg"
                     />
                   </Link>
 
@@ -219,11 +219,11 @@ const Cart = () => {
                       <div className="flex items-center gap-2 mb-3">
                         {item.oldPrice && (
                           <span className="text-sm text-gray-400 line-through">
-                            ৳{item.oldPrice}
+                            ${item.oldPrice}
                           </span>
                         )}
                         <span className="text-xl font-bold text-gray-900">
-                          ৳{item.price}
+                          ${item.price}
                         </span>
                       </div>
 
@@ -239,7 +239,7 @@ const Cart = () => {
                           >
                             <Minus size={16} />
                           </button>
-                          
+
                           <input
                             value={item.qty}
                             onChange={(e) => {
@@ -251,7 +251,7 @@ const Cart = () => {
                             min={1}
                             disabled={isUpdating}
                           />
-                          
+
                           <button
                             onClick={() => handleQtyChange(item.key, item.qty + 1, item.name)}
                             disabled={isUpdating}
@@ -266,13 +266,13 @@ const Cart = () => {
                         <div className="flex-1 text-right sm:text-left">
                           <p className="text-sm text-gray-600">Subtotal:</p>
                           <p className="font-bold text-gray-900 text-lg">
-                            ৳{(item.price * item.qty).toFixed(2)}
+                            ${(item.price * item.qty).toFixed(2)}
                           </p>
                         </div>
 
                         {/* Remove Button */}
-                        <button 
-                          onClick={() => handleRemoveItem(item.key, item.name)} 
+                        <button
+                          onClick={() => handleRemoveItem(item.key, item.name)}
                           disabled={isRemoving}
                           className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-red-600 text-red-600 rounded-lg font-medium text-sm hover:bg-red-50 transition-colors disabled:opacity-50 ml-auto"
                           title="Remove from cart"
@@ -292,9 +292,9 @@ const Cart = () => {
           <div className="bg-white rounded-lg shadow-sm p-6">
             <div className="flex items-center justify-between mb-4">
               <p className="text-lg text-gray-600">Subtotal:</p>
-              <p className="text-2xl font-bold text-gray-900">৳{subtotal.toFixed(2)}</p>
+              <p className="text-2xl font-bold text-gray-900">${subtotal.toFixed(2)}</p>
             </div>
-            
+
             <div className="flex flex-col sm:flex-row gap-3">
               <Link
                 to="/abaya"
@@ -302,7 +302,7 @@ const Cart = () => {
               >
                 Continue Shopping
               </Link>
-              
+
               <button
                 onClick={handleCheckout}
                 className="flex-1 bg-gray-900 text-white px-6 py-3 rounded-lg font-medium hover:bg-gray-800 transition-colors"

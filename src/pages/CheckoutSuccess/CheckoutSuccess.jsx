@@ -1,8 +1,8 @@
 // pages/CheckoutSuccess.jsx
+import axios from "axios";
+import { ArrowRight, CheckCircle, Loader2, Package, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { CheckCircle, Package, Loader2, XCircle, ArrowRight } from "lucide-react";
-import axios from "axios";
 
 const CheckoutSuccess = () => {
   const [searchParams] = useSearchParams();
@@ -99,15 +99,15 @@ const CheckoutSuccess = () => {
           <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 animate-bounce">
             <CheckCircle className="w-16 h-16 text-green-600" />
           </div>
-          
+
           <h1 className="text-4xl font-bold text-slate-800 mb-4">
             Payment Successful!
           </h1>
-          
+
           <p className="text-xl text-slate-600 mb-2">
             Thank you for your purchase
           </p>
-          
+
           <p className="text-lg text-slate-500">
             Order ID: <span className="font-mono font-bold text-blue-600">{orderId}</span>
           </p>
@@ -145,14 +145,14 @@ const CheckoutSuccess = () => {
                     <div className="flex-1">
                       <h4 className="font-semibold text-slate-800">{item.name}</h4>
                       <p className="text-sm text-slate-600">
-                        {item.size && `Size: ${item.size}`} 
+                        {item.size && `Size: ${item.size}`}
                         {item.size && item.color && ' • '}
                         {item.color && `Color: ${item.color}`}
                       </p>
                       <p className="text-sm text-slate-600">Quantity: {item.qty}</p>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-slate-800">৳{item.price * item.qty}</p>
+                      <p className="font-bold text-slate-800">${item.price * item.qty}</p>
                     </div>
                   </div>
                 ))}
@@ -164,11 +164,11 @@ const CheckoutSuccess = () => {
               <div className="space-y-3 mb-4">
                 <div className="flex justify-between text-slate-700">
                   <span>Subtotal</span>
-                  <span>৳{order.pricing.subtotal.toFixed(2)}</span>
+                  <span>${order.pricing.subtotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-slate-700">
                   <span>Tax</span>
-                  <span>৳{order.pricing.tax.toFixed(2)}</span>
+                  <span>${order.pricing.tax.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-slate-700">
                   <span>Shipping</span>
@@ -176,14 +176,14 @@ const CheckoutSuccess = () => {
                     {order.pricing.shipping === 0 ? (
                       <span className="text-green-600">FREE</span>
                     ) : (
-                      `৳${order.pricing.shipping.toFixed(2)}`
+                      `$${order.pricing.shipping.toFixed(2)}`
                     )}
                   </span>
                 </div>
               </div>
               <div className="flex justify-between text-xl font-bold text-slate-800 pt-4 border-t">
                 <span>Total Paid</span>
-                <span>৳{order.pricing.total.toFixed(2)}</span>
+                <span>${order.pricing.total.toFixed(2)}</span>
               </div>
             </div>
 
@@ -228,7 +228,7 @@ const CheckoutSuccess = () => {
             View My Orders
             <ArrowRight className="w-5 h-5" />
           </button>
-          
+
           <button
             onClick={() => navigate("/")}
             className="flex-1 bg-white border-2 border-slate-300 text-slate-800 px-6 py-4 rounded-xl font-semibold hover:bg-slate-50 transition-colors"

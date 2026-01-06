@@ -1,7 +1,6 @@
 // src/components/UserProfile/ProfileInfo.jsx
 
-import React from 'react';
-import { User, MapPin, Package } from 'lucide-react';
+import { MapPin, Package, User } from 'lucide-react';
 import { formatDate, getOrderStatusConfig } from '../../services/profileService';
 
 // ============================================
@@ -32,23 +31,23 @@ export const PersonalInformation = ({ userData }) => {
       </h3>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <InfoField 
-          label="Full Name" 
-          value={userData.displayName} 
+        <InfoField
+          label="Full Name"
+          value={userData.displayName}
         />
-        
-        <InfoField 
-          label="Email Address" 
-          value={userData.email} 
+
+        <InfoField
+          label="Email Address"
+          value={userData.email}
         />
-        
-        <InfoField 
-          label="Phone Number" 
-          value={userData.phoneNumber} 
+
+        <InfoField
+          label="Phone Number"
+          value={userData.phoneNumber}
         />
-        
-        <InfoField 
-          label="Account Status" 
+
+        <InfoField
+          label="Account Status"
           value={userData.isActive ? 'Active' : 'Inactive'}
           valueClass={userData.isActive ? 'text-green-600' : 'text-red-600'}
         />
@@ -72,30 +71,30 @@ export const AddressInformation = ({ userData }) => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="md:col-span-2">
-          <InfoField 
-            label="Street Address" 
-            value={userData.address?.street} 
+          <InfoField
+            label="Street Address"
+            value={userData.address?.street}
           />
         </div>
 
-        <InfoField 
-          label="City" 
-          value={userData.address?.city} 
+        <InfoField
+          label="City"
+          value={userData.address?.city}
         />
 
-        <InfoField 
-          label="State/Province" 
-          value={userData.address?.state} 
+        <InfoField
+          label="State/Province"
+          value={userData.address?.state}
         />
 
-        <InfoField 
-          label="Zip Code" 
-          value={userData.address?.zipCode} 
+        <InfoField
+          label="Zip Code"
+          value={userData.address?.zipCode}
         />
 
-        <InfoField 
-          label="Country" 
-          value={userData.address?.country} 
+        <InfoField
+          label="Country"
+          value={userData.address?.country}
         />
       </div>
     </div>
@@ -120,10 +119,10 @@ export const RecentOrders = ({ userData }) => {
       <div className="space-y-3">
         {userData.recentOrders.map((order) => {
           const statusConfig = getOrderStatusConfig(order.status);
-          
+
           return (
-            <div 
-              key={order._id} 
+            <div
+              key={order._id}
               className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl border border-gray-200 hover:border-blue-300 transition-all cursor-pointer"
             >
               <div>
@@ -132,9 +131,9 @@ export const RecentOrders = ({ userData }) => {
                   {formatDate(order.createdAt)}
                 </p>
               </div>
-              
+
               <div className="text-right">
-                <p className="font-bold text-blue-600">৳{order.total}</p>
+                <p className="font-bold text-blue-600">${order.total}</p>
                 <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${statusConfig.bgColor} ${statusConfig.textColor}`}>
                   {statusConfig.label}
                 </span>

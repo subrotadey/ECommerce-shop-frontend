@@ -81,7 +81,7 @@ const Products = () => {
             notify.error('Product deleted successfully');
         }
 
-        
+
 
         // Example:
         // if (editingProduct) {
@@ -298,7 +298,7 @@ const Products = () => {
                                             </span>
                                         </td>
                                         <td className="font-semibold text-gray-900">
-                                            ৳{product.newPrice}
+                                            ${product.newPrice}
                                         </td>
                                         <td>
                                             <span className={`font-medium ${product.stock === 0 ? 'text-red-600' :

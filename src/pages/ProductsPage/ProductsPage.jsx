@@ -1,6 +1,5 @@
-import React from "react";
-import useProducts from "../../hooks/useProducts";
 import Loading from "../../components/Shared/Loading/Loading";
+import useProducts from "../../hooks/useProducts";
 
 const ProductsPage = () => {
   const { data: abayaProducts, isLoading: abayaLoading, isError: abayaError } = useProducts("abaya");
@@ -14,8 +13,8 @@ const ProductsPage = () => {
         className="w-full h-64 object-cover mb-2 rounded"
       />
       <h3 className="font-semibold">{product.productName}</h3>
-      <p className="text-gray-600 line-through">{product.oldPrice} ৳</p>
-      <p className="text-red-600 font-bold">{product.newPrice} ৳</p>
+      <p className="text-gray-600 line-through">{product.oldPrice} $</p>
+      <p className="text-red-600 font-bold">{product.newPrice} $</p>
     </div>
   );
 

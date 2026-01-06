@@ -1,8 +1,8 @@
 // ============================================
 // pages/admin/Settings.jsx - Interactive Version
 // ============================================
+import { Bell, Check, CreditCard, DollarSign, Eye, EyeOff, Globe, Image as ImageIcon, Mail, Save, Shield, Truck, Upload, X } from 'lucide-react';
 import { useState } from 'react';
-import { Save, Globe, Mail, CreditCard, Truck, Bell, Shield, Eye, EyeOff, DollarSign, Check, X, Upload, Image as ImageIcon } from 'lucide-react';
 // import toast from 'react-hot-toast';
 
 const Settings = () => {
@@ -72,15 +72,15 @@ const Settings = () => {
 
     const handleSave = async () => {
         setIsSaving(true);
-        
+
         // Simulate API call
         await new Promise(resolve => setTimeout(resolve, 1500));
-        
+
         // toast.success('Settings saved successfully!', {
         //     duration: 3000,
         //     position: 'top-right',
         // });
-        
+
         setIsSaving(false);
     };
 
@@ -89,17 +89,17 @@ const Settings = () => {
             // toast.error('Please enter test email address');
             return;
         }
-        
+
         // toast.loading('Sending test email...', { duration: 2000 });
-        
+
         await new Promise(resolve => setTimeout(resolve, 2000));
-        
+
         // toast.success(`Test email sent to ${emailSettings.testEmail}!`);
-        setEmailSettings({...emailSettings, testEmail: ''});
+        setEmailSettings({ ...emailSettings, testEmail: '' });
     };
 
     const togglePassword = (field) => {
-        setShowPassword({...showPassword, [field]: !showPassword[field]});
+        setShowPassword({ ...showPassword, [field]: !showPassword[field] });
     };
 
     const handleLogoUpload = (e) => {
@@ -143,11 +143,10 @@ const Settings = () => {
                                 <button
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id)}
-                                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
-                                        activeTab === tab.id
+                                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${activeTab === tab.id
                                             ? 'bg-primary text-primary-content'
                                             : 'hover:bg-gray-200'
-                                    }`}
+                                        }`}
                                 >
                                     <Icon size={20} />
                                     <span className="font-medium">{tab.label}</span>
@@ -165,7 +164,7 @@ const Settings = () => {
                             <div className="space-y-6">
                                 <div>
                                     <h2 className="text-xl font-bold mb-4">General Settings</h2>
-                                    
+
                                     {/* Logo Upload */}
                                     <div className="mb-6">
                                         <label className="label">
@@ -208,7 +207,7 @@ const Settings = () => {
                                                     type="text"
                                                     className="input input-bordered bg-gray-200"
                                                     value={generalSettings.siteName}
-                                                    onChange={(e) => setGeneralSettings({...generalSettings, siteName: e.target.value})}
+                                                    onChange={(e) => setGeneralSettings({ ...generalSettings, siteName: e.target.value })}
                                                 />
                                             </div>
                                             <div className="form-control">
@@ -219,7 +218,7 @@ const Settings = () => {
                                                     type="url"
                                                     className="input input-bordered bg-gray-200"
                                                     value={generalSettings.siteUrl}
-                                                    onChange={(e) => setGeneralSettings({...generalSettings, siteUrl: e.target.value})}
+                                                    onChange={(e) => setGeneralSettings({ ...generalSettings, siteUrl: e.target.value })}
                                                 />
                                             </div>
                                             <div className="form-control">
@@ -230,7 +229,7 @@ const Settings = () => {
                                                     type="email"
                                                     className="input input-bordered bg-gray-200"
                                                     value={generalSettings.supportEmail}
-                                                    onChange={(e) => setGeneralSettings({...generalSettings, supportEmail: e.target.value})}
+                                                    onChange={(e) => setGeneralSettings({ ...generalSettings, supportEmail: e.target.value })}
                                                 />
                                             </div>
                                             <div className="form-control">
@@ -241,7 +240,7 @@ const Settings = () => {
                                                     type="tel"
                                                     className="input input-bordered bg-gray-200"
                                                     value={generalSettings.phone}
-                                                    onChange={(e) => setGeneralSettings({...generalSettings, phone: e.target.value})}
+                                                    onChange={(e) => setGeneralSettings({ ...generalSettings, phone: e.target.value })}
                                                 />
                                             </div>
                                         </div>
@@ -252,7 +251,7 @@ const Settings = () => {
                                             <textarea
                                                 className="textarea textarea-bordered h-20 bg-gray-200"
                                                 value={generalSettings.address}
-                                                onChange={(e) => setGeneralSettings({...generalSettings, address: e.target.value})}
+                                                onChange={(e) => setGeneralSettings({ ...generalSettings, address: e.target.value })}
                                             />
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -263,7 +262,7 @@ const Settings = () => {
                                                 <select
                                                     className="select select-bordered bg-gray-200"
                                                     value={generalSettings.timezone}
-                                                    onChange={(e) => setGeneralSettings({...generalSettings, timezone: e.target.value})}
+                                                    onChange={(e) => setGeneralSettings({ ...generalSettings, timezone: e.target.value })}
                                                 >
                                                     <option value="Asia/Dhaka">Asia/Dhaka (Bangladesh)</option>
                                                     <option value="Asia/Kolkata">Asia/Kolkata (India)</option>
@@ -277,9 +276,9 @@ const Settings = () => {
                                                 <select
                                                     className="select select-bordered bg-gray-200"
                                                     value={generalSettings.currency}
-                                                    onChange={(e) => setGeneralSettings({...generalSettings, currency: e.target.value})}
+                                                    onChange={(e) => setGeneralSettings({ ...generalSettings, currency: e.target.value })}
                                                 >
-                                                    <option value="BDT">BDT (৳)</option>
+                                                    <option value="BDT">BDT ($)</option>
                                                     <option value="USD">USD ($)</option>
                                                     <option value="EUR">EUR (€)</option>
                                                 </select>
@@ -291,7 +290,7 @@ const Settings = () => {
                                                 <select
                                                     className="select select-bordered bg-gray-200"
                                                     value={generalSettings.language}
-                                                    onChange={(e) => setGeneralSettings({...generalSettings, language: e.target.value})}
+                                                    onChange={(e) => setGeneralSettings({ ...generalSettings, language: e.target.value })}
                                                 >
                                                     <option value="en">English</option>
                                                     <option value="bn">বাংলা (Bangla)</option>
@@ -318,7 +317,7 @@ const Settings = () => {
                                                     type="text"
                                                     className="input input-bordered bg-gray-200"
                                                     value={emailSettings.smtpHost}
-                                                    onChange={(e) => setEmailSettings({...emailSettings, smtpHost: e.target.value})}
+                                                    onChange={(e) => setEmailSettings({ ...emailSettings, smtpHost: e.target.value })}
                                                 />
                                             </div>
                                             <div className="form-control">
@@ -329,7 +328,7 @@ const Settings = () => {
                                                     type="number"
                                                     className="input input-bordered bg-gray-200"
                                                     value={emailSettings.smtpPort}
-                                                    onChange={(e) => setEmailSettings({...emailSettings, smtpPort: e.target.value})}
+                                                    onChange={(e) => setEmailSettings({ ...emailSettings, smtpPort: e.target.value })}
                                                 />
                                             </div>
                                             <div className="form-control">
@@ -340,7 +339,7 @@ const Settings = () => {
                                                     type="email"
                                                     className="input input-bordered bg-gray-200"
                                                     value={emailSettings.smtpUsername}
-                                                    onChange={(e) => setEmailSettings({...emailSettings, smtpUsername: e.target.value})}
+                                                    onChange={(e) => setEmailSettings({ ...emailSettings, smtpUsername: e.target.value })}
                                                 />
                                             </div>
                                             <div className="form-control">
@@ -352,7 +351,7 @@ const Settings = () => {
                                                         type={showPassword.smtp ? "text" : "password"}
                                                         className="input input-bordered w-full pr-10 bg-gray-200"
                                                         value={emailSettings.smtpPassword}
-                                                        onChange={(e) => setEmailSettings({...emailSettings, smtpPassword: e.target.value})}
+                                                        onChange={(e) => setEmailSettings({ ...emailSettings, smtpPassword: e.target.value })}
                                                     />
                                                     <button
                                                         type="button"
@@ -371,7 +370,7 @@ const Settings = () => {
                                                     type="email"
                                                     className="input input-bordered bg-gray-200"
                                                     value={emailSettings.fromEmail}
-                                                    onChange={(e) => setEmailSettings({...emailSettings, fromEmail: e.target.value})}
+                                                    onChange={(e) => setEmailSettings({ ...emailSettings, fromEmail: e.target.value })}
                                                 />
                                             </div>
                                             <div className="form-control">
@@ -382,22 +381,22 @@ const Settings = () => {
                                                     type="text"
                                                     className="input input-bordered bg-gray-200"
                                                     value={emailSettings.fromName}
-                                                    onChange={(e) => setEmailSettings({...emailSettings, fromName: e.target.value})}
+                                                    onChange={(e) => setEmailSettings({ ...emailSettings, fromName: e.target.value })}
                                                 />
                                             </div>
                                         </div>
-                                        
+
                                         <div className="divider">Test Email Configuration</div>
-                                        
+
                                         <div className="flex gap-3">
                                             <input
                                                 type="email"
                                                 className="input input-bordered flex-1 bg-gray-200"
                                                 placeholder="Enter email address to test"
                                                 value={emailSettings.testEmail}
-                                                onChange={(e) => setEmailSettings({...emailSettings, testEmail: e.target.value})}
+                                                onChange={(e) => setEmailSettings({ ...emailSettings, testEmail: e.target.value })}
                                             />
-                                            <button 
+                                            <button
                                                 className="btn btn-outline gap-2"
                                                 onClick={handleTestEmail}
                                             >
@@ -415,7 +414,7 @@ const Settings = () => {
                             <div className="space-y-6">
                                 <div>
                                     <h2 className="text-xl font-bold mb-4">Payment Methods</h2>
-                                    
+
                                     {/* Stripe */}
                                     <div className="border border-gray-300 rounded-lg p-4 mb-4 bg-gray-100">
                                         <div className="flex items-center justify-between mb-4">
@@ -432,17 +431,17 @@ const Settings = () => {
                                                 type="checkbox"
                                                 className="toggle toggle-primary"
                                                 checked={paymentSettings.stripeEnabled}
-                                                onChange={(e) => setPaymentSettings({...paymentSettings, stripeEnabled: e.target.checked})}
+                                                onChange={(e) => setPaymentSettings({ ...paymentSettings, stripeEnabled: e.target.checked })}
                                             />
                                         </div>
-                                                                                    {paymentSettings.stripeEnabled && (
+                                        {paymentSettings.stripeEnabled && (
                                             <div className="space-y-3 animate-in fade-in duration-300">
                                                 <input
                                                     type="text"
                                                     className="input input-bordered w-full bg-gray-200"
                                                     placeholder="Publishable Key (pk_...)"
                                                     value={paymentSettings.stripePublicKey}
-                                                    onChange={(e) => setPaymentSettings({...paymentSettings, stripePublicKey: e.target.value})}
+                                                    onChange={(e) => setPaymentSettings({ ...paymentSettings, stripePublicKey: e.target.value })}
                                                 />
                                                 <div className="relative">
                                                     <input
@@ -450,7 +449,7 @@ const Settings = () => {
                                                         className="input input-bordered w-full pr-10 bg-gray-200"
                                                         placeholder="Secret Key (sk_...)"
                                                         value={paymentSettings.stripeSecretKey}
-                                                        onChange={(e) => setPaymentSettings({...paymentSettings, stripeSecretKey: e.target.value})}
+                                                        onChange={(e) => setPaymentSettings({ ...paymentSettings, stripeSecretKey: e.target.value })}
                                                     />
                                                     <button
                                                         type="button"
@@ -480,17 +479,17 @@ const Settings = () => {
                                                 type="checkbox"
                                                 className="toggle toggle-primary"
                                                 checked={paymentSettings.bkashEnabled}
-                                                onChange={(e) => setPaymentSettings({...paymentSettings, bkashEnabled: e.target.checked})}
+                                                onChange={(e) => setPaymentSettings({ ...paymentSettings, bkashEnabled: e.target.checked })}
                                             />
                                         </div>
-                                                                                    {paymentSettings.bkashEnabled && (
+                                        {paymentSettings.bkashEnabled && (
                                             <div className="space-y-3 animate-in fade-in duration-300">
                                                 <input
                                                     type="text"
                                                     className="input input-bordered w-full bg-gray-200"
                                                     placeholder="App Key"
                                                     value={paymentSettings.bkashAppKey}
-                                                    onChange={(e) => setPaymentSettings({...paymentSettings, bkashAppKey: e.target.value})}
+                                                    onChange={(e) => setPaymentSettings({ ...paymentSettings, bkashAppKey: e.target.value })}
                                                 />
                                                 <div className="relative">
                                                     <input
@@ -498,7 +497,7 @@ const Settings = () => {
                                                         className="input input-bordered w-full pr-10 bg-gray-200"
                                                         placeholder="App Secret"
                                                         value={paymentSettings.bkashAppSecret}
-                                                        onChange={(e) => setPaymentSettings({...paymentSettings, bkashAppSecret: e.target.value})}
+                                                        onChange={(e) => setPaymentSettings({ ...paymentSettings, bkashAppSecret: e.target.value })}
                                                     />
                                                     <button
                                                         type="button"
@@ -528,17 +527,17 @@ const Settings = () => {
                                                 type="checkbox"
                                                 className="toggle toggle-primary"
                                                 checked={paymentSettings.nagadEnabled}
-                                                onChange={(e) => setPaymentSettings({...paymentSettings, nagadEnabled: e.target.checked})}
+                                                onChange={(e) => setPaymentSettings({ ...paymentSettings, nagadEnabled: e.target.checked })}
                                             />
                                         </div>
-                                                                                    {paymentSettings.nagadEnabled && (
+                                        {paymentSettings.nagadEnabled && (
                                             <div className="space-y-3 animate-in fade-in duration-300">
                                                 <input
                                                     type="text"
                                                     className="input input-bordered w-full bg-gray-200"
                                                     placeholder="Merchant ID"
                                                     value={paymentSettings.nagadMerchantId}
-                                                    onChange={(e) => setPaymentSettings({...paymentSettings, nagadMerchantId: e.target.value})}
+                                                    onChange={(e) => setPaymentSettings({ ...paymentSettings, nagadMerchantId: e.target.value })}
                                                 />
                                             </div>
                                         )}
@@ -560,7 +559,7 @@ const Settings = () => {
                                                 type="checkbox"
                                                 className="toggle toggle-primary"
                                                 checked={paymentSettings.codEnabled}
-                                                onChange={(e) => setPaymentSettings({...paymentSettings, codEnabled: e.target.checked})}
+                                                onChange={(e) => setPaymentSettings({ ...paymentSettings, codEnabled: e.target.checked })}
                                             />
                                         </div>
                                     </div>
@@ -577,13 +576,13 @@ const Settings = () => {
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div className="form-control">
                                                 <label className="label">
-                                                    <span className="label-text font-medium">Free Shipping Threshold (৳)</span>
+                                                    <span className="label-text font-medium">Free Shipping Threshold ($)</span>
                                                 </label>
                                                 <input
                                                     type="number"
                                                     className="input input-bordered bg-gray-200"
                                                     value={shippingSettings.freeShippingThreshold}
-                                                    onChange={(e) => setShippingSettings({...shippingSettings, freeShippingThreshold: parseFloat(e.target.value)})}
+                                                    onChange={(e) => setShippingSettings({ ...shippingSettings, freeShippingThreshold: parseFloat(e.target.value) })}
                                                 />
                                                 <label className="label">
                                                     <span className="label-text-alt text-gray-content/60">
@@ -599,29 +598,29 @@ const Settings = () => {
                                                     type="text"
                                                     className="input input-bordered bg-gray-200"
                                                     value={shippingSettings.processingTime}
-                                                    onChange={(e) => setShippingSettings({...shippingSettings, processingTime: e.target.value})}
+                                                    onChange={(e) => setShippingSettings({ ...shippingSettings, processingTime: e.target.value })}
                                                 />
                                             </div>
                                             <div className="form-control">
                                                 <label className="label">
-                                                    <span className="label-text font-medium">Inside Dhaka (৳)</span>
+                                                    <span className="label-text font-medium">Inside Dhaka ($)</span>
                                                 </label>
                                                 <input
                                                     type="number"
                                                     className="input input-bordered bg-gray-200"
                                                     value={shippingSettings.insideDhaka}
-                                                    onChange={(e) => setShippingSettings({...shippingSettings, insideDhaka: parseFloat(e.target.value)})}
+                                                    onChange={(e) => setShippingSettings({ ...shippingSettings, insideDhaka: parseFloat(e.target.value) })}
                                                 />
                                             </div>
                                             <div className="form-control">
                                                 <label className="label">
-                                                    <span className="label-text font-medium">Outside Dhaka (৳)</span>
+                                                    <span className="label-text font-medium">Outside Dhaka ($)</span>
                                                 </label>
                                                 <input
                                                     type="number"
                                                     className="input input-bordered bg-gray-200"
                                                     value={shippingSettings.outsideDhaka}
-                                                    onChange={(e) => setShippingSettings({...shippingSettings, outsideDhaka: parseFloat(e.target.value)})}
+                                                    onChange={(e) => setShippingSettings({ ...shippingSettings, outsideDhaka: parseFloat(e.target.value) })}
                                                 />
                                             </div>
                                             <div className="form-control">
@@ -633,7 +632,7 @@ const Settings = () => {
                                                     step="0.1"
                                                     className="input input-bordered bg-gray-200"
                                                     value={shippingSettings.taxRate}
-                                                    onChange={(e) => setShippingSettings({...shippingSettings, taxRate: parseFloat(e.target.value)})}
+                                                    onChange={(e) => setShippingSettings({ ...shippingSettings, taxRate: parseFloat(e.target.value) })}
                                                 />
                                                 <label className="label">
                                                     <span className="label-text-alt text-gray-content/60">
@@ -677,7 +676,7 @@ const Settings = () => {
                                                     type="checkbox"
                                                     className="toggle toggle-primary"
                                                     checked={value}
-                                                    onChange={(e) => setNotificationSettings({...notificationSettings, [key]: e.target.checked})}
+                                                    onChange={(e) => setNotificationSettings({ ...notificationSettings, [key]: e.target.checked })}
                                                 />
                                             </div>
                                         ))}
@@ -691,7 +690,7 @@ const Settings = () => {
                             <div className="space-y-6">
                                 <div>
                                     <h2 className="text-xl font-bold mb-4">Security Settings</h2>
-                                    
+
                                     {/* 2FA Section */}
                                     <div className="border border-gray-300 rounded-lg p-6 mb-6 bg-gray-100">
                                         <div className="flex items-start gap-4">
@@ -808,8 +807,8 @@ const Settings = () => {
 
                         {/* Save Button */}
                         <div className="flex justify-end pt-6 border-t border-gray-300 mt-6">
-                            <button 
-                                onClick={handleSave} 
+                            <button
+                                onClick={handleSave}
                                 className={`btn btn-primary gap-2 ${isSaving ? 'loading' : ''}`}
                                 disabled={isSaving}
                             >

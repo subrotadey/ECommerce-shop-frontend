@@ -1,11 +1,11 @@
-import { useState, useMemo } from 'react';
-import { Heart, X, SlidersHorizontal, Search } from 'lucide-react';
+import { Heart, Search, SlidersHorizontal, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Link } from 'react-router';
+import Swal from 'sweetalert2';
 import useWishlist from '../../../hooks/useWishlist';
 import Breadcrumb from '../Breadcrumb/Breadcrumb';
-import QuickViewModal from '../QuickViewModal/QuickViewModal';
-import Swal from 'sweetalert2';
-import { Link } from 'react-router';
 import Loading from '../Loading/Loading';
+import QuickViewModal from '../QuickViewModal/QuickViewModal';
 
 // Reusable ProductsGrid Component
 export default function ProductsGrid({
@@ -268,8 +268,8 @@ export default function ProductsGrid({
                     className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-gray-900"
                   />
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">৳{priceRange[0]}</span>
-                    <span className="font-semibold text-gray-900">৳{priceRange[1]}</span>
+                    <span className="text-gray-600">${priceRange[0]}</span>
+                    <span className="font-semibold text-gray-900">${priceRange[1]}</span>
                   </div>
                 </div>
               </div>
@@ -492,9 +492,9 @@ export default function ProductsGrid({
 
                       <div className="flex items-center gap-2 mb-3">
                         {product.oldPrice && product.oldPrice > product.newPrice && (
-                          <span className="text-sm text-gray-400 line-through">৳{product.oldPrice}</span>
+                          <span className="text-sm text-gray-400 line-through">${product.oldPrice}</span>
                         )}
-                        <span className="text-lg font-bold text-gray-900">৳{product.newPrice}</span>
+                        <span className="text-lg font-bold text-gray-900">${product.newPrice}</span>
                         {product.oldPrice && product.oldPrice > product.newPrice && (
                           <span className="text-xs font-semibold text-green-600 bg-green-50 px-2 py-1 rounded">
                             {Math.round(((product.oldPrice - product.newPrice) / product.oldPrice) * 100)}% OFF

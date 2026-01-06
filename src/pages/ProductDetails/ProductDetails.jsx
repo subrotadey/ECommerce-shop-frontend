@@ -1,20 +1,20 @@
-import { useState, useEffect } from "react";
+import { Heart, MapPin, Phone, RefreshCw, Share2, Shield, ShoppingBag, Truck } from "lucide-react";
+import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ShoppingBag, Heart, Share2, Truck, Shield, RefreshCw, Phone, MapPin } from "lucide-react";
 
 // Import reusable components
-import StockBadge from "../../components/product/StockBadge";
-import ProductPrice from "../../components/product/ProductPrice";
-import ProductInfo from "../../components/product/ProductInfo";
-import SizeSelector from "../../components/product/SizeSelector";
+import Swal from "sweetalert2";
 import ColorSelector from "../../components/product/ColorSelector";
+import ProductInfo from "../../components/product/ProductInfo";
+import ProductPrice from "../../components/product/ProductPrice";
 import QuantitySelector from "../../components/product/QuantitySelector";
-import useAddToCart from "../../hooks/useAddToCart";
-import { useAllProducts } from "../../hooks/useProducts";
+import SizeSelector from "../../components/product/SizeSelector";
+import StockBadge from "../../components/product/StockBadge";
 import Loading from "../../components/Shared/Loading/Loading";
 import ShareModal from "../../components/ShareModal/ShareModal";
+import useAddToCart from "../../hooks/useAddToCart";
+import { useAllProducts } from "../../hooks/useProducts";
 import useWishlist from "../../hooks/useWishlist";
-import Swal from "sweetalert2";
 
 export default function ProductDetails() {
   const { id } = useParams();
@@ -287,7 +287,7 @@ export default function ProductDetails() {
             <div className="border-t pt-6 space-y-3">
               <div className="flex items-center gap-3 text-sm">
                 <Truck size={20} className="text-gray-600" />
-                <span className="text-gray-700">Free delivery on orders over ৳2000</span>
+                <span className="text-gray-700">Free delivery on orders over $2000</span>
               </div>
               <div className="flex items-center gap-3 text-sm">
                 <Shield size={20} className="text-gray-600" />

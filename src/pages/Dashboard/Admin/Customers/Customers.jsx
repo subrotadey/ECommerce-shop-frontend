@@ -1,13 +1,30 @@
 // pages/admin/Customers/Customers.jsx - INDUSTRY LEVEL
-import { useState, useMemo } from 'react';
 import {
-    Search, Mail, Phone, MapPin, ShoppingBag, DollarSign,
-    Calendar, Ban, CheckCircle, Eye, X, MessageSquare, Download,
-    Loader2, Users, Shield, UserCog, ArrowUpDown, ArrowUp, ArrowDown
+    ArrowDown,
+    ArrowUp,
+    ArrowUpDown,
+    Ban,
+    Calendar,
+    CheckCircle,
+    DollarSign,
+    Download,
+    Eye,
+    Loader2,
+    Mail,
+    MapPin,
+    MessageSquare,
+    Phone,
+    Search,
+    Shield,
+    ShoppingBag,
+    UserCog,
+    Users,
+    X
 } from 'lucide-react';
-import notify from '../../../../utils/notification';
+import { useState } from 'react';
 import useCustomerManagement, { useCustomer } from '../../../../hooks/useCustomers';
 import useDebounce from '../../../../hooks/useDebounce';
+import notify from '../../../../utils/notification';
 
 const Customers = () => {
     // States
@@ -388,7 +405,7 @@ const Customers = () => {
                                             </div>
                                             <div>
                                                 <p className="text-2xl font-bold text-gray-900">
-                                                    ৳{customer.stats?.totalSpent?.toFixed(2) || '0.00'}
+                                                    ${customer.stats?.totalSpent?.toFixed(2) || '0.00'}
                                                 </p>
                                                 <p className="text-sm text-gray-600">Total Spent</p>
                                             </div>
@@ -410,7 +427,7 @@ const Customers = () => {
                                                     </div>
                                                     <div className="text-right">
                                                         <p className="font-semibold text-gray-900">
-                                                            ৳{order.pricing?.total?.toFixed(2)}
+                                                            ${order.pricing?.total?.toFixed(2)}
                                                         </p>
                                                         <span className={`text-xs badge badge-sm ${order.status === 'delivered' ? 'badge-success' : 'badge-info'
                                                             }`}>
@@ -708,7 +725,7 @@ const Customers = () => {
                                             {customer.stats?.orderCount || 0}
                                         </td>
                                         <td className="font-semibold text-gray-900">
-                                            ৳{customer.stats?.totalSpent?.toFixed(2) || '0.00'}
+                                            ${customer.stats?.totalSpent?.toFixed(2) || '0.00'}
                                         </td>
                                         <td className="text-gray-600 text-sm">
                                             {new Date(customer.createdAt).toLocaleDateString()}

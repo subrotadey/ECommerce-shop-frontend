@@ -1,11 +1,11 @@
 // pages/Checkout/Checkout.jsx - IMPROVED VERSION
+import { ArrowRight, CreditCard, Loader2, Mail, Package, Shield, ShoppingBag, Trash2, Truck } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { CreditCard, Package, Mail, Loader2, ShoppingBag, Truck, Shield, ArrowRight, Trash2 } from "lucide-react";
-import useCart from "../../hooks/useCart";
-import useAuth from "../../hooks/useAuth";
-import { authenticatedFetch } from "../../utils/tokenHelper"; // ✅ Use centralized helper
 import Swal from "sweetalert2";
+import useAuth from "../../hooks/useAuth";
+import useCart from "../../hooks/useCart";
+import { authenticatedFetch } from "../../utils/tokenHelper"; // ✅ Use centralized helper
 
 const Checkout = () => {
   const navigate = useNavigate();
@@ -83,9 +83,9 @@ const Checkout = () => {
         html: `
           <p>${error.message}</p>
           <small class="text-gray-500">
-            ${error.message.includes("token") || error.message.includes("401") 
-              ? "Please try logging out and logging back in." 
-              : "Please try again or contact support."}
+            ${error.message.includes("token") || error.message.includes("401")
+            ? "Please try logging out and logging back in."
+            : "Please try again or contact support."}
           </small>
         `,
         confirmButtonColor: "#3B82F6"
@@ -191,7 +191,7 @@ const Checkout = () => {
                         {item.size && item.size !== "NOSIZE" && <p>Size: {item.size}</p>}
                         {item.color && item.color !== "NOCOLOR" && <p>Color: {item.color}</p>}
                       </div>
-                      
+
                       {/* Quantity Controls */}
                       <div className="flex items-center gap-2 mt-2">
                         <button
@@ -215,13 +215,13 @@ const Checkout = () => {
                     <div className="text-right flex flex-col justify-between items-end">
                       <div>
                         <p className="text-xl font-bold text-slate-800">
-                          ৳{(item.price * item.qty).toFixed(2)}
+                          ${(item.price * item.qty).toFixed(2)}
                         </p>
                         <p className="text-sm text-slate-500">
-                          ৳{item.price} × {item.qty}
+                          ${item.price} × {item.qty}
                         </p>
                       </div>
-                      
+
                       <button
                         onClick={() => handleRemoveItem(item.key, item.name)}
                         className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded-lg transition-colors"
@@ -275,35 +275,35 @@ const Checkout = () => {
               <div className="space-y-4 mb-6">
                 <div className="flex justify-between text-slate-700">
                   <span>Subtotal</span>
-                  <span className="font-semibold">৳{subtotal.toFixed(2)}</span>
+                  <span className="font-semibold">${subtotal.toFixed(2)}</span>
                 </div>
-                
+
                 <div className="flex justify-between text-slate-700">
                   <span>Tax (5%)</span>
-                  <span className="font-semibold">৳{tax.toFixed(2)}</span>
+                  <span className="font-semibold">${tax.toFixed(2)}</span>
                 </div>
-                
+
                 <div className="flex justify-between text-slate-700">
                   <span>Shipping</span>
                   <span className="font-semibold">
                     {shipping === 0 ? (
                       <span className="text-green-600">FREE</span>
                     ) : (
-                      `৳${shipping.toFixed(2)}`
+                      `$${shipping.toFixed(2)}`
                     )}
                   </span>
                 </div>
 
                 {subtotal < 1000 && (
                   <p className="text-xs text-blue-600 bg-blue-50 p-2 rounded-lg">
-                    Add ৳{(1000 - subtotal).toFixed(2)} more for FREE shipping!
+                    Add ${(1000 - subtotal).toFixed(2)} more for FREE shipping!
                   </p>
                 )}
 
                 <div className="border-t pt-4">
                   <div className="flex justify-between text-xl font-bold text-slate-800">
                     <span>Total</span>
-                    <span>৳{total.toFixed(2)}</span>
+                    <span>${total.toFixed(2)}</span>
                   </div>
                 </div>
               </div>

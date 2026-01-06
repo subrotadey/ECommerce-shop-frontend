@@ -1,11 +1,11 @@
 // src/components/ProductForm.jsx (IMPROVED)
-import React, { useState } from 'react';
 import { useFormik } from 'formik';
+import { useState } from 'react';
 import * as Yup from 'yup';
+import notify from '../../utils/notification';
+import DescriptionEditor from './DescriptionEditor';
 import ImageUploadSection from './ImageUploadSection';
 import VideoUploadSection from './VideoUploadSection';
-import DescriptionEditor from './DescriptionEditor';
-import notify from '../../utils/notification';
 
 // Validation Schema
 const validationSchema = Yup.object({
@@ -251,7 +251,7 @@ const ProductForm = ({ initialValues, onSubmit, isEditing = false }) => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                            New Price (৳) <span className="text-red-500">*</span>
+                            New Price ($) <span className="text-red-500">*</span>
                         </label>
                         <input
                             type="number"
@@ -268,7 +268,7 @@ const ProductForm = ({ initialValues, onSubmit, isEditing = false }) => {
 
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Old Price (৳)
+                            Old Price ($)
                         </label>
                         <input
                             type="number"

@@ -1,5 +1,4 @@
 import { Package } from 'lucide-react';
-import React from 'react';
 
 const Orders = () => {
     return (
@@ -21,7 +20,7 @@ const Orders = () => {
                                     </div>
                                 </div>
                                 <div className="text-right">
-                                    <p className="font-bold text-lg">৳{2500 + order * 500}</p>
+                                    <p className="font-bold text-lg">${2500 + order * 500}</p>
                                     <span className="badge badge-success badge-sm">Delivered</span>
                                 </div>
                             </div>

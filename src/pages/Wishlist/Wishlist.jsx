@@ -1,10 +1,10 @@
+import { Eye, ShoppingBag, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { Trash2, ShoppingBag, Eye } from 'lucide-react';
-import useWishlist from '../../hooks/useWishlist';
-import useCart from '../../hooks/useCart';
-import Loading from '../../components/Shared/Loading/Loading';
-import Breadcrumb from '../../components/Shared/Breadcrumb/Breadcrumb';
 import Swal from 'sweetalert2';
+import Breadcrumb from '../../components/Shared/Breadcrumb/Breadcrumb';
+import Loading from '../../components/Shared/Loading/Loading';
+import useCart from '../../hooks/useCart';
+import useWishlist from '../../hooks/useWishlist';
 
 const Wishlist = () => {
     const { wishlist, isLoading, isError, removeFromWishlist, isRemoving } = useWishlist();
@@ -156,11 +156,11 @@ const Wishlist = () => {
                                                 <div className="flex items-center gap-2 mb-3">
                                                     {product.oldPrice && (
                                                         <span className="text-sm text-gray-400 line-through">
-                                                            ৳{product.oldPrice}
+                                                            ${product.oldPrice}
                                                         </span>
                                                     )}
                                                     <span className="text-xl font-bold text-gray-900">
-                                                        ৳{product.newPrice}
+                                                        ${product.newPrice}
                                                     </span>
                                                     {product.oldPrice && (
                                                         <span className="text-xs font-semibold text-green-600 bg-green-50 px-2 py-1 rounded">

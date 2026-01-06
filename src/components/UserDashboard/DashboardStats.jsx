@@ -1,7 +1,7 @@
 // ============================================
 // 3. components/UserDashboard/DashboardStats.jsx
 // ============================================
-import { ShoppingBag, Heart, Package, DollarSign } from 'lucide-react';
+import { DollarSign, Heart, Package, ShoppingBag } from 'lucide-react';
 
 const DashboardStats = ({ userData }) => {
   const stats = [
@@ -32,7 +32,7 @@ const DashboardStats = ({ userData }) => {
     {
       id: 4,
       title: 'Total Spent',
-      value: `৳${userData?.totalSpent || 0}`,
+      value: `$${userData?.totalSpent || 0}`,
       icon: DollarSign,
       color: 'green',
       bgGradient: 'from-green-500 to-emerald-500'
