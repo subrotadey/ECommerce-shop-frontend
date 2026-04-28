@@ -1,3 +1,5 @@
+// src/pages/Dashboard/UserDashboard/UserDashboard.jsx
+
 import { AlertCircle, Loader } from "lucide-react";
 import AccountOverview from "../../../components/UserDashboard/AccountOverview";
 import ActivityTimeline from "../../../components/UserDashboard/ActivityTimeline";
@@ -17,6 +19,8 @@ const UserDashboard = () => {
     const { currentUser } = useAuth();
     const { role } = useRole(currentUser?.email);
     const { userData, loading, error, refreshDashboard } = useDashboard();
+
+    console.log("📊 Dashboard Data:", { userData, loading, error });
 
     // Loading State
     if (loading) {

@@ -1,27 +1,107 @@
-// pages/Checkout/Checkout.jsx - IMPROVED VERSION
-import { ArrowRight, CreditCard, Loader2, Mail, Package, Shield, ShoppingBag, Trash2, Truck } from "lucide-react";
+// pages/Checkout/Checkout.jsx - WITH COUPON SYSTEM
+import { ArrowRight, CreditCard, Loader2, Mail, Package, Shield, ShoppingBag, Trash2, Truck, Tag, X, Check } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import useAuth from "../../hooks/useAuth";
 import useCart from "../../hooks/useCart";
-import { authenticatedFetch } from "../../utils/tokenHelper"; // ✅ Use centralized helper
+import { authenticatedFetch } from "../../utils/tokenHelper";
+import axiosInstance from "../../utils/axios";
 
 const Checkout = () => {
   const navigate = useNavigate();
   const { items, updateQty, removeItem } = useCart();
-  const { currentUser } = useAuth(); // ✅ Use currentUser instead of user
+  const { currentUser } = useAuth();
   const [processing, setProcessing] = useState(false);
+  
+  // ✅ Coupon states
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [couponError, setCouponError] = useState("");
+  const [validatingCoupon, setValidatingCoupon] = useState(false);
 
-  // Calculate totals
+  // Calculate subtotal
   const subtotal = items.reduce((sum, item) => sum + (item.price * item.qty), 0);
-  const tax = subtotal * 0.05;
-  const shipping = subtotal > 1000 ? 0 : 100;
-  const total = subtotal + tax + shipping;
+  
+  // ✅ Calculate discount based on applied coupon
+  let discount = 0;
+  if (appliedCoupon) {
+    if (appliedCoupon.type === 'percentage') {
+      discount = appliedCoupon.discount || 0;
+    } else if (appliedCoupon.type === 'fixed') {
+      discount = appliedCoupon.value;
+      if (discount > subtotal) discount = subtotal;
+    }
+  }
 
-  // ✅ IMPROVED: Simplified checkout using centralized token helper
+  const tax = (subtotal - discount) * 0.05;
+  
+  // ✅ Free shipping if coupon type is free_shipping OR order > 1000
+  const shipping = appliedCoupon?.type === 'free_shipping' || subtotal > 1000 ? 0 : 100;
+  
+  const total = subtotal - discount + tax + shipping;
+
+  // ✅ Apply Coupon Handler
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) {
+      setCouponError("Please enter a coupon code");
+      return;
+    }
+
+    setValidatingCoupon(true);
+    setCouponError("");
+
+    try {
+      const response = await axiosInstance.post("/api/coupons/validate", {
+        code: couponCode.toUpperCase(),
+        cartTotal: subtotal
+      });
+
+      if (response.data.success) {
+        setAppliedCoupon(response.data.coupon);
+        setCouponError("");
+        
+        Swal.fire({
+          position: "top-end",
+          icon: "success",
+          title: `Coupon "${response.data.coupon.code}" applied!`,
+          text: response.data.coupon.type === 'free_shipping' 
+            ? 'You got free shipping!' 
+            : `You saved $${response.data.coupon.discount.toFixed(2)}`,
+          showConfirmButton: false,
+          timer: 2000,
+          toast: true
+        });
+      }
+    } catch (error) {
+      console.error("Coupon validation error:", error);
+      setCouponError(
+        error.response?.data?.message || "Invalid or expired coupon"
+      );
+      setAppliedCoupon(null);
+    } finally {
+      setValidatingCoupon(false);
+    }
+  };
+
+  // ✅ Remove Coupon Handler
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCode("");
+    setCouponError("");
+    
+    Swal.fire({
+      position: "top-end",
+      icon: "info",
+      title: "Coupon removed",
+      showConfirmButton: false,
+      timer: 1500,
+      toast: true
+    });
+  };
+
+  // ✅ Checkout Handler (with coupon usage tracking)
   const handleCheckout = async () => {
-    // Validation
     if (!currentUser?.email) {
       Swal.fire({
         icon: "warning",
@@ -46,7 +126,6 @@ const Checkout = () => {
     setProcessing(true);
 
     try {
-      // ✅ Use authenticatedFetch from tokenHelper
       const response = await authenticatedFetch(
         `${import.meta.env.VITE_API_URL}/create-checkout-session`,
         {
@@ -54,7 +133,12 @@ const Checkout = () => {
           body: JSON.stringify({
             items: items,
             userId: currentUser.email,
-            customerEmail: currentUser.email
+            customerEmail: currentUser.email,
+            coupon: appliedCoupon ? {
+              code: appliedCoupon.code,
+              type: appliedCoupon.type,
+              discount: discount
+            } : null
           })
         }
       );
@@ -67,6 +151,16 @@ const Checkout = () => {
       const data = await response.json();
 
       if (data.success && data.url) {
+        // ✅ If coupon was applied, increment usage
+        if (appliedCoupon) {
+          try {
+            await axiosInstance.post(`/api/coupons/use/${appliedCoupon.code}`);
+          } catch (usageError) {
+            console.error("Coupon usage update error:", usageError);
+            // Continue with checkout even if usage update fails
+          }
+        }
+
         // Redirect to Stripe
         window.location.href = data.url;
       } else {
@@ -93,13 +187,11 @@ const Checkout = () => {
     }
   };
 
-  // Update quantity
   const handleUpdateQuantity = (itemKey, newQty) => {
     if (newQty < 1) return;
     updateQty(itemKey, newQty);
   };
 
-  // Remove item with confirmation
   const handleRemoveItem = (itemKey, itemName) => {
     Swal.fire({
       title: 'Remove item?',
@@ -173,7 +265,6 @@ const Checkout = () => {
                     key={item.key}
                     className="flex gap-4 p-4 border border-slate-200 rounded-xl hover:border-blue-300 transition-all group"
                   >
-                    {/* Product Image */}
                     <div className="w-24 h-24 rounded-lg overflow-hidden bg-slate-100 flex-shrink-0">
                       <img
                         src={item.image || "/placeholder.jpg"}
@@ -182,7 +273,6 @@ const Checkout = () => {
                       />
                     </div>
 
-                    {/* Product Details */}
                     <div className="flex-1 min-w-0">
                       <h3 className="font-semibold text-slate-800 mb-1 truncate">
                         {item.name}
@@ -192,7 +282,6 @@ const Checkout = () => {
                         {item.color && item.color !== "NOCOLOR" && <p>Color: {item.color}</p>}
                       </div>
 
-                      {/* Quantity Controls */}
                       <div className="flex items-center gap-2 mt-2">
                         <button
                           onClick={() => handleUpdateQuantity(item.key, item.qty - 1)}
@@ -211,7 +300,6 @@ const Checkout = () => {
                       </div>
                     </div>
 
-                    {/* Price & Remove */}
                     <div className="text-right flex flex-col justify-between items-end">
                       <div>
                         <p className="text-xl font-bold text-slate-800">
@@ -271,12 +359,76 @@ const Checkout = () => {
                 </div>
               )}
 
+              {/* ✅ Coupon Input Section */}
+              <div className="mb-6">
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Have a coupon code?
+                </label>
+                
+                {!appliedCoupon ? (
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                      placeholder="Enter code"
+                      className="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase"
+                      disabled={validatingCoupon}
+                    />
+                    <button
+                      onClick={handleApplyCoupon}
+                      disabled={validatingCoupon || !couponCode.trim()}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      {validatingCoupon ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Tag className="w-4 h-4" />
+                      )}
+                      Apply
+                    </button>
+                  </div>
+                ) : (
+                  <div className="p-3 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Check className="w-5 h-5 text-green-600" />
+                      <div>
+                        <p className="font-semibold text-green-800">{appliedCoupon.code}</p>
+                        <p className="text-xs text-green-600">
+                          {appliedCoupon.type === 'percentage' && `${appliedCoupon.value}% OFF`}
+                          {appliedCoupon.type === 'fixed' && `$${appliedCoupon.value} OFF`}
+                          {appliedCoupon.type === 'free_shipping' && 'FREE SHIPPING'}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleRemoveCoupon}
+                      className="text-red-500 hover:text-red-700 p-1"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                )}
+
+                {couponError && (
+                  <p className="text-xs text-red-600 mt-2">{couponError}</p>
+                )}
+              </div>
+
               {/* Price Breakdown */}
               <div className="space-y-4 mb-6">
                 <div className="flex justify-between text-slate-700">
                   <span>Subtotal</span>
                   <span className="font-semibold">${subtotal.toFixed(2)}</span>
                 </div>
+
+                {/* ✅ Show discount if coupon applied */}
+                {discount > 0 && (
+                  <div className="flex justify-between text-green-600">
+                    <span>Discount ({appliedCoupon.code})</span>
+                    <span className="font-semibold">-${discount.toFixed(2)}</span>
+                  </div>
+                )}
 
                 <div className="flex justify-between text-slate-700">
                   <span>Tax (5%)</span>
@@ -294,7 +446,7 @@ const Checkout = () => {
                   </span>
                 </div>
 
-                {subtotal < 1000 && (
+                {subtotal < 1000 && shipping > 0 && (
                   <p className="text-xs text-blue-600 bg-blue-50 p-2 rounded-lg">
                     Add ${(1000 - subtotal).toFixed(2)} more for FREE shipping!
                   </p>
@@ -305,6 +457,11 @@ const Checkout = () => {
                     <span>Total</span>
                     <span>${total.toFixed(2)}</span>
                   </div>
+                  {discount > 0 && (
+                    <p className="text-sm text-green-600 text-right mt-1">
+                      You saved ${discount.toFixed(2)}!
+                    </p>
+                  )}
                 </div>
               </div>
 

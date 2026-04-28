@@ -3,6 +3,7 @@ import axios from "axios";
 import { ArrowRight, CheckCircle, Loader2, Package, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import useCart from "../../hooks/useCart";
 
 const CheckoutSuccess = () => {
   const [searchParams] = useSearchParams();
@@ -10,6 +11,7 @@ const CheckoutSuccess = () => {
   const [loading, setLoading] = useState(true);
   const [order, setOrder] = useState(null);
   const [error, setError] = useState(null);
+  const { clearCart } = useCart();
 
   const sessionId = searchParams.get("session_id");
   const orderId = searchParams.get("order_id");
@@ -39,6 +41,8 @@ const CheckoutSuccess = () => {
 
       if (response.data.success) {
         setOrder(response.data.order);
+        // ✅ Frontend cart clear করো payment success এর পরে
+        clearCart();
       } else {
         setError("Payment verification failed");
       }

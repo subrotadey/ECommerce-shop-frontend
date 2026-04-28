@@ -5,6 +5,7 @@ import { Outlet, NavLink, useNavigate, Link } from "react-router-dom";
 import { useState } from "react";
 import { LayoutDashboard, Package, ShoppingCart, Users, BarChart3, Tag, Star, Settings, Menu, X, LogOut, Bell, ChevronDown, UserCircle2, Ticket, UserCog } from "lucide-react";
 import useAuth from "../hooks/useAuth";
+import TokenDebugger from "../components/Debug/TokenDebugger";
 
 const AdminLayout = () => {
     const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -46,6 +47,7 @@ const AdminLayout = () => {
 
     return (
         <div className="flex h-screen bg-white">
+            <TokenDebugger />
             {/* Sidebar */}
             <aside
                 className={`${sidebarOpen ? 'w-60 ' : 'w-20'

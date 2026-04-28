@@ -50,12 +50,14 @@ const Orders = () => {
 
     const handleStatusFilter = (status) => {
         setStatusFilter(status);
-        setPage(1);
+        setPage(1); // Already doing this
+        setSelectedOrders([]); // Clear selections
     };
 
     const handlePaymentFilter = (payment) => {
         setPaymentFilter(payment);
         setPage(1);
+        setSelectedOrders([]);
     };
 
     const handleSelectOrder = (orderId) => {
@@ -128,7 +130,7 @@ const Orders = () => {
         });
     };
 
-    // 🔥 FIXED: Print Invoice Handler
+    //  Print Invoice Handler
     const handlePrintInvoice = (order) => {
         if (!order) {
             notify.error('Error', 'Order data not found');
@@ -136,7 +138,7 @@ const Orders = () => {
         }
 
         const printWindow = window.open('', '_blank', 'width=800,height=600');
-        
+
         if (!printWindow) {
             notify.error('Error', 'Please allow popups to print invoice');
             return;
@@ -147,8 +149,8 @@ const Orders = () => {
 <html>
 <head>
   <title>Invoice - ${order.orderId}</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://cdn.jsdelivr.net/npm/daisyui@4.4.19/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.4.19/dist/full.min.css" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
   <style>
     @media print {
       body { 
@@ -164,7 +166,7 @@ const Orders = () => {
     }
   </style>
 </head>
-<body class="bg-base-100">
+<body class="bg-gray-50">
   <div class="max-w-4xl mx-auto p-8">
     <!-- Print Button -->
     <div class="no-print mb-4 flex justify-end gap-2">
@@ -177,42 +179,45 @@ const Orders = () => {
     </div>
 
     <!-- Invoice Container -->
-    <div class="card bg-base-100 shadow-2xl border-2 border-base-300">
+    <div class="card bg-gray-100 shadow-2xl border-2 border-base-300">
       <div class="card-body p-12">
         
         <!-- Header -->
         <div class="text-center mb-8 pb-6 border-b-4 border-primary">
-          <h1 class="text-5xl font-bold text-primary mb-2">INVOICE</h1>
-          <div class="badge badge-lg badge-outline">Order ID: ${order.orderId}</div>
-          <p class="text-sm mt-2 text-base-content/70">
-            Date: ${new Date(order.createdAt).toLocaleDateString('en-US', {
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric'
-            })}
-          </p>
+        <!-- Add company logo/header -->
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 class="text-4xl font-bold text-primary">Anis Abaya</h1>
+    <p class="text-sm text-gray-600">123 Business Street, City, Country</p>
+    <p class="text-sm text-gray-600">Phone: +880-XXX-XXXXXX</p>
+  </div>
+  <div class="text-right">
+    <div class="badge badge-lg badge-primary">INVOICE</div>
+    <p class="text-sm mt-2">${order.orderId}</p>
+  </div>
+</div>
+          
         </div>
 
         <!-- Customer & Payment Info -->
         <div class="grid grid-cols-2 gap-8 mb-8">
           <!-- Bill To -->
-          <div class="space-y-2">
+          <div class="space-y-2 text-black">
             <h3 class="text-lg font-bold text-primary mb-3">Bill To:</h3>
-            <div class="bg-base-200 rounded-lg p-4">
+            <div class="bg-gray-200 rounded-lg p-4">
               <p class="font-bold text-lg">${order.customer?.name || 'N/A'}</p>
-              <p class="text-sm text-base-content/70">${order.customer?.email || 'N/A'}</p>
-              <p class="text-sm text-base-content/70">${order.customer?.phone || 'N/A'}</p>
+              <p class="text-sm text-base-900">${order.customer?.email || 'N/A'}</p>
+              <p class="text-sm text-base-900">${order.customer?.phone || 'N/A'}</p>
               ${order.customer?.address ? `
                 <div class="flex items-start gap-2 mt-2">
                   <svg class="w-4 h-4 mt-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
                   </svg>
-                  <span class="text-sm">${
-                    typeof order.customer.address === 'string' 
-                      ? order.customer.address 
-                      : JSON.stringify(order.customer.address)
-                  }</span>
+                  <span class="text-sm">${typeof order.customer.address === 'string'
+                    ? order.customer.address
+                    : JSON.stringify(order.customer.address)
+                }</span>
                 </div>
               ` : ''}
             </div>
@@ -221,26 +226,24 @@ const Orders = () => {
           <!-- Payment Status -->
           <div class="space-y-2 text-right">
             <h3 class="text-lg font-bold text-primary mb-3">Payment Details:</h3>
-            <div class="bg-base-200 rounded-lg p-4 space-y-3">
+            <div class="bg-gray-200 rounded-lg p-4 space-y-3">
               <div>
                 <p class="text-sm text-base-content/70 mb-1">Payment Status:</p>
-                <span class="badge ${
-                  order.payment?.status === 'paid' ? 'badge-success' :
-                  order.payment?.status === 'refunded' ? 'badge-error' :
-                  'badge-warning'
-                } badge-lg font-bold">
+                <span class="badge ${order.payment?.status === 'paid' ? 'badge-success' :
+                order.payment?.status === 'refunded' ? 'badge-error' :
+                    'badge-warning'
+            } badge-lg font-bold">
                   ${order.payment?.status?.toUpperCase() || 'PENDING'}
                 </span>
               </div>
               <div>
                 <p class="text-sm text-base-content/70 mb-1">Order Status:</p>
-                <span class="badge ${
-                  order.status === 'delivered' ? 'badge-success' :
-                  order.status === 'cancelled' ? 'badge-error' :
-                  order.status === 'shipped' ? 'badge-primary' :
-                  order.status === 'processing' ? 'badge-info' :
-                  'badge-warning'
-                } badge-lg font-bold">
+                <span class="badge ${order.status === 'delivered' ? 'badge-success' :
+                order.status === 'cancelled' ? 'badge-error' :
+                    order.status === 'shipped' ? 'badge-primary' :
+                        order.status === 'processing' ? 'badge-info' :
+                            'badge-warning'
+            } badge-lg font-bold">
                   ${order.status?.toUpperCase()}
                 </span>
               </div>
@@ -280,7 +283,7 @@ const Orders = () => {
         <!-- Totals -->
         <div class="flex justify-end">
           <div class="w-80">
-            <div class="bg-base-200 rounded-lg p-6 space-y-3">
+            <div class="bg-gray-200 rounded-lg p-6 space-y-3">
               <div class="flex justify-between text-base-content/70">
                 <span>Subtotal:</span>
                 <span class="font-semibold">$${order.pricing?.subtotal?.toFixed(2) || '0.00'}</span>
@@ -303,7 +306,7 @@ const Orders = () => {
         </div>
 
         <!-- Footer -->
-        <div class="text-center mt-12 pt-6 border-t-2 border-base-300">
+        <div class="text-center pt-6 border-t-2 border-base-300">
           <div class="alert alert-info shadow-lg">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -373,9 +376,26 @@ const Orders = () => {
         return colors[payment] || 'badge-ghost';
     };
 
+    const formatDate = (date, full = false) => {
+        if (!date) return 'N/A';
+        const options = full
+            ? { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }
+            : { year: 'numeric', month: 'short', day: 'numeric' };
+
+        return new Date(date).toLocaleDateString('en-US', options);
+    };
+
     // Loading state
     if (isLoading && !orders.length) {
-        return <Loading />;
+        <tbody>
+            {[...Array(limit)].map((_, i) => (
+                <tr key={i}>
+                    <td colSpan="9">
+                        <div className="skeleton h-12 w-full"></div>
+                    </td>
+                </tr>
+            ))}
+        </tbody>
     }
 
     // Error state
@@ -590,8 +610,14 @@ const Orders = () => {
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan="9" className="text-center py-8 text-gray-500">
-                                        No orders found
+                                    <td colSpan="9" className="text-center py-12">
+                                        <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                                        <p className="text-gray-500 text-lg font-medium">No orders found</p>
+                                        <p className="text-gray-400 text-sm mt-1">
+                                            {searchTerm || statusFilter !== 'all' || paymentFilter !== 'all'
+                                                ? 'Try adjusting your filters'
+                                                : 'Orders will appear here when customers make purchases'}
+                                        </p>
                                     </td>
                                 </tr>
                             )}
@@ -682,7 +708,7 @@ const OrderDetailsModal = ({
 
                 <div className="space-y-6">
                     {/* Order Status */}
-                    <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="bg-gray-500 rounded-lg p-4">
                         <div className="flex items-center justify-between mb-4">
                             <h4 className="font-semibold text-gray-900">Order Status</h4>
                             <span className={`badge ${getStatusColor(order.status)} gap-2`}>
@@ -807,8 +833,8 @@ const OrderDetailsModal = ({
                             {isRefunding ? 'Processing...' : 'Refund Order'}
                         </button>
                     )}
-                    <button 
-                        onClick={() => onPrintInvoice(order)} 
+                    <button
+                        onClick={() => onPrintInvoice(order)}
                         className="btn btn-primary gap-2"
                     >
                         <Printer size={16} />

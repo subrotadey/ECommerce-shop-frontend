@@ -1,15 +1,18 @@
 // ============================================
-// pages/admin/Products/Products.jsx
+// pages/admin/Products/Products.jsx - FIXED VERSION
 // ============================================
 import { Download, Edit2, Eye, Plus, Search, Trash2, Upload, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import ProductForm from '../../../../components/ProductForm/ProductForm';
-import { useAllProducts } from '../../../../hooks/useProducts'; // Assuming this hook exists
-import { createProduct } from '../../../../services/productService';
+import { useAllProducts } from '../../../../hooks/useProducts';
+import { createProduct, updateProduct, deleteProduct } from '../../../../services/productService';
 import notify from '../../../../utils/notification';
 
 const Products = () => {
-    // 1. Fetching Data using the Hook
+    const navigate = useNavigate();
+    
+    // 1. Fetching Data
     const {
         data: allProducts = [],
         isLoading,
@@ -21,16 +24,15 @@ const Products = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('all');
     const [selectedStatus, setSelectedStatus] = useState('all');
-
-    // State for Modal & Editing
     const [showAddModal, setShowAddModal] = useState(false);
     const [editingProduct, setEditingProduct] = useState(null);
+    const [viewingProduct, setViewingProduct] = useState(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Categories & Statuses (You might want to fetch these dynamically later)
     const categories = ['all', 'Abaya', 'Hijab', 'Dresses', 'Tops', 'Bottoms', 'Accessories'];
     const statuses = ['all', 'active', 'low_stock', 'out_of_stock', 'draft'];
 
-    // 2. Filter Logic (Dynamic)
+    // 2. Filter Logic
     const filteredProducts = useMemo(() => {
         if (!allProducts) return [];
 
@@ -38,24 +40,23 @@ const Products = () => {
             const nameMatch = product.productName?.toLowerCase().includes(searchTerm.toLowerCase());
             const skuMatch = product.sku?.toLowerCase().includes(searchTerm.toLowerCase());
 
-            // Handle Category Filter (Check mainCategory or categories array)
             const categoryMatch = selectedCategory === 'all' ||
                 product.mainCategory?.toLowerCase() === selectedCategory.toLowerCase() ||
                 product.categories?.includes(selectedCategory);
 
-            // Handle Status Filter (Logic based on stock if explicit status doesn't exist)
-            let currentStatus = product.stock === 0 ? 'out_of_stock' : product.stock < 10 ? 'low_stock' : 'active';
+            let currentStatus = product.stock === 0 ? 'out_of_stock' : 
+                               product.stock < 10 ? 'low_stock' : 'active';
             const statusMatch = selectedStatus === 'all' || currentStatus === selectedStatus;
 
             return (nameMatch || skuMatch) && categoryMatch && statusMatch;
         });
     }, [allProducts, searchTerm, selectedCategory, selectedStatus]);
 
-    // Helper: Determine Status Color
+    // Helper Functions
     const getStatusColor = (stock) => {
-        if (stock === 0) return 'badge-error';      // Out of stock
-        if (stock < 10) return 'badge-warning';     // Low stock
-        return 'badge-success';                     // Active
+        if (stock === 0) return 'badge-error';
+        if (stock < 10) return 'badge-warning';
+        return 'badge-success';
     };
 
     const getStatusLabel = (stock) => {
@@ -70,49 +71,119 @@ const Products = () => {
         setEditingProduct(null);
     };
 
+    const handleCloseViewModal = () => {
+        setViewingProduct(null);
+    };
+
+    // ✅ FIXED: Create/Update Product Handler
     const handleCreateProduct = async (values) => {
-        // TODO: Call your API Mutation here (useAddProduct or useUpdateProduct)
-        console.log("Form Submitted with values:", values);
         try {
-            const result = await createProduct(values);
-            refetch(); // Reload table data
+            setIsSubmitting(true);
+            notify.loading('Saving product...');
+
+            if (editingProduct) {
+                // UPDATE existing product
+                console.log('🔄 Updating product:', editingProduct._id);
+                await updateProduct(editingProduct._id, values);
+                notify.close();
+                notify.success('Product updated successfully!');
+            } else {
+                // CREATE new product
+                console.log('➕ Creating new product');
+                await createProduct(values);
+                notify.close();
+                notify.success('Product created successfully!');
+            }
+
+            // Refresh data and close modal
+            await refetch();
             handleCloseModal();
         } catch (error) {
-            notify.error('Product deleted successfully');
-        }
-
-
-
-        // Example:
-        // if (editingProduct) {
-        //    await updateProduct(values);
-        // } else {
-        //    await createProduct(values);
-        // }
-
-        // After success:
-
-    };
-
-    const handleDeleteProduct = async (id) => {
-        const confirmed = await notify.confirm(
-            'Delete Product?',
-            'Are you sure you want to delete this product? This action cannot be undone.',
-            'Yes, Delete',
-            'Cancel'
-        );
-
-        if (confirmed) {
-            // TODO: Call your delete API here
-            console.log("Deleting product ID:", id);
-            // await deleteProduct(id);
-            refetch();
-            notify.success('Product deleted successfully');
+            notify.close();
+            notify.error(
+                editingProduct ? 'Update Failed' : 'Create Failed',
+                error.message || 'Something went wrong'
+            );
+            console.error('Product save error:', error);
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
-    // Prepare Initial Values for Edit Mode
-    // Mapping backend data structure to Formik structure
+    // ✅ FIXED: Delete Handler
+    const handleDeleteProduct = async (productId) => {
+        try {
+            console.log('🗑️ Attempting to delete product:', productId);
+            
+            const confirmed = await notify.confirm(
+                'Delete Product?',
+                'Are you sure you want to delete this product? This action cannot be undone.',
+                'Yes, Delete',
+                'Cancel'
+            );
+
+            if (!confirmed) {
+                console.log('❌ Delete cancelled by user');
+                return;
+            }
+
+            notify.loading('Deleting product...');
+
+            // Call delete API
+            const result = await deleteProduct(productId);
+            
+            if (result.cancelled) {
+                notify.close();
+                return;
+            }
+
+            notify.close();
+            notify.success('Product deleted successfully!');
+            
+            // Refresh the product list
+            await refetch();
+        } catch (error) {
+            notify.close();
+            notify.error(
+                'Delete Failed',
+                error.message || 'Failed to delete product'
+            );
+            console.error('Delete error:', error);
+        }
+    };
+
+    // ✅ FIXED: View Product Handler
+    const handleViewProduct = (product) => {
+        console.log('👁️ Viewing product:', product.productName);
+        setViewingProduct(product);
+    };
+
+    // ✅ FIXED: Edit Product Handler
+    const handleEditProduct = (product) => {
+        console.log('✏️ Editing product:', product.productName);
+        setEditingProduct(product);
+        setShowAddModal(true);
+    };
+
+    // ✅ Export Handler (Placeholder)
+    const handleExport = async () => {
+        try {
+            notify.info('Export feature coming soon!');
+            // TODO: Implement CSV export
+            console.log('📥 Exporting products...');
+        } catch (error) {
+            notify.error('Export Failed', error.message);
+        }
+    };
+
+    // ✅ Import Handler (Placeholder)
+    const handleImport = () => {
+        notify.info('Import feature coming soon!');
+        // TODO: Implement CSV import
+        console.log('📤 Import products...');
+    };
+
+    // ✅ FIXED: Get Initial Values for Edit
     const getInitialValues = (product) => {
         if (!product) return null;
 
@@ -127,8 +198,8 @@ const Products = () => {
             mainCategory: product.mainCategory || 'abaya',
             categories: product.categories || [],
             tags: product.tags || [],
-            images: product.images || [],
-            video: product.video || null,
+            images: product.media?.images || product.images || [],
+            video: product.media?.video || product.video || null,
             descriptionHtml: product.descriptionHtml || '',
             additionalInfo: product.additionalInfo || {
                 fabric: '',
@@ -141,8 +212,28 @@ const Products = () => {
     };
 
     // 4. Render
-    if (isLoading) return <div className="flex justify-center items-center h-96"><span className="loading loading-spinner loading-lg"></span></div>;
-    if (isError) return <div className="text-red-500 text-center p-10">Error loading products. Please try again.</div>;
+    if (isLoading) {
+        return (
+            <div className="flex justify-center items-center h-96">
+                <span className="loading loading-spinner loading-lg"></span>
+            </div>
+        );
+    }
+
+    if (isError) {
+        return (
+            <div className="text-red-500 text-center p-10">
+                <p className="text-xl font-semibold mb-2">Error loading products</p>
+                <p className="text-sm">Please try refreshing the page</p>
+                <button 
+                    onClick={() => refetch()} 
+                    className="btn btn-primary btn-sm mt-4"
+                >
+                    Retry
+                </button>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">
@@ -153,10 +244,16 @@ const Products = () => {
                     <p className="text-gray-600 mt-1">Manage your product inventory</p>
                 </div>
                 <div className="flex gap-3">
-                    <button className="btn btn-outline btn-sm gap-2">
+                    <button 
+                        onClick={handleExport}
+                        className="btn btn-outline btn-sm gap-2"
+                    >
                         <Download size={16} /> Export
                     </button>
-                    <button className="btn btn-outline btn-sm gap-2">
+                    <button 
+                        onClick={handleImport}
+                        className="btn btn-outline btn-sm gap-2"
+                    >
                         <Upload size={16} /> Import
                     </button>
                     <button
@@ -171,7 +268,7 @@ const Products = () => {
                 </div>
             </div>
 
-            {/* Stats Cards (Dynamic) */}
+            {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                     <p className="text-sm text-gray-600">Total Products</p>
@@ -264,7 +361,7 @@ const Products = () => {
                                 </tr>
                             ) : (
                                 filteredProducts.map((product) => (
-                                    <tr key={product.id || product._id} className="hover">
+                                    <tr key={product._id} className="hover">
                                         <td>
                                             <input type="checkbox" className="checkbox checkbox-sm" />
                                         </td>
@@ -272,10 +369,14 @@ const Products = () => {
                                             <div className="flex items-center gap-3">
                                                 <div className="avatar">
                                                     <div className="w-12 h-12 rounded-lg bg-gray-100 border">
-                                                        {/* Check if images exist, use first one, otherwise placeholder */}
-                                                        {product.images && product.images.length > 0 ? (
+                                                        {product.media?.images?.[0] || product.images?.[0] ? (
                                                             <img
-                                                                src={product.images[0].thumbnailUrl || product.images[0].url}
+                                                                src={
+                                                                    product.media?.images?.[0]?.thumbnailUrl || 
+                                                                    product.media?.images?.[0]?.url ||
+                                                                    product.images?.[0]?.thumbnailUrl || 
+                                                                    product.images?.[0]?.url
+                                                                }
                                                                 alt={product.productName}
                                                             />
                                                         ) : (
@@ -301,9 +402,10 @@ const Products = () => {
                                             ${product.newPrice}
                                         </td>
                                         <td>
-                                            <span className={`font-medium ${product.stock === 0 ? 'text-red-600' :
+                                            <span className={`font-medium ${
+                                                product.stock === 0 ? 'text-red-600' :
                                                 product.stock < 10 ? 'text-yellow-600' : 'text-gray-900'
-                                                }`}>
+                                            }`}>
                                                 {product.stock}
                                             </span>
                                         </td>
@@ -314,21 +416,22 @@ const Products = () => {
                                         </td>
                                         <td>
                                             <div className="flex gap-2">
-                                                <button className="btn btn-ghost btn-xs text-gray-500" title="View">
+                                                <button 
+                                                    onClick={() => handleViewProduct(product)}
+                                                    className="btn btn-ghost btn-xs text-gray-500" 
+                                                    title="View"
+                                                >
                                                     <Eye size={16} />
                                                 </button>
                                                 <button
-                                                    onClick={() => {
-                                                        setEditingProduct(product);
-                                                        setShowAddModal(true);
-                                                    }}
+                                                    onClick={() => handleEditProduct(product)}
                                                     className="btn btn-ghost btn-xs text-blue-600"
                                                     title="Edit"
                                                 >
                                                     <Edit2 size={16} />
                                                 </button>
                                                 <button
-                                                    onClick={() => handleDeleteProduct(product.id || product._id)}
+                                                    onClick={() => handleDeleteProduct(product._id)}
                                                     className="btn btn-ghost btn-xs text-red-600"
                                                     title="Delete"
                                                 >
@@ -343,7 +446,7 @@ const Products = () => {
                     </table>
                 </div>
 
-                {/* Pagination (Simplified) */}
+                {/* Pagination */}
                 <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200">
                     <div className="text-sm text-gray-600">
                         Showing {filteredProducts.length} of {allProducts.length} products
@@ -356,12 +459,10 @@ const Products = () => {
                 </div>
             </div>
 
-            {/* Modal for ProductForm */}
+            {/* ✅ Add/Edit Product Modal */}
             {showAddModal && (
                 <div className="modal modal-open z-50">
                     <div className="modal-box w-11/12 max-w-5xl bg-gray-50 p-0 overflow-hidden relative h-[90vh]">
-
-                        {/* Modal Header */}
                         <div className="flex justify-between items-center p-4 bg-white border-b sticky top-0 z-10">
                             <h3 className="font-bold text-lg">
                                 {editingProduct ? 'Edit Product' : 'Add New Product'}
@@ -369,21 +470,148 @@ const Products = () => {
                             <button
                                 onClick={handleCloseModal}
                                 className="btn btn-sm btn-circle btn-ghost"
+                                disabled={isSubmitting}
                             >
                                 <X size={20} />
                             </button>
                         </div>
 
-                        {/* Modal Body (Scrollable) */}
                         <div className="overflow-y-auto h-[calc(90vh-60px)]">
                             <ProductForm
                                 initialValues={getInitialValues(editingProduct)}
                                 isEditing={!!editingProduct}
                                 onSubmit={handleCreateProduct}
+                                isSubmitting={isSubmitting}
                             />
                         </div>
                     </div>
                     <div className="modal-backdrop" onClick={handleCloseModal}></div>
+                </div>
+            )}
+
+            {/* ✅ View Product Modal */}
+            {viewingProduct && (
+                <div className="modal modal-open z-50">
+                    <div className="modal-box w-11/12 max-w-4xl bg-white">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="font-bold text-2xl">{viewingProduct.productName}</h3>
+                            <button
+                                onClick={handleCloseViewModal}
+                                className="btn btn-sm btn-circle btn-ghost"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Images */}
+                            <div>
+                                <div className="w-full h-64 bg-gray-100 rounded-lg overflow-hidden mb-3">
+                                    {viewingProduct.media?.images?.[0] || viewingProduct.images?.[0] ? (
+                                        <img
+                                            src={
+                                                viewingProduct.media?.images?.[0]?.url ||
+                                                viewingProduct.images?.[0]?.url
+                                            }
+                                            alt={viewingProduct.productName}
+                                            className="w-full h-full object-cover"
+                                        />
+                                    ) : (
+                                        <div className="flex items-center justify-center h-full text-6xl">🧥</div>
+                                    )}
+                                </div>
+                                <div className="grid grid-cols-4 gap-2">
+                                    {(viewingProduct.media?.images || viewingProduct.images || []).slice(1, 5).map((img, idx) => (
+                                        <div key={idx} className="w-full h-20 bg-gray-100 rounded overflow-hidden">
+                                            <img
+                                                src={img.thumbnailUrl || img.url}
+                                                alt={`Product ${idx + 2}`}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Details */}
+                            <div>
+                                <div className="space-y-4">
+                                    <div>
+                                        <p className="text-sm text-gray-500">SKU</p>
+                                        <p className="font-mono text-lg">{viewingProduct.sku}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-gray-500">Price</p>
+                                        <p className="text-2xl font-bold text-gray-900">${viewingProduct.newPrice}</p>
+                                        {viewingProduct.oldPrice && (
+                                            <p className="text-sm text-gray-500 line-through">${viewingProduct.oldPrice}</p>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-gray-500">Stock</p>
+                                        <p className="text-lg font-semibold">{viewingProduct.stock} units</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-gray-500">Category</p>
+                                        <span className="badge badge-ghost capitalize">{viewingProduct.mainCategory}</span>
+                                    </div>
+                                    {viewingProduct.sizes && viewingProduct.sizes.length > 0 && (
+                                        <div>
+                                            <p className="text-sm text-gray-500 mb-2">Available Sizes</p>
+                                            <div className="flex gap-2">
+                                                {viewingProduct.sizes.map((size, idx) => (
+                                                    <span key={idx} className="badge badge-outline">{size}</span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                    {viewingProduct.colors && viewingProduct.colors.length > 0 && (
+                                        <div>
+                                            <p className="text-sm text-gray-500 mb-2">Available Colors</p>
+                                            <div className="flex gap-2">
+                                                {viewingProduct.colors.map((color, idx) => (
+                                                    <span key={idx} className="badge badge-outline">{color}</span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="mt-6 flex gap-3">
+                                    <button
+                                        onClick={() => {
+                                            handleCloseViewModal();
+                                            handleEditProduct(viewingProduct);
+                                        }}
+                                        className="btn btn-primary btn-sm"
+                                    >
+                                        <Edit2 size={16} /> Edit Product
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            handleCloseViewModal();
+                                            handleDeleteProduct(viewingProduct._id);
+                                        }}
+                                        className="btn btn-error btn-sm"
+                                    >
+                                        <Trash2 size={16} /> Delete
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Description */}
+                        {viewingProduct.descriptionHtml && (
+                            <div className="mt-6 border-t pt-6">
+                                <h4 className="font-semibold mb-3">Description</h4>
+                                <div 
+                                    className="prose max-w-none"
+                                    dangerouslySetInnerHTML={{ __html: viewingProduct.descriptionHtml }}
+                                />
+                            </div>
+                        )}
+                    </div>
+                    <div className="modal-backdrop" onClick={handleCloseViewModal}></div>
                 </div>
             )}
         </div>

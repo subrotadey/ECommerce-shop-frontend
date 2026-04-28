@@ -1,44 +1,22 @@
-// src/services/productService.js (IMPROVED)
+// src/services/productService.js - FIXED VERSION
 
-import axios from 'axios';
+import axiosInstance from '../utils/axios'; // ✅ Use centralized axios instance
 import notify from '../utils/notification';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL;
-
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Add auth token to requests
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('authToken');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-// Enhanced error handling
-api.interceptors.response.use(
-  (response) => {
-    console.log('✅ API Response:', response.status, response.config.url);
-    return response;
-  },
-  (error) => {
-    console.error('❌ API Error:', error.response?.status, error.config?.url);
-    console.error('Error details:', error.response?.data);
-    
-    // Show error notification for network errors
-    if (!error.response) {
-      notify.error('Network Error', 'Please check your internet connection', 3000);
-    }
-    
-    return Promise.reject(error);
-  }
-);
+/**
+ * Generate SEO-friendly slug
+ */
+const generateSlug = (name) => {
+  const slug = name
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .trim();
+  
+  console.log('🔗 Generated slug:', slug);
+  return slug;
+};
 
 /**
  * Create new product
@@ -54,7 +32,7 @@ export const createProduct = async (productData) => {
         images: productData.images.map((img, index) => ({
           url: img.url,
           publicId: img.publicId,
-          thumbnailUrl: img.thumbnailUrl,
+          thumbnailUrl: img.thumbnailUrl || img.url,
           isMain: img.isMain || index === 0,
           order: index,
         })),
@@ -72,7 +50,10 @@ export const createProduct = async (productData) => {
       updatedAt: new Date().toISOString(),
     };
 
-    const response = await api.post('/products', payload);
+    console.log('📦 Payload:', JSON.stringify(payload, null, 2));
+
+    const response = await axiosInstance.post('/api/products', payload);
+    
     console.log('✅ Product created:', response.data);
     return response.data;
   } catch (error) {
@@ -95,7 +76,7 @@ export const updateProduct = async (productId, productData) => {
         images: productData.images.map((img, index) => ({
           url: img.url,
           publicId: img.publicId,
-          thumbnailUrl: img.thumbnailUrl,
+          thumbnailUrl: img.thumbnailUrl || img.url,
           isMain: img.isMain || index === 0,
           order: index,
         })),
@@ -111,7 +92,10 @@ export const updateProduct = async (productId, productData) => {
       updatedAt: new Date().toISOString(),
     };
 
-    const response = await api.put(`/products/${productId}`, payload);
+    console.log('📦 Update Payload:', JSON.stringify(payload, null, 2));
+
+    const response = await axiosInstance.put(`/api/products/${productId}`, payload);
+    
     console.log('✅ Product updated:', response.data);
     return response.data;
   } catch (error) {
@@ -126,7 +110,7 @@ export const updateProduct = async (productId, productData) => {
 export const getProductById = async (productId) => {
   try {
     console.log('📥 Fetching product:', productId);
-    const response = await api.get(`/products/${productId}`);
+    const response = await axiosInstance.get(`/products/${productId}`);
     console.log('✅ Product fetched:', response.data);
     return response.data;
   } catch (error) {
@@ -142,7 +126,7 @@ export const getProductById = async (productId) => {
 export const getProducts = async (params = {}) => {
   try {
     console.log('📥 Fetching products with params:', params);
-    const response = await api.get('/products', { params });
+    const response = await axiosInstance.get('/products', { params });
     console.log('✅ Products fetched:', response.data.length, 'items');
     return response.data;
   } catch (error) {
@@ -153,58 +137,47 @@ export const getProducts = async (params = {}) => {
 };
 
 /**
- * Delete product
+ * Delete product - WITH PROPER CONFIRMATION
  */
 export const deleteProduct = async (productId) => {
   try {
-    // Show confirmation dialog
-    const confirmed = await notify.confirm(
-      'Delete Product?',
-      'This action cannot be undone. The product and its media will be permanently deleted.',
-      'Yes, delete it',
-      'Cancel'
-    );
-
-    if (!confirmed) {
-      return { cancelled: true };
-    }
+    console.log('🗑️ Deleting product:', productId);
 
     // Show deleting notification
-    notify.loading('Deleting product...');
+    notify.loading('Deleting product and associated media...');
 
-    const response = await api.delete(`/products/${productId}`);
+    const response = await axiosInstance.delete(`/api/products/${productId}`);
     
     notify.close();
-    notify.success(
-      'Product deleted successfully!',
-      'The product has been removed from your store'
-    );
-
-    return response.data;
+    
+    if (response.data.success) {
+      console.log('✅ Product deleted successfully');
+      return response.data;
+    } else {
+      throw new Error(response.data.message || 'Delete failed');
+    }
   } catch (error) {
     notify.close();
-    notify.error(
-      'Failed to delete product',
-      error.response?.data?.message || 'Please try again',
-      3000
-    );
+    console.error('❌ Delete error:', error);
     throw error.response?.data || error;
   }
 };
 
 /**
- * Generate SEO-friendly slug
+ * Update product status
  */
-const generateSlug = (name) => {
-  const slug = name
-    .toLowerCase()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .trim();
-  
-  console.log('🔗 Generated slug:', slug);
-  return slug;
+export const updateProductStatus = async (productId, status) => {
+  try {
+    console.log('📤 Updating product status:', productId, status);
+    
+    const response = await axiosInstance.patch(`/api/products/${productId}/status`, { status });
+    
+    console.log('✅ Status updated:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('❌ Update status error:', error);
+    throw error.response?.data || error;
+  }
 };
 
 export default {
@@ -213,4 +186,5 @@ export default {
   getProductById,
   getProducts,
   deleteProduct,
+  updateProductStatus,
 };
