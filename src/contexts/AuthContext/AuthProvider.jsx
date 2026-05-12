@@ -17,7 +17,7 @@ import { clearToken } from '../../utils/tokenHelper';
 import { AuthContext } from './AuthContext';
 
 const googleProvider = new GoogleAuthProvider();
-const API_URL = import.meta.env.VITE_API_URL || 'https://ecommerce-shop-backend-gr7k.onrender.com';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const AuthProvider = ({ children }) => {
   // ✅ IMPROVED: Single source of truth for user

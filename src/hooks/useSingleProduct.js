@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 
 const fetchProductById = async (id) => {
-  const { data } = await axios.get(`https://ecommerce-shop-backend-gr7k.onrender.com/products/${id}`);
+  const { data } = await axios.get(`http://localhost:5000/products/${id}`);
   return data;
 };
 

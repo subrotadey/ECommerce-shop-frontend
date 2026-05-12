@@ -35,6 +35,7 @@ import Settings from "../pages/Settings/Settings";
 import UserDashboard from "../pages/Dashboard/UserDashboard/UserDashboard";
 import CheckoutSuccess from "../pages/CheckoutSuccess/CheckoutSuccess";
 import CheckoutCancel from "../pages/CheckoutCancel/CheckoutCancel";
+import MyOrders from "../pages/MyOrders/MyOrders";
 
 const router = createBrowserRouter([
   {
@@ -131,6 +132,14 @@ const router = createBrowserRouter([
         element: (
           <PrivateRoute>
             <UserProfile />
+          </PrivateRoute>
+        )
+      },
+      {
+        path: "/orders",
+        element: (
+          <PrivateRoute>
+            <MyOrders />
           </PrivateRoute>
         )
       },

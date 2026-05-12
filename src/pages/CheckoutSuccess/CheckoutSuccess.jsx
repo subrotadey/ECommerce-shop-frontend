@@ -1,9 +1,9 @@
-// pages/CheckoutSuccess.jsx
-import axios from "axios";
+// pages/CheckoutSuccess.jsx - FIXED VERSION
 import { ArrowRight, CheckCircle, Loader2, Package, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import useCart from "../../hooks/useCart";
+import axiosInstance from "../../utils/axios"; // ✅ axiosInstance use kora hocche
 
 const CheckoutSuccess = () => {
   const [searchParams] = useSearchParams();
@@ -28,52 +28,58 @@ const CheckoutSuccess = () => {
 
   const verifyPayment = async () => {
     try {
-      const token = localStorage.getItem("firebaseToken");
-
-      const response = await axios.get(
-        `${import.meta.env.VITE_API_URL}/checkout/verify/${sessionId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
+      // ✅ axiosInstance automatically adds fresh Firebase token via interceptor
+      // No need to manually get token from localStorage
+      const response = await axiosInstance.get(
+        `/api/checkout/verify/${sessionId}`
       );
+
+      console.log("✅ Verify response:", response.data);
 
       if (response.data.success) {
         setOrder(response.data.order);
-        // ✅ Frontend cart clear করো payment success এর পরে
+        // ✅ Clear frontend cart after payment success
         clearCart();
       } else {
         setError("Payment verification failed");
       }
     } catch (err) {
-      console.error("Payment verification error:", err);
-      setError(err.response?.data?.message || "Failed to verify payment");
+      console.error("❌ Payment verification error:", err);
+      
+      // Show proper error message
+      const message = err.response?.data?.message || "Failed to verify payment";
+      setError(message);
     } finally {
       setLoading(false);
     }
   };
 
-  // Loading state
+  // ─── Loading state ───────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-16 h-16 animate-spin text-blue-600 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-slate-800 mb-2">Verifying Payment...</h2>
-          <p className="text-slate-600">Please wait while we confirm your order</p>
+          <h2 className="text-2xl font-bold text-slate-800 mb-2">
+            Verifying Payment...
+          </h2>
+          <p className="text-slate-600">
+            Please wait while we confirm your order
+          </p>
         </div>
       </div>
     );
   }
 
-  // Error state
+  // ─── Error state ─────────────────────────────────────────────────────────────
   if (error) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
         <div className="max-w-2xl w-full bg-white rounded-3xl shadow-xl p-12 text-center">
           <XCircle className="w-20 h-20 text-red-500 mx-auto mb-6" />
-          <h2 className="text-3xl font-bold text-slate-800 mb-4">Payment Verification Failed</h2>
+          <h2 className="text-3xl font-bold text-slate-800 mb-4">
+            Payment Verification Failed
+          </h2>
           <p className="text-slate-600 mb-8">{error}</p>
           <div className="flex gap-4 justify-center">
             <button
@@ -94,7 +100,7 @@ const CheckoutSuccess = () => {
     );
   }
 
-  // Success state
+  // ─── Success state ────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 py-12 px-4">
       <div className="max-w-4xl mx-auto">
@@ -113,7 +119,8 @@ const CheckoutSuccess = () => {
           </p>
 
           <p className="text-lg text-slate-500">
-            Order ID: <span className="font-mono font-bold text-blue-600">{orderId}</span>
+            Order ID:{" "}
+            <span className="font-mono font-bold text-blue-600">{orderId}</span>
           </p>
         </div>
 
@@ -127,36 +134,49 @@ const CheckoutSuccess = () => {
 
             {/* Customer Info */}
             <div className="mb-6 p-4 bg-blue-50 rounded-xl">
-              <h3 className="font-semibold text-slate-800 mb-2">Customer Information</h3>
-              <p className="text-slate-700">{order.customer.name}</p>
-              <p className="text-slate-600">{order.customer.email}</p>
-              {order.customer.phone && (
+              <h3 className="font-semibold text-slate-800 mb-2">
+                Customer Information
+              </h3>
+              <p className="text-slate-700">{order.customer?.name}</p>
+              <p className="text-slate-600">{order.customer?.email}</p>
+              {order.customer?.phone && (
                 <p className="text-slate-600">{order.customer.phone}</p>
               )}
             </div>
 
             {/* Order Items */}
             <div className="mb-6">
-              <h3 className="font-semibold text-slate-800 mb-4">Items Ordered</h3>
+              <h3 className="font-semibold text-slate-800 mb-4">
+                Items Ordered
+              </h3>
               <div className="space-y-3">
-                {order.items.map((item, index) => (
-                  <div key={index} className="flex gap-4 p-4 border border-slate-200 rounded-lg">
+                {order.items?.map((item, index) => (
+                  <div
+                    key={index}
+                    className="flex gap-4 p-4 border border-slate-200 rounded-lg"
+                  >
                     <img
                       src={item.image}
                       alt={item.name}
                       className="w-20 h-20 object-cover rounded-lg"
                     />
                     <div className="flex-1">
-                      <h4 className="font-semibold text-slate-800">{item.name}</h4>
+                      <h4 className="font-semibold text-slate-800">
+                        {item.name}
+                      </h4>
                       <p className="text-sm text-slate-600">
                         {item.size && `Size: ${item.size}`}
-                        {item.size && item.color && ' • '}
+                        {item.size && item.color && " • "}
                         {item.color && `Color: ${item.color}`}
                       </p>
-                      <p className="text-sm text-slate-600">Quantity: {item.qty}</p>
+                      <p className="text-sm text-slate-600">
+                        Quantity: {item.qty}
+                      </p>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-slate-800">${item.price * item.qty}</p>
+                      <p className="font-bold text-slate-800">
+                        ${item.price * item.qty}
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -168,40 +188,46 @@ const CheckoutSuccess = () => {
               <div className="space-y-3 mb-4">
                 <div className="flex justify-between text-slate-700">
                   <span>Subtotal</span>
-                  <span>${order.pricing.subtotal.toFixed(2)}</span>
+                  <span>${order.pricing?.subtotal?.toFixed(2)}</span>
                 </div>
+                {order.pricing?.discount > 0 && (
+                  <div className="flex justify-between text-green-600">
+                    <span>Discount</span>
+                    <span>-${order.pricing.discount.toFixed(2)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-slate-700">
                   <span>Tax</span>
-                  <span>${order.pricing.tax.toFixed(2)}</span>
+                  <span>${order.pricing?.tax?.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-slate-700">
                   <span>Shipping</span>
                   <span>
-                    {order.pricing.shipping === 0 ? (
+                    {order.pricing?.shipping === 0 ? (
                       <span className="text-green-600">FREE</span>
                     ) : (
-                      `$${order.pricing.shipping.toFixed(2)}`
+                      `$${order.pricing?.shipping?.toFixed(2)}`
                     )}
                   </span>
                 </div>
               </div>
               <div className="flex justify-between text-xl font-bold text-slate-800 pt-4 border-t">
                 <span>Total Paid</span>
-                <span>${order.pricing.total.toFixed(2)}</span>
+                <span>${order.pricing?.total?.toFixed(2)}</span>
               </div>
             </div>
 
-            {/* Payment Status */}
+            {/* Payment Status — ✅ এখন paid দেখাবে */}
             <div className="mt-6 p-4 bg-green-50 rounded-xl">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-semibold text-green-800">Payment Status</p>
                   <p className="text-sm text-green-600">
-                    Paid via {order.payment.method.toUpperCase()}
+                    Paid via {order.payment?.method?.toUpperCase()}
                   </p>
                 </div>
                 <span className="px-4 py-2 bg-green-600 text-white rounded-full font-semibold">
-                  {order.payment.status.toUpperCase()}
+                  {order.payment?.status?.toUpperCase()}
                 </span>
               </div>
             </div>
@@ -216,7 +242,7 @@ const CheckoutSuccess = () => {
                   </p>
                 </div>
                 <span className="px-4 py-2 bg-blue-600 text-white rounded-full font-semibold">
-                  {order.status.toUpperCase()}
+                  {order.status?.toUpperCase()}
                 </span>
               </div>
             </div>
@@ -226,7 +252,7 @@ const CheckoutSuccess = () => {
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-4">
           <button
-            onClick={() => navigate(`/profile/orders`)}
+            onClick={() => navigate("/orders")}
             className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-4 rounded-xl font-semibold hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
           >
             View My Orders
@@ -244,10 +270,11 @@ const CheckoutSuccess = () => {
         {/* Additional Info */}
         <div className="mt-8 text-center">
           <p className="text-slate-600 mb-2">
-            A confirmation email has been sent to <span className="font-semibold">{order?.customer.email}</span>
+            A confirmation email has been sent to{" "}
+            <span className="font-semibold">{order?.customer?.email}</span>
           </p>
           <p className="text-sm text-slate-500">
-            You can track your order status in your profile
+            You can track your order status in My Orders
           </p>
         </div>
       </div>

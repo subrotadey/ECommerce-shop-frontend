@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom';
 
 const QuickActions = () => {
   const actions = [
-    { icon: ShoppingBag, label: 'Browse Products', path: '/shop', color: 'blue' },
+    { icon: ShoppingBag, label: 'Browse Products', path: '/abaya', color: 'blue' },
     { icon: Heart, label: 'My Wishlist', path: '/wishlist', color: 'pink' },
     { icon: MapPin, label: 'Addresses', path: '/addresses', color: 'green' },
     { icon: CreditCard, label: 'Payment Methods', path: '/payment-methods', color: 'purple' }

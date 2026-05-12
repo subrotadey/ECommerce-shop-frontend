@@ -102,59 +102,6 @@ export const AddressInformation = ({ userData }) => {
 };
 
 // ============================================
-// RECENT ORDERS SECTION
-// ============================================
-export const RecentOrders = ({ userData }) => {
-  if (!userData || !userData.recentOrders || userData.recentOrders.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
-      <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-        <Package className="text-blue-500" size={22} />
-        Recent Orders
-      </h3>
-
-      <div className="space-y-3">
-        {userData.recentOrders.map((order) => {
-          const statusConfig = getOrderStatusConfig(order.status);
-
-          return (
-            <div
-              key={order._id}
-              className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl border border-gray-200 hover:border-blue-300 transition-all cursor-pointer"
-            >
-              <div>
-                <p className="font-semibold text-gray-900">{order.orderId}</p>
-                <p className="text-sm text-gray-600">
-                  {formatDate(order.createdAt)}
-                </p>
-              </div>
-
-              <div className="text-right">
-                <p className="font-bold text-blue-600">${order.total}</p>
-                <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${statusConfig.bgColor} ${statusConfig.textColor}`}>
-                  {statusConfig.label}
-                </span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {userData.ordersCount > userData.recentOrders.length && (
-        <div className="mt-4 text-center">
-          <button className="text-blue-600 hover:text-blue-700 font-semibold text-sm">
-            View All Orders ({userData.ordersCount})
-          </button>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// ============================================
 // COMBINED PROFILE INFORMATION
 // ============================================
 const ProfileInformation = ({ userData }) => {
@@ -162,7 +109,6 @@ const ProfileInformation = ({ userData }) => {
     <div className="space-y-6">
       <PersonalInformation userData={userData} />
       <AddressInformation userData={userData} />
-      <RecentOrders userData={userData} />
     </div>
   );
 };

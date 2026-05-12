@@ -3,7 +3,7 @@ import axios from 'axios';
 import { auth } from '../firebase/firebase.init';
 
 const axiosInstance = axios.create({
-  baseURL: 'https://ecommerce-shop-backend-gr7k.onrender.com',
+  baseURL: 'http://localhost:5000',
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',

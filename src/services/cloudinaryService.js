@@ -10,7 +10,7 @@ import {
 
 // Get API base URL (WITHOUT /api suffix)
 const getApiUrl = () => {
-  const url = import.meta.env.VITE_API_URL || 'https://ecommerce-shop-backend-gr7k.onrender.com';
+  const url = import.meta.env.VITE_API_URL || 'http://localhost:5000';
   console.log('🔧 Base API URL:', url);
   return url;
 };
