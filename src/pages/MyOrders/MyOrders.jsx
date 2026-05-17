@@ -4,7 +4,6 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   Package,
-  ChevronRight,
   Eye,
   X,
   ShoppingBag,
@@ -34,6 +33,7 @@ const formatDate = (date) => {
   });
 };
 
+// ─── ORDER STATUS CONFIG ─────────────────────────────────────────────────────
 const STATUS_CONFIG = {
   pending: {
     label: "Pending",
@@ -85,8 +85,40 @@ const STATUS_CONFIG = {
   },
 };
 
+// ─── PAYMENT STATUS CONFIG ───────────────────────────────────────────────────
+// Separate config for payment status badge
+const PAYMENT_STATUS_CONFIG = {
+  paid: {
+    label: "Paid",
+    bg: "bg-green-100",
+    text: "text-green-700",
+    border: "border-green-200",
+  },
+  pending: {
+    label: "Pending",
+    bg: "bg-yellow-100",
+    text: "text-yellow-700",
+    border: "border-yellow-200",
+  },
+  refunded: {
+    label: "Refunded",
+    bg: "bg-red-100",
+    text: "text-red-700",
+    border: "border-red-200",
+  },
+  failed: {
+    label: "Failed",
+    bg: "bg-red-100",
+    text: "text-red-700",
+    border: "border-red-200",
+  },
+};
+
 const getStatusConfig = (status) =>
   STATUS_CONFIG[status] || STATUS_CONFIG.pending;
+
+const getPaymentStatusConfig = (status) =>
+  PAYMENT_STATUS_CONFIG[status] || PAYMENT_STATUS_CONFIG.pending;
 
 // ─── StatusBadge ─────────────────────────────────────────────────────────────
 
@@ -100,6 +132,20 @@ const StatusBadge = ({ status, size = "sm" }) => {
         ${size === "sm" ? "text-xs" : "text-sm"}`}
     >
       <Icon size={size === "sm" ? 12 : 14} />
+      {cfg.label}
+    </span>
+  );
+};
+
+// ─── PaymentBadge ─────────────────────────────────────────────────────────────
+const PaymentBadge = ({ status, size = "sm" }) => {
+  const cfg = getPaymentStatusConfig(status);
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-semibold border
+        ${cfg.bg} ${cfg.text} ${cfg.border}
+        ${size === "sm" ? "text-xs" : "text-sm"}`}
+    >
       {cfg.label}
     </span>
   );
@@ -244,7 +290,7 @@ const OrderDetailModal = ({ order, onClose }) => {
             </div>
             {order.pricing?.discount > 0 && (
               <div className="flex justify-between text-sm text-green-600">
-                <span>Discount</span>
+                <span>Discount {order.coupon?.code && `(${order.coupon.code})`}</span>
                 <span>-${order.pricing.discount.toFixed(2)}</span>
               </div>
             )}
@@ -266,7 +312,7 @@ const OrderDetailModal = ({ order, onClose }) => {
             </div>
           </div>
 
-          {/* payment */}
+          {/* payment + address */}
           <div className="grid sm:grid-cols-2 gap-4">
             <div className="border border-gray-200 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
@@ -275,15 +321,15 @@ const OrderDetailModal = ({ order, onClose }) => {
                   Payment
                 </span>
               </div>
-              <p className="text-sm text-gray-600 capitalize">
+              <p className="text-sm text-gray-600 capitalize mb-1.5">
                 {order.payment?.method || "Stripe"}
               </p>
-              <StatusBadge status={order.payment?.status} size="sm" />
+              {/* ✅ Use PaymentBadge instead of StatusBadge for payment */}
+              <PaymentBadge status={order.payment?.status} size="sm" />
             </div>
 
             {order.customer?.address &&
-              (order.customer.address.city ||
-                order.customer.address.street) && (
+              (order.customer.address.city || order.customer.address.street) && (
                 <div className="border border-gray-200 rounded-xl p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <MapPin size={16} className="text-gray-500" />
@@ -453,8 +499,8 @@ const MyOrders = () => {
             <div className="space-y-4">
               {orders.map((order) => {
                 const cfg = getStatusConfig(order.status);
+                const paymentCfg = getPaymentStatusConfig(order.payment?.status);
                 const itemCount = order.items?.length || 0;
-                const firstImage = order.items?.[0]?.image;
 
                 return (
                   <div
@@ -472,6 +518,7 @@ const MyOrders = () => {
                           {formatDate(order.createdAt)}
                         </p>
                       </div>
+                      {/* Order status */}
                       <StatusBadge status={order.status} />
                     </div>
 
@@ -509,15 +556,16 @@ const MyOrders = () => {
                         </p>
                       </div>
 
-                      {/* total + action */}
+                      {/* total + payment status + action */}
                       <div className="flex items-center gap-4 flex-shrink-0">
                         <div className="text-right">
                           <p className="font-bold text-gray-900">
                             ${order.pricing?.total?.toFixed(2)}
                           </p>
-                          <p className="text-xs text-gray-500 capitalize">
-                            {order.payment?.status}
-                          </p>
+                          {/* ✅ PaymentBadge — shows green "Paid" after Stripe payment */}
+                          <div className="mt-1">
+                            <PaymentBadge status={order.payment?.status} size="sm" />
+                          </div>
                         </div>
                         <button
                           onClick={() => setSelectedOrder(order)}
