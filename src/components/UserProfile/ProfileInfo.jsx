@@ -2,6 +2,8 @@
 
 import { MapPin, Package, User } from 'lucide-react';
 import { formatDate, getOrderStatusConfig } from '../../services/profileService';
+import AddressForm from '../Address/AddressForm';
+import AddressList from '../Address/AddressList';
 
 // ============================================
 // INFO FIELD COMPONENT
@@ -108,7 +110,9 @@ const ProfileInformation = ({ userData }) => {
   return (
     <div className="space-y-6">
       <PersonalInformation userData={userData} />
-      <AddressInformation userData={userData} />
+      {/* <AddressInformation userData={userData} /> */}
+      {/* <AddressForm></AddressForm> */}
+      <AddressList></AddressList>
     </div>
   );
 };

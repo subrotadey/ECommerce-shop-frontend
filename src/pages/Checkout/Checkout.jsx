@@ -11,6 +11,7 @@ import useAuth from "../../hooks/useAuth";
 import useCart from "../../hooks/useCart";
 import { authenticatedFetch } from "../../utils/tokenHelper";
 import axiosInstance from "../../utils/axios";
+import AddressList from "../../components/Address/AddressList";
 
 const Checkout = () => {
   const navigate = useNavigate();
@@ -37,17 +38,21 @@ const Checkout = () => {
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [couponError, setCouponError] = useState("");
   const [validatingCoupon, setValidatingCoupon] = useState(false);
+  // console.log('Current User in Checkout:', currentUser);
 
-  // Load user profile & prefill address
+  // Load user profile & prefill address from MongoDB
   useEffect(() => {
     if (currentUser?.email) {
-      axiosInstance.get('/users/profile/full')
+      axiosInstance.get('api/users/profile/full')
         .then(res => {
           if (res.data.success) {
             const user = res.data.user;
             setUserProfile(user);
+            const hasStreet = !!user.address?.street;
+            const hasCity = !!user.address?.city;
+
             setShippingAddress({
-              fullName: user.displayName || '',
+              fullName: user.displayName || currentUser.displayName || '',
               phone: user.phoneNumber || '',
               street: user.address?.street || '',
               city: user.address?.city || '',
@@ -55,15 +60,23 @@ const Checkout = () => {
               zipCode: user.address?.zipCode || '',
               country: user.address?.country || 'UAE'
             });
-            // যদি address না থাকে তাহলে form খুলে দাও
-            if (!user.address?.street) setShowAddressForm(true);
+
+            // Address না থাকলে form খুলে দাও
+            if (!hasStreet || !hasCity) {
+              setShowAddressForm(true);
+            } else {
+              setShowAddressForm(false); // Address আছে — form বন্ধ রাখো
+            }
           }
         })
-        .catch(err => console.error('Profile fetch error:', err));
+        .catch(err => {
+          console.error('Profile fetch error:', err);
+          setShowAddressForm(true); // Error হলে form দেখাও
+        });
     }
   }, [currentUser]);
 
-  const hasAddress = shippingAddress.street && shippingAddress.city;
+  const hasAddress = !!(shippingAddress.street && shippingAddress.city);
 
   // Pricing
   const subtotal = items.reduce((sum, item) => sum + (item.price * item.qty), 0);
@@ -265,150 +278,8 @@ const Checkout = () => {
             {/* ═══════════════════════════════════
                 SHIPPING & BILLING SECTION
             ═══════════════════════════════════ */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-              {/* Section Header */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-bold">1</div>
-                  <h2 className="text-lg font-bold text-slate-800">Shipping & Billing</h2>
-                </div>
-                {hasAddress && !showAddressForm && (
-                  <button onClick={() => setShowAddressForm(true)}
-                    className="flex items-center gap-1 text-blue-600 hover:text-blue-700 text-sm font-semibold transition-colors">
-                    <Edit2 className="w-4 h-4" /> Edit
-                  </button>
-                )}
-              </div>
-
-              <div className="px-6 py-5">
-                {/* Address Display (saved) */}
-                {hasAddress && !showAddressForm ? (
-                  <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center flex-shrink-0">
-                      <MapPin className="w-5 h-5 text-blue-600" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-1">
-                        <p className="font-semibold text-slate-800">{shippingAddress.fullName}</p>
-                        <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">
-                          HOME
-                        </span>
-                      </div>
-                      <p className="text-slate-600 text-sm flex items-center gap-1 mb-1">
-                        <Phone className="w-3.5 h-3.5" /> {shippingAddress.phone}
-                      </p>
-                      <p className="text-slate-600 text-sm">
-                        {shippingAddress.street}, {shippingAddress.city}
-                        {shippingAddress.state && `, ${shippingAddress.state}`}
-                        {shippingAddress.zipCode && ` ${shippingAddress.zipCode}`}
-                        , {shippingAddress.country}
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  /* Address Form */
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {/* Full Name */}
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">
-                          Full Name <span className="text-red-500">*</span>
-                        </label>
-                        <div className="relative">
-                          <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                          <input type="text"
-                            value={shippingAddress.fullName}
-                            onChange={e => setShippingAddress(p => ({ ...p, fullName: e.target.value }))}
-                            placeholder="John Doe"
-                            className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" />
-                        </div>
-                      </div>
-
-                      {/* Phone */}
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">
-                          Phone Number <span className="text-red-500">*</span>
-                        </label>
-                        <div className="relative">
-                          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                          <input type="tel"
-                            value={shippingAddress.phone}
-                            onChange={e => setShippingAddress(p => ({ ...p, phone: e.target.value }))}
-                            placeholder="+971 50 123 4567"
-                            className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" />
-                        </div>
-                      </div>
-
-                      {/* Street Address */}
-                      <div className="sm:col-span-2">
-                        <label className="block text-sm font-medium text-slate-700 mb-1">
-                          Street Address <span className="text-red-500">*</span>
-                        </label>
-                        <div className="relative">
-                          <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                          <input type="text"
-                            value={shippingAddress.street}
-                            onChange={e => setShippingAddress(p => ({ ...p, street: e.target.value }))}
-                            placeholder="Building, Street, Area"
-                            className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" />
-                        </div>
-                      </div>
-
-                      {/* City */}
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">
-                          City <span className="text-red-500">*</span>
-                        </label>
-                        <select
-                          value={shippingAddress.city}
-                          onChange={e => setShippingAddress(p => ({ ...p, city: e.target.value }))}
-                          className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
-                          <option value="">Select City</option>
-                          <option>Dubai</option>
-                          <option>Abu Dhabi</option>
-                          <option>Sharjah</option>
-                          <option>Ajman</option>
-                          <option>Ras Al Khaimah</option>
-                          <option>Fujairah</option>
-                          <option>Umm Al Quwain</option>
-                        </select>
-                      </div>
-
-                      {/* Country */}
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Country</label>
-                        <select
-                          value={shippingAddress.country}
-                          onChange={e => setShippingAddress(p => ({ ...p, country: e.target.value }))}
-                          className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
-                          <option value="UAE">🇦🇪 United Arab Emirates</option>
-                          <option value="Saudi Arabia">🇸🇦 Saudi Arabia</option>
-                          <option value="Kuwait">🇰🇼 Kuwait</option>
-                          <option value="Qatar">🇶🇦 Qatar</option>
-                          <option value="Bahrain">🇧🇭 Bahrain</option>
-                          <option value="Oman">🇴🇲 Oman</option>
-                          <option value="Bangladesh">🇧🇩 Bangladesh</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* Save Button */}
-                    <div className="flex gap-3 pt-2">
-                      <button onClick={handleSaveAddress}
-                        className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-semibold text-sm hover:bg-blue-700 transition-colors">
-                        Save Address
-                      </button>
-                      {hasAddress && (
-                        <button onClick={() => setShowAddressForm(false)}
-                          className="px-6 py-2.5 border border-gray-200 text-slate-600 rounded-xl font-semibold text-sm hover:bg-gray-50 transition-colors">
-                          Cancel
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
+            <AddressList></AddressList>
+            
 
             {/* ═══════════════════════════════════
                 ORDER ITEMS SECTION
