@@ -2,7 +2,8 @@
 import {
   ArrowRight, CreditCard, Loader2, Mail, Package,
   Shield, ShoppingBag, Trash2, Truck, Tag, X, Check,
-  Banknote, MapPin, Phone, User, Edit2, ChevronRight
+  Banknote, MapPin, Phone, User, Edit2, ChevronRight,
+  Plus, Star, CheckCircle, Home, Briefcase, Warehouse
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -11,233 +12,355 @@ import useAuth from "../../hooks/useAuth";
 import useCart from "../../hooks/useCart";
 import { authenticatedFetch } from "../../utils/tokenHelper";
 import axiosInstance from "../../utils/axios";
-import AddressList from "../../components/Address/AddressList";
+import AddressForm from "../../components/Address/AddressForm";
+
+// ─── helpers ────────────────────────────────────────────────────────────────
+
+const LABEL_ICON = {
+  home:      { icon: Home,      color: "text-blue-600",   bg: "bg-blue-50",   border: "border-blue-200"   },
+  work:      { icon: Briefcase, color: "text-purple-600", bg: "bg-purple-50", border: "border-purple-200" },
+  warehouse: { icon: Warehouse, color: "text-amber-600",  bg: "bg-amber-50",  border: "border-amber-200"  },
+  other:     { icon: MapPin,    color: "text-gray-600",   bg: "bg-gray-50",   border: "border-gray-200"   },
+};
+
+const extractImageUrl = (image) => {
+  if (!image) return "";
+  if (typeof image === "string") {
+    try {
+      const parsed = JSON.parse(image);
+      return parsed.url || "";
+    } catch {
+      return image; // already a plain URL
+    }
+  }
+  if (typeof image === "object") return image.url || "";
+  return "";
+};
+
+// ─── AddressSelector ─────────────────────────────────────────────────────────
+
+const AddressSelector = ({ selectedId, onSelect, onAddNew }) => {
+  const [addresses, setAddresses] = useState([]);
+  const [loading, setLoading]     = useState(true);
+
+  useEffect(() => {
+    axiosInstance.get("/api/addresses")
+      .then(res => {
+        if (res.data.success) {
+          const list = res.data.addresses || [];
+          setAddresses(list);
+
+          // Auto-select default or first
+          if (!selectedId && list.length > 0) {
+            const def = list.find(a => a.isDefault) || list[0];
+            onSelect(def);
+          }
+        }
+      })
+      .catch(err => console.error("Address fetch error:", err))
+      .finally(() => setLoading(false));
+  }, []);
+
+  // Re-select after adding a new address
+  const refresh = () => {
+    setLoading(true);
+    axiosInstance.get("/api/addresses")
+      .then(res => {
+        if (res.data.success) {
+          const list = res.data.addresses || [];
+          setAddresses(list);
+          // Select newly added address (last one) or keep current
+          if (list.length > 0) {
+            const def = list.find(a => a.isDefault) || list[list.length - 1];
+            onSelect(def);
+          }
+        }
+      })
+      .finally(() => setLoading(false));
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center gap-3 py-6 text-gray-400 text-sm">
+        <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+        Loading addresses…
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {addresses.length === 0 ? (
+        <div className="text-center py-8 bg-gray-50 rounded-xl border border-dashed border-gray-300">
+          <MapPin className="w-10 h-10 mx-auto text-gray-300 mb-2" />
+          <p className="text-sm text-gray-500 mb-3">No saved addresses yet</p>
+          <button
+            onClick={() => onAddNew(refresh)}
+            className="flex items-center gap-2 mx-auto px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 transition-colors"
+          >
+            <Plus size={15} /> Add Address
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {addresses.map(addr => {
+              const meta   = LABEL_ICON[addr.label] || LABEL_ICON.other;
+              const Icon   = meta.icon;
+              const isSelected = selectedId === (addr.id || addr._id);
+
+              return (
+                <button
+                  key={addr.id || addr._id}
+                  onClick={() => onSelect(addr)}
+                  className={`text-left p-4 rounded-xl border-2 transition-all ${
+                    isSelected
+                      ? "border-blue-500 bg-blue-50 shadow-sm shadow-blue-100"
+                      : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                  }`}
+                >
+                  {/* Label row */}
+                  <div className="flex items-center justify-between mb-2">
+                    <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${meta.bg} ${meta.color} ${meta.border}`}>
+                      <Icon size={11} />
+                      <span className="capitalize">{addr.label}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      {addr.isDefault && (
+                        <span className="flex items-center gap-1 px-1.5 py-0.5 bg-green-50 text-green-700 border border-green-200 rounded-full text-[10px] font-medium">
+                          <Star size={9} fill="currentColor" /> Default
+                        </span>
+                      )}
+                      {isSelected && (
+                        <CheckCircle className="w-4 h-4 text-blue-600" />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Name & phone */}
+                  <p className="font-semibold text-gray-900 text-sm">{addr.fullName}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{addr.phone}</p>
+
+                  {/* Street */}
+                  <div className="flex items-start gap-1.5 mt-2">
+                    <MapPin size={12} className="mt-0.5 flex-shrink-0 text-gray-400" />
+                    <p className="text-xs text-gray-600 leading-relaxed">
+                      {addr.street}{addr.aptNumber ? `, ${addr.aptNumber}` : ""}
+                      <br />
+                      {addr.city}, {addr.state} {addr.zipCode}
+                      <br />
+                      {addr.country}
+                    </p>
+                  </div>
+
+                  {addr.deliveryNote && (
+                    <p className="mt-2 text-[11px] text-gray-500 italic bg-white px-2 py-1.5 rounded-lg border border-gray-100">
+                      📝 {addr.deliveryNote}
+                    </p>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Add new */}
+          <button
+            onClick={() => onAddNew(refresh)}
+            className="flex items-center gap-2 px-4 py-2.5 border-2 border-dashed border-gray-300 rounded-xl text-sm font-medium text-gray-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-all w-full justify-center"
+          >
+            <Plus size={15} /> Add New Address
+          </button>
+        </>
+      )}
+    </div>
+  );
+};
+
+// ─── Main Checkout ────────────────────────────────────────────────────────────
 
 const Checkout = () => {
   const navigate = useNavigate();
   const { items, updateQty, removeItem, clearCart } = useCart();
   const { currentUser } = useAuth();
-  const [processing, setProcessing] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('online');
 
-  // Shipping & Billing states
+  const [processing,     setProcessing]     = useState(false);
+  const [paymentMethod,  setPaymentMethod]  = useState("online");
+  const [selectedAddress, setSelectedAddress] = useState(null);
   const [showAddressForm, setShowAddressForm] = useState(false);
-  const [userProfile, setUserProfile] = useState(null);
-  const [shippingAddress, setShippingAddress] = useState({
-    fullName: '',
-    phone: '',
-    street: '',
-    city: '',
-    state: '',
-    zipCode: '',
-    country: 'UAE'
-  });
+  const [afterAddCallback, setAfterAddCallback] = useState(null);
 
-  // Coupon states
-  const [couponCode, setCouponCode] = useState("");
-  const [appliedCoupon, setAppliedCoupon] = useState(null);
-  const [couponError, setCouponError] = useState("");
+  // Coupon
+  const [couponCode,       setCouponCode]       = useState("");
+  const [appliedCoupon,    setAppliedCoupon]    = useState(null);
+  const [couponError,      setCouponError]      = useState("");
   const [validatingCoupon, setValidatingCoupon] = useState(false);
-  // console.log('Current User in Checkout:', currentUser);
-
-  // Load user profile & prefill address from MongoDB
-  useEffect(() => {
-    if (currentUser?.email) {
-      axiosInstance.get('api/users/profile/full')
-        .then(res => {
-          if (res.data.success) {
-            const user = res.data.user;
-            setUserProfile(user);
-            const hasStreet = !!user.address?.street;
-            const hasCity = !!user.address?.city;
-
-            setShippingAddress({
-              fullName: user.displayName || currentUser.displayName || '',
-              phone: user.phoneNumber || '',
-              street: user.address?.street || '',
-              city: user.address?.city || '',
-              state: user.address?.state || '',
-              zipCode: user.address?.zipCode || '',
-              country: user.address?.country || 'UAE'
-            });
-
-            // Address না থাকলে form খুলে দাও
-            if (!hasStreet || !hasCity) {
-              setShowAddressForm(true);
-            } else {
-              setShowAddressForm(false); // Address আছে — form বন্ধ রাখো
-            }
-          }
-        })
-        .catch(err => {
-          console.error('Profile fetch error:', err);
-          setShowAddressForm(true); // Error হলে form দেখাও
-        });
-    }
-  }, [currentUser]);
-
-  const hasAddress = !!(shippingAddress.street && shippingAddress.city);
 
   // Pricing
-  const subtotal = items.reduce((sum, item) => sum + (item.price * item.qty), 0);
+  const subtotal = items.reduce((sum, item) => sum + item.price * item.qty, 0);
   let discount = 0;
   if (appliedCoupon) {
-    if (appliedCoupon.type === 'percentage') discount = appliedCoupon.discount || 0;
-    else if (appliedCoupon.type === 'fixed') {
+    if (appliedCoupon.type === "percentage") discount = appliedCoupon.discount || 0;
+    else if (appliedCoupon.type === "fixed") {
       discount = appliedCoupon.value;
       if (discount > subtotal) discount = subtotal;
     }
   }
-  const tax = (subtotal - discount) * 0.05;
-  const shipping = appliedCoupon?.type === 'free_shipping' || subtotal > 1000 ? 0 : 100;
-  const total = subtotal - discount + tax + shipping;
+  const tax      = (subtotal - discount) * 0.05;
+  const shipping = appliedCoupon?.type === "free_shipping" || subtotal > 1000 ? 0 : 100;
+  const total    = subtotal - discount + tax + shipping;
 
-  // Coupon handlers
+  // Build the address object that goes into the order
+  const buildOrderAddress = (addr) => {
+    if (!addr) return {};
+    return {
+      fullName:  addr.fullName,
+      phone:     addr.phone,
+      altPhone:  addr.altPhone  || "",
+      street:    addr.street,
+      aptNumber: addr.aptNumber || "",
+      city:      addr.city,
+      state:     addr.state,
+      zipCode:   addr.zipCode,
+      country:   addr.country,
+      label:     addr.label,
+      landmark:  addr.landmark  || "",
+      deliveryNote: addr.deliveryNote || "",
+      timePreference: addr.timePreference || "",
+    };
+  };
+
+  // ── Coupon ──────────────────────────────────────────────────────────────────
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) { setCouponError("Please enter a coupon code"); return; }
     setValidatingCoupon(true);
     setCouponError("");
     try {
-      const response = await axiosInstance.post("/api/coupons/validate", {
-        code: couponCode.toUpperCase(), cartTotal: subtotal
+      const res = await axiosInstance.post("/api/coupons/validate", {
+        code: couponCode.toUpperCase(),
+        cartTotal: subtotal,
       });
-      if (response.data.success) {
-        setAppliedCoupon(response.data.coupon);
-        Swal.fire({ position: "top-end", icon: "success", title: `Coupon applied!`, showConfirmButton: false, timer: 2000, toast: true });
+      if (res.data.success) {
+        setAppliedCoupon(res.data.coupon);
+        Swal.fire({ position: "top-end", icon: "success", title: "Coupon applied!", showConfirmButton: false, timer: 2000, toast: true });
       }
-    } catch (error) {
-      setCouponError(error.response?.data?.message || "Invalid or expired coupon");
+    } catch (err) {
+      setCouponError(err.response?.data?.message || "Invalid or expired coupon");
       setAppliedCoupon(null);
     } finally { setValidatingCoupon(false); }
   };
 
-  const handleRemoveCoupon = () => {
-    setAppliedCoupon(null); setCouponCode(""); setCouponError("");
-  };
+  const handleRemoveCoupon = () => { setAppliedCoupon(null); setCouponCode(""); setCouponError(""); };
 
-  // Save address to profile
-  const handleSaveAddress = async () => {
-    if (!shippingAddress.fullName || !shippingAddress.phone || !shippingAddress.street || !shippingAddress.city) {
-      Swal.fire({ icon: 'warning', title: 'Missing Info', text: 'Please fill in all required fields.', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
-      return;
-    }
+  // ── Save new address (called from AddressForm) ───────────────────────────
+  const handleSaveNewAddress = async (formData) => {
     try {
-      await axiosInstance.patch('/api/users/profile', {
-        displayName: shippingAddress.fullName,
-        phoneNumber: shippingAddress.phone,
-        address: {
-          street: shippingAddress.street,
-          city: shippingAddress.city,
-          state: shippingAddress.state,
-          zipCode: shippingAddress.zipCode,
-          country: shippingAddress.country
-        }
-      });
-      setShowAddressForm(false);
-      Swal.fire({ icon: 'success', title: 'Address saved!', toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
+      const res = await axiosInstance.post("/api/addresses", formData);
+      if (res.data.success) {
+        setShowAddressForm(false);
+        Swal.fire({ position: "top-end", icon: "success", title: "Address saved!", showConfirmButton: false, timer: 1500, toast: true });
+        if (afterAddCallback) afterAddCallback(); // refresh address list
+      }
     } catch (err) {
-      console.error('Save address error:', err);
+      console.error("Save address error:", err);
+      Swal.fire({ icon: "error", title: "Failed", text: err.response?.data?.message || "Could not save address." });
     }
   };
 
-  // COD Handler
+  // ── COD ─────────────────────────────────────────────────────────────────────
   const handleCODCheckout = async () => {
-    if (!hasAddress) {
-      Swal.fire({ icon: 'warning', title: 'Address Required', text: 'Please add your shipping address first.' });
-      setShowAddressForm(true);
+    if (!selectedAddress) {
+      Swal.fire({ icon: "warning", title: "Address Required", text: "Please select a delivery address." });
       return;
     }
     setProcessing(true);
     try {
-      const response = await axiosInstance.post("/api/orders/cod", {
+      const res = await axiosInstance.post("/api/orders/cod", {
         items,
         userId: currentUser.email,
         customerEmail: currentUser.email,
-        shippingAddress,
-        coupon: appliedCoupon ? {
-          code: appliedCoupon.code,
-          type: appliedCoupon.type,
-          value: appliedCoupon.value || 0,
-          discount
-        } : null
+        shippingAddress: buildOrderAddress(selectedAddress),
+        coupon: appliedCoupon
+          ? { code: appliedCoupon.code, type: appliedCoupon.type, value: appliedCoupon.value || 0, discount }
+          : null,
       });
-      if (response.data.success) {
+      if (res.data.success) {
         clearCart();
         Swal.fire({
           icon: "success",
           title: "Order Placed!",
-          text: `Order ${response.data.orderId} confirmed. Pay on delivery.`,
-          confirmButtonColor: "#3B82F6"
+          text: `Order ${res.data.orderId} confirmed. Pay on delivery.`,
+          confirmButtonColor: "#3B82F6",
         }).then(() => navigate("/orders"));
       }
-    } catch (error) {
-      Swal.fire({ icon: "error", title: "Failed", text: error.message });
+    } catch (err) {
+      Swal.fire({ icon: "error", title: "Failed", text: err.message });
     } finally { setProcessing(false); }
   };
 
-  // Stripe Handler
+  // ── Stripe ──────────────────────────────────────────────────────────────────
   const handleStripeCheckout = async () => {
-    if (!hasAddress) {
-      Swal.fire({ icon: 'warning', title: 'Address Required', text: 'Please add your shipping address first.' });
-      setShowAddressForm(true);
+    if (!selectedAddress) {
+      Swal.fire({ icon: "warning", title: "Address Required", text: "Please select a delivery address." });
       return;
     }
     setProcessing(true);
     try {
-      const response = await authenticatedFetch(
+      const sanitizedItems = items.map(item => ({
+        ...item,
+        image: extractImageUrl(item.image),
+      }));
+
+      const res = await authenticatedFetch(
         `${import.meta.env.VITE_API_URL}/create-checkout-session`,
         {
           method: "POST",
           body: JSON.stringify({
-            items,
+            items: sanitizedItems,
             userId: currentUser.email,
             customerEmail: currentUser.email,
-            coupon: appliedCoupon ? {
-              code: appliedCoupon.code,
-              type: appliedCoupon.type,
-              discount
-            } : null
-          })
+            shippingAddress: buildOrderAddress(selectedAddress),
+            coupon: appliedCoupon
+              ? { code: appliedCoupon.code, type: appliedCoupon.type, discount }
+              : null,
+          }),
         }
       );
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Failed to create checkout session");
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Failed to create checkout session");
       }
-      const data = await response.json();
+
+      const data = await res.json();
       if (data.success && data.url) {
         if (appliedCoupon) {
-          try { await axiosInstance.post(`/api/coupons/use/${appliedCoupon.code}`); } catch (e) {}
+          try { await axiosInstance.post(`/api/coupons/use/${appliedCoupon.code}`); } catch {}
         }
         window.location.href = data.url;
       } else {
         throw new Error(data.message || "Failed to create checkout session");
       }
-    } catch (error) {
+    } catch (err) {
       setProcessing(false);
-      Swal.fire({
-        icon: "error", title: "Checkout Failed",
-        html: `<p>${error.message}</p>`,
-        confirmButtonColor: "#3B82F6"
-      });
+      Swal.fire({ icon: "error", title: "Checkout Failed", html: `<p>${err.message}</p>`, confirmButtonColor: "#3B82F6" });
     }
   };
 
   const handleCheckout = () => {
     if (!currentUser?.email) { navigate("/login"); return; }
-    if (paymentMethod === 'cod') handleCODCheckout();
+    if (paymentMethod === "cod") handleCODCheckout();
     else handleStripeCheckout();
   };
 
-  const handleUpdateQuantity = (itemKey, newQty) => { if (newQty < 1) return; updateQty(itemKey, newQty); };
-  const handleRemoveItem = (itemKey, itemName) => {
+  const handleUpdateQuantity = (key, qty) => { if (qty < 1) return; updateQty(key, qty); };
+  const handleRemoveItem = (key, name) => {
     Swal.fire({
-      title: 'Remove item?', text: `Remove "${itemName}"?`, icon: 'question',
-      showCancelButton: true, confirmButtonColor: '#EF4444', confirmButtonText: 'Yes, remove'
-    }).then(r => { if (r.isConfirmed) removeItem(itemKey); });
+      title: "Remove item?", text: `Remove "${name}"?`, icon: "question",
+      showCancelButton: true, confirmButtonColor: "#EF4444", confirmButtonText: "Yes, remove",
+    }).then(r => { if (r.isConfirmed) removeItem(key); });
   };
 
-  // Empty cart
+  // ── Empty cart ──────────────────────────────────────────────────────────────
   if (!items || items.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -245,8 +368,10 @@ const Checkout = () => {
           <ShoppingBag className="w-20 h-20 mx-auto text-slate-300 mb-6" />
           <h2 className="text-3xl font-bold text-slate-800 mb-4">Your Cart is Empty</h2>
           <p className="text-slate-500 mb-8">Add some products to get started!</p>
-          <button onClick={() => navigate("/abaya")}
-            className="bg-blue-600 text-white px-8 py-4 rounded-xl font-semibold hover:bg-blue-700 transition-all inline-flex items-center gap-2">
+          <button
+            onClick={() => navigate("/abaya")}
+            className="bg-blue-600 text-white px-8 py-4 rounded-xl font-semibold hover:bg-blue-700 transition-all inline-flex items-center gap-2"
+          >
             Continue Shopping <ArrowRight className="w-5 h-5" />
           </button>
         </div>
@@ -254,6 +379,7 @@ const Checkout = () => {
     );
   }
 
+  // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-7xl mx-auto">
@@ -262,7 +388,7 @@ const Checkout = () => {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-slate-800">Checkout</h1>
           <div className="flex items-center gap-2 mt-2 text-sm text-slate-500">
-            <span className="text-blue-600 font-medium cursor-pointer" onClick={() => navigate('/cart')}>Cart</span>
+            <span className="text-blue-600 font-medium cursor-pointer" onClick={() => navigate("/cart")}>Cart</span>
             <ChevronRight className="w-4 h-4" />
             <span className="font-medium text-slate-800">Checkout</span>
             <ChevronRight className="w-4 h-4" />
@@ -272,76 +398,106 @@ const Checkout = () => {
 
         <div className="grid lg:grid-cols-3 gap-6">
 
-          {/* LEFT COLUMN */}
+          {/* ═══ LEFT COLUMN ═══════════════════════════════════════════════ */}
           <div className="lg:col-span-2 space-y-4">
 
-            {/* ═══════════════════════════════════
-                SHIPPING & BILLING SECTION
-            ═══════════════════════════════════ */}
-            <AddressList></AddressList>
-            
+            {/* STEP 1 — Delivery Address */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="flex items-center gap-2 px-6 py-4 border-b border-gray-100">
+                <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-bold">1</div>
+                <h2 className="text-lg font-bold text-slate-800">Delivery Address</h2>
+                {selectedAddress && (
+                  <span className="ml-auto flex items-center gap-1 text-xs text-green-600 font-medium">
+                    <CheckCircle size={14} /> Selected
+                  </span>
+                )}
+              </div>
 
-            {/* ═══════════════════════════════════
-                ORDER ITEMS SECTION
-            ═══════════════════════════════════ */}
+              <div className="px-6 py-5">
+                <AddressSelector
+                  selectedId={selectedAddress?.id || selectedAddress?._id}
+                  onSelect={setSelectedAddress}
+                  onAddNew={(refreshFn) => {
+                    setAfterAddCallback(() => refreshFn);
+                    setShowAddressForm(true);
+                  }}
+                />
+
+                {/* Selected address summary */}
+                {selectedAddress && (
+                  <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-xl">
+                    <p className="text-xs font-bold text-blue-700 uppercase tracking-wide mb-2">Delivering to</p>
+                    <div className="flex items-start gap-3">
+                      <MapPin className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                      <div className="text-sm text-slate-700">
+                        <p className="font-semibold">{selectedAddress.fullName}</p>
+                        <p className="text-slate-500">{selectedAddress.phone}</p>
+                        <p className="mt-0.5">
+                          {selectedAddress.street}
+                          {selectedAddress.aptNumber ? `, ${selectedAddress.aptNumber}` : ""}
+                          {", "}{selectedAddress.city}, {selectedAddress.state} {selectedAddress.zipCode}, {selectedAddress.country}
+                        </p>
+                        {selectedAddress.deliveryNote && (
+                          <p className="mt-1 italic text-slate-400 text-xs">📝 {selectedAddress.deliveryNote}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* STEP 2 — Order Items */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
               <div className="flex items-center gap-2 px-6 py-4 border-b border-gray-100">
                 <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-bold">2</div>
                 <h2 className="text-lg font-bold text-slate-800">Order Items</h2>
-                <span className="ml-auto text-sm text-slate-500">{items.length} item{items.length > 1 ? 's' : ''}</span>
+                <span className="ml-auto text-sm text-slate-500">{items.length} item{items.length > 1 ? "s" : ""}</span>
               </div>
 
               <div className="divide-y divide-gray-50">
-                {items.map((item) => (
+                {items.map(item => (
                   <div key={item.key} className="flex gap-4 px-6 py-4 hover:bg-gray-50 transition-colors">
-                    {/* Image */}
                     <div className="w-20 h-20 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0 border border-gray-100">
-                      <img src={item.image || "/placeholder.jpg"} alt={item.name}
-                        className="w-full h-full object-cover" />
+                      <img
+                        src={extractImageUrl(item.image) || "/placeholder.jpg"}
+                        alt={item.name}
+                        className="w-full h-full object-cover"
+                      />
                     </div>
-
-                    {/* Details */}
                     <div className="flex-1 min-w-0">
                       <h3 className="font-semibold text-slate-800 text-sm mb-1 line-clamp-2">{item.name}</h3>
                       <div className="flex flex-wrap gap-2 mb-2">
                         {item.size && item.size !== "NOSIZE" && (
-                          <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-md">
-                            Size: {item.size}
-                          </span>
+                          <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-md">Size: {item.size}</span>
                         )}
                         {item.color && item.color !== "NOCOLOR" && (
-                          <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-md">
-                            Color: {item.color}
-                          </span>
+                          <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-md">Color: {item.color}</span>
                         )}
                       </div>
-
-                      {/* Qty Controls */}
                       <div className="flex items-center gap-2">
-                        <button onClick={() => handleUpdateQuantity(item.key, item.qty - 1)}
+                        <button
+                          onClick={() => handleUpdateQuantity(item.key, item.qty - 1)}
                           disabled={item.qty <= 1}
-                          className="w-7 h-7 rounded-lg border border-gray-200 hover:bg-gray-100 flex items-center justify-center disabled:opacity-40 text-lg font-medium">
-                          −
-                        </button>
+                          className="w-7 h-7 rounded-lg border border-gray-200 hover:bg-gray-100 flex items-center justify-center disabled:opacity-40 text-lg font-medium"
+                        >−</button>
                         <span className="w-8 text-center text-sm font-semibold">{item.qty}</span>
-                        <button onClick={() => handleUpdateQuantity(item.key, item.qty + 1)}
-                          className="w-7 h-7 rounded-lg border border-gray-200 hover:bg-gray-100 flex items-center justify-center text-lg font-medium">
-                          +
-                        </button>
+                        <button
+                          onClick={() => handleUpdateQuantity(item.key, item.qty + 1)}
+                          className="w-7 h-7 rounded-lg border border-gray-200 hover:bg-gray-100 flex items-center justify-center text-lg font-medium"
+                        >+</button>
                       </div>
                     </div>
-
-                    {/* Price + Remove */}
                     <div className="text-right flex flex-col justify-between items-end flex-shrink-0">
                       <div>
-                        {item.oldPrice && (
-                          <p className="text-xs text-slate-400 line-through">${item.oldPrice}</p>
-                        )}
+                        {item.oldPrice && <p className="text-xs text-slate-400 line-through">${item.oldPrice}</p>}
                         <p className="font-bold text-slate-800">${(item.price * item.qty).toFixed(2)}</p>
                         <p className="text-xs text-slate-400">${item.price} each</p>
                       </div>
-                      <button onClick={() => handleRemoveItem(item.key, item.name)}
-                        className="text-red-400 hover:text-red-600 p-1 hover:bg-red-50 rounded-lg transition-colors mt-2">
+                      <button
+                        onClick={() => handleRemoveItem(item.key, item.name)}
+                        className="text-red-400 hover:text-red-600 p-1 hover:bg-red-50 rounded-lg transition-colors mt-2"
+                      >
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -349,7 +505,6 @@ const Checkout = () => {
                 ))}
               </div>
 
-              {/* Delivery Info */}
               <div className="px-6 py-4 bg-green-50 border-t border-green-100 flex items-center gap-3">
                 <Truck className="w-5 h-5 text-green-600 flex-shrink-0" />
                 <div>
@@ -357,31 +512,20 @@ const Checkout = () => {
                   <p className="text-xs text-green-600">Estimated delivery: 3–5 business days</p>
                 </div>
                 <div className="ml-auto text-sm font-semibold text-green-700">
-                  {shipping === 0 ? 'FREE' : `$${shipping.toFixed(2)}`}
+                  {shipping === 0 ? "FREE" : `$${shipping.toFixed(2)}`}
                 </div>
               </div>
             </div>
 
-            {/* ═══════════════════════════════════
-                PAYMENT METHOD SECTION
-            ═══════════════════════════════════ */}
+            {/* STEP 3 — Payment */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
               <div className="flex items-center gap-2 px-6 py-4 border-b border-gray-100">
                 <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-bold">3</div>
                 <h2 className="text-lg font-bold text-slate-800">Payment Method</h2>
               </div>
-
               <div className="px-6 py-5 space-y-3">
-                {/* Online Payment */}
-                <label className={`flex items-center gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                  paymentMethod === 'online'
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                }`}>
-                  <input type="radio" name="payment" value="online"
-                    checked={paymentMethod === 'online'}
-                    onChange={() => setPaymentMethod('online')}
-                    className="w-4 h-4 text-blue-600 accent-blue-600" />
+                <label className={`flex items-center gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all ${paymentMethod === "online" ? "border-blue-500 bg-blue-50" : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"}`}>
+                  <input type="radio" name="payment" value="online" checked={paymentMethod === "online"} onChange={() => setPaymentMethod("online")} className="w-4 h-4 accent-blue-600" />
                   <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
                     <CreditCard className="w-5 h-5 text-blue-600" />
                   </div>
@@ -390,39 +534,27 @@ const Checkout = () => {
                     <p className="text-xs text-slate-500 mt-0.5">Pay securely with Credit/Debit Card via Stripe</p>
                   </div>
                   <div className="flex gap-1">
-                    {['VISA', 'MC', 'AMEX'].map(card => (
-                      <span key={card} className="px-1.5 py-0.5 bg-white border border-gray-200 rounded text-[10px] font-bold text-slate-600">
-                        {card}
-                      </span>
+                    {["VISA", "MC", "AMEX"].map(c => (
+                      <span key={c} className="px-1.5 py-0.5 bg-white border border-gray-200 rounded text-[10px] font-bold text-slate-600">{c}</span>
                     ))}
                   </div>
                 </label>
 
-                {/* Cash on Delivery */}
-                <label className={`flex items-center gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                  paymentMethod === 'cod'
-                    ? 'border-green-500 bg-green-50'
-                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                }`}>
-                  <input type="radio" name="payment" value="cod"
-                    checked={paymentMethod === 'cod'}
-                    onChange={() => setPaymentMethod('cod')}
-                    className="w-4 h-4 text-green-600 accent-green-600" />
+                <label className={`flex items-center gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all ${paymentMethod === "cod" ? "border-green-500 bg-green-50" : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"}`}>
+                  <input type="radio" name="payment" value="cod" checked={paymentMethod === "cod"} onChange={() => setPaymentMethod("cod")} className="w-4 h-4 accent-green-600" />
                   <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center flex-shrink-0">
                     <Banknote className="w-5 h-5 text-green-600" />
                   </div>
                   <div className="flex-1">
                     <p className="font-semibold text-slate-800">Cash on Delivery</p>
-                    <p className="text-xs text-slate-500 mt-0.5">Pay in cash when your order arrives at your door</p>
+                    <p className="text-xs text-slate-500 mt-0.5">Pay in cash when your order arrives</p>
                   </div>
-                  <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-semibold rounded-full">
-                    Available
-                  </span>
+                  <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-semibold rounded-full">Available</span>
                 </label>
               </div>
             </div>
 
-            {/* Trust Badges */}
+            {/* Trust badges */}
             <div className="grid grid-cols-3 gap-3">
               <div className="bg-white rounded-xl p-4 text-center shadow-sm border border-gray-100">
                 <Shield className="w-7 h-7 mx-auto text-green-600 mb-2" />
@@ -439,12 +571,11 @@ const Checkout = () => {
             </div>
           </div>
 
-          {/* RIGHT COLUMN — Order Summary */}
+          {/* ═══ RIGHT COLUMN — Order Summary ══════════════════════════════ */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sticky top-24">
               <h2 className="text-lg font-bold text-slate-800 mb-5">Order Summary</h2>
 
-              {/* Customer */}
               {currentUser?.email && (
                 <div className="mb-5 p-3 bg-slate-50 rounded-xl flex items-center gap-2">
                   <Mail className="w-4 h-4 text-slate-400 flex-shrink-0" />
@@ -457,14 +588,19 @@ const Checkout = () => {
                 <label className="block text-sm font-semibold text-slate-700 mb-2">Promotion Code</label>
                 {!appliedCoupon ? (
                   <div className="flex gap-2">
-                    <input type="text" value={couponCode}
-                      onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                      placeholder="Enter store code"
+                    <input
+                      type="text"
+                      value={couponCode}
+                      onChange={e => setCouponCode(e.target.value.toUpperCase())}
+                      placeholder="Enter code"
                       className="flex-1 px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm uppercase"
-                      disabled={validatingCoupon} />
-                    <button onClick={handleApplyCoupon}
+                      disabled={validatingCoupon}
+                    />
+                    <button
+                      onClick={handleApplyCoupon}
                       disabled={validatingCoupon || !couponCode.trim()}
-                      className="px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1.5 text-sm font-semibold transition-colors">
+                      className="px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1.5 text-sm font-semibold transition-colors"
+                    >
                       {validatingCoupon ? <Loader2 className="w-4 h-4 animate-spin" /> : <Tag className="w-4 h-4" />}
                       Apply
                     </button>
@@ -476,9 +612,9 @@ const Checkout = () => {
                       <div>
                         <p className="text-sm font-bold text-green-800">{appliedCoupon.code}</p>
                         <p className="text-xs text-green-600">
-                          {appliedCoupon.type === 'percentage' && `${appliedCoupon.value}% OFF`}
-                          {appliedCoupon.type === 'fixed' && `$${appliedCoupon.value} OFF`}
-                          {appliedCoupon.type === 'free_shipping' && 'Free Shipping'}
+                          {appliedCoupon.type === "percentage" && `${appliedCoupon.value}% OFF`}
+                          {appliedCoupon.type === "fixed" && `$${appliedCoupon.value} OFF`}
+                          {appliedCoupon.type === "free_shipping" && "Free Shipping"}
                         </p>
                       </div>
                     </div>
@@ -490,10 +626,10 @@ const Checkout = () => {
                 {couponError && <p className="text-xs text-red-500 mt-1.5">{couponError}</p>}
               </div>
 
-              {/* Price Breakdown */}
+              {/* Price breakdown */}
               <div className="space-y-3 mb-5">
                 <div className="flex justify-between text-sm text-slate-600">
-                  <span>Items Total ({items.length} item{items.length > 1 ? 's' : ''})</span>
+                  <span>Items Total ({items.length} item{items.length > 1 ? "s" : ""})</span>
                   <span className="font-medium">${subtotal.toFixed(2)}</span>
                 </div>
                 {discount > 0 && (
@@ -536,16 +672,21 @@ const Checkout = () => {
                 )}
               </div>
 
-              {/* Checkout Button */}
-              <button onClick={handleCheckout} disabled={processing}
+              {/* Checkout button */}
+              <button
+                onClick={handleCheckout}
+                disabled={processing || !selectedAddress}
                 className={`w-full py-4 rounded-xl font-bold text-base transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${
-                  paymentMethod === 'cod'
-                    ? 'bg-green-600 hover:bg-green-700 text-white'
-                    : 'bg-blue-600 hover:bg-blue-700 text-white'
-                }`}>
+                  paymentMethod === "cod"
+                    ? "bg-green-600 hover:bg-green-700 text-white"
+                    : "bg-blue-600 hover:bg-blue-700 text-white"
+                }`}
+              >
                 {processing ? (
                   <><Loader2 className="w-5 h-5 animate-spin" /> Processing...</>
-                ) : paymentMethod === 'cod' ? (
+                ) : !selectedAddress ? (
+                  <><MapPin className="w-5 h-5" /> Select Delivery Address</>
+                ) : paymentMethod === "cod" ? (
                   <><Banknote className="w-5 h-5" /> Place Order (Pay on Delivery)</>
                 ) : (
                   <><CreditCard className="w-5 h-5" /> Proceed to Pay</>
@@ -553,15 +694,23 @@ const Checkout = () => {
               </button>
 
               <p className="text-xs text-slate-400 text-center mt-3">
-                {paymentMethod === 'cod'
-                  ? '🔒 Your order is secure. Pay cash on delivery.'
-                  : '🔒 256-bit SSL encrypted. Powered by Stripe.'}
+                {paymentMethod === "cod"
+                  ? "🔒 Your order is secure. Pay cash on delivery."
+                  : "🔒 256-bit SSL encrypted. Powered by Stripe."}
               </p>
             </div>
           </div>
-
         </div>
       </div>
+
+      {/* Address Form Modal */}
+      {showAddressForm && (
+        <AddressForm
+          initialData={null}
+          onSave={handleSaveNewAddress}
+          onCancel={() => setShowAddressForm(false)}
+        />
+      )}
     </div>
   );
 };

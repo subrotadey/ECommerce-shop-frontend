@@ -20,13 +20,6 @@ const Home = () => {
       <BorkaSectionTwo></BorkaSectionTwo>
       <SectionDivider label="Hijab"></SectionDivider>
       <ConnectedSection />
-      {/* <Banner></Banner> */}
-      {/* <Info></Info> */}
-      {/* <Characteristics></Characteristics> */}
-      {/* <FeatureInfo></FeatureInfo> */}
-      {/* <HomeCourses></HomeCourses> */}
-      {/* <Counter></Counter> */}
-      {/* <Testimonials></Testimonials> */}
     </div>
   );
 };
