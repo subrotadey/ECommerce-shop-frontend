@@ -528,7 +528,7 @@ const Orders = () => {
                 <div className="overflow-x-auto">
                     <table className="table w-full">
                         <thead>
-                            <tr className="text-black">
+                            <tr className="text-black bg-gray-200">
                                 <th>
                                     <input
                                         type="checkbox"

@@ -64,7 +64,7 @@ export const fetchUserProfile = async () => {
  */
 export const updateUserProfile = async (profileData) => {
   try {
-    const response = await api.patch('/api/users/profile', profileData);
+    const response = await api.patch('/users/profile', profileData);
     if (!response.data.success) {
       throw new Error(response.data.message || 'Failed to update profile');
     }

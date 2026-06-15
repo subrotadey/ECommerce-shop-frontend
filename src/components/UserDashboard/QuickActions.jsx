@@ -8,7 +8,7 @@ const QuickActions = () => {
   const actions = [
     { icon: ShoppingBag, label: 'Browse Products', path: '/abaya', color: 'blue' },
     { icon: Heart, label: 'My Wishlist', path: '/wishlist', color: 'pink' },
-    { icon: MapPin, label: 'Addresses', path: '/addresses', color: 'green' },
+    { icon: MapPin, label: 'Addresses', path: '/profile', color: 'green' },
     { icon: CreditCard, label: 'Payment Methods', path: '/payment-methods', color: 'purple' }
   ];
 
