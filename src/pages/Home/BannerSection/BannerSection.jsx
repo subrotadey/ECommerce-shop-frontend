@@ -8,7 +8,7 @@ const BannerSection = () => {
     const viewInfo = [
         {
           _id:1,
-          img: view1,
+          img: 'https://i.ibb.co.com/xK1GfQh2/1.webp',
         },
         {
           _id:2,

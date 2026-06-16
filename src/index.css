@@ -5,6 +5,13 @@
     box-sizing: border-box;
 }
 
+@theme {
+  --color-primary: #B8922A;
+  --color-primary-light: #D4AA4A;
+  --color-charcoal: #1A1A1A;
+  --color-sage: #4A7C6F;
+}
+
 body {
     background-color: #FFFFFF;
     color:black;
