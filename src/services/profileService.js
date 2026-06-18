@@ -2,7 +2,7 @@
 
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://ecommerce-shop-backend-gr7k.onrender.com';
 
 // Cloudinary Configuration
 export const CLOUDINARY_CONFIG = {

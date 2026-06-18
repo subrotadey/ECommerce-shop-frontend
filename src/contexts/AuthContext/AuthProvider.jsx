@@ -1,15 +1,15 @@
 // contexts/AuthContext/AuthProvider.jsx - IMPROVED VERSION
 import axios from 'axios';
 import {
-  createUserWithEmailAndPassword,
-  GoogleAuthProvider,
-  onAuthStateChanged,
-  sendEmailVerification,
-  sendPasswordResetEmail,
-  signInWithEmailAndPassword,
-  signInWithPopup,
-  signOut,
-  updateProfile
+    createUserWithEmailAndPassword,
+    GoogleAuthProvider,
+    onAuthStateChanged,
+    sendEmailVerification,
+    sendPasswordResetEmail,
+    signInWithEmailAndPassword,
+    signInWithPopup,
+    signOut,
+    updateProfile
 } from 'firebase/auth';
 import { useEffect, useState } from 'react';
 import { auth } from '../../firebase/firebase.init';
@@ -17,7 +17,7 @@ import { clearToken } from '../../utils/tokenHelper';
 import { AuthContext } from './AuthContext';
 
 const googleProvider = new GoogleAuthProvider();
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_URL = import.meta.env.VITE_API_URL || 'https://ecommerce-shop-backend-gr7k.onrender.com';
 
 const AuthProvider = ({ children }) => {
   // ✅ IMPROVED: Single source of truth for user

@@ -4,14 +4,14 @@ import axios from "axios";
 // Function to fetch products by category
 const fetchProductsByCategory = async (category) => {
   const { data } = await axios.get(
-    `http://localhost:5000/products?category=${category}`
+    `https://ecommerce-shop-backend-gr7k.onrender.com/products?category=${category}`
   );
   return data;
 };
 
 // Fetch all products
 const fetchAllProducts = async () => {
-  const { data } = await axios.get(`http://localhost:5000/products`);
+  const { data } = await axios.get(`https://ecommerce-shop-backend-gr7k.onrender.com/products`);
   return data;
 };
 
