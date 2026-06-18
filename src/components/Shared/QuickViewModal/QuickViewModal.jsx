@@ -1,11 +1,11 @@
 // src/components/Shared/QuickViewModal/QuickViewModal.jsx
 import { Link } from "react-router";
-import SizeSelector from "../../product/SizeSelector";
-import ColorSelector from "../../product/ColorSelector";
-import QuantitySelector from "../../product/QuantitySelector";
-import ProductPrice from "../../product/ProductPrice";
-import StockBadge from "../../product/StockBadge";
-import ProductInfo from "../../product/ProductInfo";
+import SizeSelector from "../../Product/SizeSelector";
+import ColorSelector from "../../Product/ColorSelector";
+import QuantitySelector from "../../Product/QuantitySelector";
+import ProductPrice from "../../Product/ProductPrice";
+import StockBadge from "../../Product/StockBadge";
+import ProductInfo from "../../Product/ProductInfo";
 import useAddToCart from "../../../hooks/useAddToCart";
 
 export default function QuickViewModal({ product, onClose }) {
