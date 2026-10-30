@@ -8,10 +8,20 @@ import StockBadge from "../../Product/StockBadge";
 import ProductInfo from "../../Product/ProductInfo";
 import useAddToCart from "../../../hooks/useAddToCart";
 
-export default function QuickViewModal({ product, onClose }) {
-    if (!product) return null;
+// Supports old string[] & new object[] image schema
+function getFirstImage(product) {
+    const hasMediaUrl = product?.media?.images?.some((i) => i?.url);
+    const list = hasMediaUrl ? product.media.images : product?.images;
+    const first = Array.isArray(list)
+        ? (list.find((i) => i?.isMain && i?.url) || list[0])
+        : null;
+    return (typeof first === "string" ? first : first?.url) || "https://placehold.co/600x800?text=Image";
+}
 
+export default function QuickViewModal({ product, onClose }) {
     const { selectedSize, setSelectedSize, selectedColor, setSelectedColor, qty, setQty, error, handleAddToCart, sizes, colors } = useAddToCart(product);
+
+    if (!product) return null;
 
     return (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
@@ -25,7 +35,7 @@ export default function QuickViewModal({ product, onClose }) {
                             <img
                                 alt={product.productName}
                                 className="w-full h-[400px] lg:h-full object-cover"
-                                src={product.images?.[0]}
+                                src={getFirstImage(product)}
                             />
                         </div>
 

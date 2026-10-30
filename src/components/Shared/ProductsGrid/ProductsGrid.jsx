@@ -162,6 +162,16 @@ function CategoryHero({ category, count }) {
   );
 }
 
+// ─── Image helper (supports old string[] & new object[] schema) ───────────
+function getFirstImage(product) {
+  const hasMediaUrl = product.media?.images?.some((i) => i?.url);
+  const list = hasMediaUrl ? product.media.images : product.images;
+  const first = Array.isArray(list)
+    ? (list.find((i) => i?.isMain && i?.url) || list[0])
+    : null;
+  return (typeof first === "string" ? first : first?.url) || "https://placehold.co/400x533?text=Image";
+}
+
 // ─── Product Card ──────────────────────────────────────────────────────────
 function ProductCard({ product, idx, onQuickView }) {
   const { isInWishlist, toggleWishlist, userId } = useWishlist();
@@ -227,7 +237,7 @@ function ProductCard({ product, idx, onQuickView }) {
           {/* Product image */}
           <Link to={`/product/${product._id || product.sku}`}>
             <img
-              src={product.images?.[0] || product.media?.images?.[0]?.url || "https://placehold.co/400x533?text=Image"}
+              src={getFirstImage(product)}
               alt={product.productName}
               onLoad={() => setImgLoaded(true)}
               className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 ${imgLoaded ? "opacity-100" : "opacity-0"}`}

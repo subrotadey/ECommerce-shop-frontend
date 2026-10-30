@@ -2,7 +2,7 @@
 // Dubai Wholesale Abaya & Hijab — Premium Product Detail Page
 // Palette: White · Warm Gold (#B8922A) · Deep Charcoal (#1A1A1A) · Sage (#4A7C6F)
 
-import { Heart, MapPin, Phone, RefreshCw, Share2, Shield, ShoppingBag, Truck, Star, ChevronLeft, ChevronRight, Check, ZoomIn, Package, ArrowRight, Minus, Plus } from "lucide-react";
+import { Heart, MapPin, Phone, RefreshCw, Share2, Shield, ShoppingBag, Truck, Star, ChevronLeft, ChevronRight, Check, ZoomIn, Package, ArrowRight, Minus, Plus, Play } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Link, useParams } from "react-router-dom";
 
@@ -57,8 +57,28 @@ function Breadcrumb({ product }) {
   );
 }
 
-// ─── Image Gallery ────────────────────────────────────────────────────────────
-function ImageGallery({ images = [], productName, tags = [], discount }) {
+// ─── Media helpers (supports old & new JSON schema) ───────────────────────────
+export function getImageUrls(product) {
+  if (!product) return [];
+  const toUrl = (i) => (typeof i === "string" ? i : i?.url);
+  const fromMedia = product.media?.images?.map(toUrl).filter(Boolean) || [];
+  if (fromMedia.length) return fromMedia;
+  return (Array.isArray(product.images) ? product.images : []).map(toUrl).filter(Boolean);
+}
+
+export function getVideo(product) {
+  const v = product?.media?.video || product?.video;
+  if (!v) return null;
+  if (typeof v === "string") return { url: v };
+  return v.url ? v : null;
+}
+
+// ─── Image + Video Gallery ────────────────────────────────────────────────────
+function ImageGallery({ images = [], video = null, productName, tags = [], discount }) {
+  const items = [
+    ...images.map((url) => ({ type: "image", url })),
+    ...(video ? [{ type: "video", url: video.url, thumb: video.thumbnailUrl }] : []),
+  ];
   const [active, setActive] = useState(0);
   const [zoomed, setZoomed] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 50, y: 50 });
@@ -66,16 +86,20 @@ function ImageGallery({ images = [], productName, tags = [], discount }) {
 
   const isBestSeller = tags?.includes("Best Seller");
   const isExclusive = tags?.includes("Exclusive Collection");
+  const total = items.length;
+  const current = items[active] || { type: "image", url: "" };
+  const isVideo = current.type === "video";
 
-  const prev = useCallback(() => setActive(i => (i - 1 + images.length) % images.length), [images.length]);
-  const next = useCallback(() => setActive(i => (i + 1) % images.length), [images.length]);
+  const prev = useCallback(() => setActive(i => (i - 1 + total) % total), [total]);
+  const next = useCallback(() => setActive(i => (i + 1) % total), [total]);
 
   const handleMouseMove = (e) => {
-    if (!imgRef.current) return;
+    if (!imgRef.current || isVideo) return;
     const rect = imgRef.current.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
-    setMousePos({ x, y });
+    setMousePos({
+      x: ((e.clientX - rect.left) / rect.width) * 100,
+      y: ((e.clientY - rect.top) / rect.height) * 100,
+    });
   };
 
   useEffect(() => {
@@ -90,22 +114,35 @@ function ImageGallery({ images = [], productName, tags = [], discount }) {
 
   return (
     <div className="w-full lg:sticky lg:top-24">
-      {/* Main Image */}
+      {/* Main media */}
       <div
         ref={imgRef}
-        className="relative bg-gray-50 rounded-2xl overflow-hidden aspect-[3/4] mb-3 cursor-zoom-in group"
+        className={`relative bg-gray-50 rounded-2xl overflow-hidden aspect-[3/4] mb-3 group ${isVideo ? "" : "cursor-zoom-in"}`}
         onMouseMove={handleMouseMove}
-        onMouseEnter={() => setZoomed(true)}
+        onMouseEnter={() => !isVideo && setZoomed(true)}
         onMouseLeave={() => setZoomed(false)}
-        role="img"
-        aria-label={`${productName} - image ${active + 1} of ${images.length}`}
+        aria-label={`${productName} - ${isVideo ? "video" : `image ${active + 1}`} of ${total}`}
       >
-        <img
-          src={images[active] || "https://placehold.co/600x800?text=Image"}
-          alt={`${productName} view ${active + 1}`}
-          className={`w-full h-full object-cover transition-transform duration-300 ${zoomed ? "scale-150" : "scale-100"}`}
-          style={zoomed ? { transformOrigin: `${mousePos.x}% ${mousePos.y}%` } : {}}
-        />
+        {isVideo ? (
+          <video
+            key={current.url}
+            src={current.url}
+            poster={current.thumb}
+            controls
+            autoPlay
+            muted
+            loop
+            playsInline
+            className="w-full h-full object-cover bg-black"
+          />
+        ) : (
+          <img
+            src={current.url || "https://placehold.co/600x800?text=Image"}
+            alt={`${productName} view ${active + 1}`}
+            className={`w-full h-full object-cover transition-transform duration-300 ${zoomed ? "scale-150" : "scale-100"}`}
+            style={zoomed ? { transformOrigin: `${mousePos.x}% ${mousePos.y}%` } : {}}
+          />
+        )}
 
         {/* Badges */}
         <div className="absolute top-4 left-4 flex flex-col gap-2 pointer-events-none">
@@ -129,24 +166,26 @@ function ImageGallery({ images = [], productName, tags = [], discount }) {
         </div>
 
         {/* Zoom hint */}
-        <div className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-          <ZoomIn size={14} style={{ color: CHARCOAL }} />
-        </div>
+        {!isVideo && (
+          <div className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+            <ZoomIn size={14} style={{ color: CHARCOAL }} />
+          </div>
+        )}
 
         {/* Navigation arrows */}
-        {images.length > 1 && (
+        {total > 1 && (
           <>
             <button
               onClick={prev}
               className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white shadow-md flex items-center justify-center hover:bg-gray-50 transition-all"
-              aria-label="Previous image"
+              aria-label="Previous"
             >
               <ChevronLeft size={16} style={{ color: CHARCOAL }} />
             </button>
             <button
               onClick={next}
               className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white shadow-md flex items-center justify-center hover:bg-gray-50 transition-all"
-              aria-label="Next image"
+              aria-label="Next"
             >
               <ChevronRight size={16} style={{ color: CHARCOAL }} />
             </button>
@@ -154,15 +193,15 @@ function ImageGallery({ images = [], productName, tags = [], discount }) {
         )}
 
         {/* Dots */}
-        {images.length > 1 && (
+        {total > 1 && !isVideo && (
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5">
-            {images.map((_, i) => (
+            {items.map((_, i) => (
               <button
                 key={i}
                 onClick={() => setActive(i)}
-                className="w-1.5 h-1.5 rounded-full transition-all"
+                className="h-1.5 rounded-full transition-all"
                 style={{ background: i === active ? CHARCOAL : "rgba(0,0,0,0.25)", width: i === active ? 20 : 6 }}
-                aria-label={`View image ${i + 1}`}
+                aria-label={`View item ${i + 1}`}
               />
             ))}
           </div>
@@ -170,19 +209,30 @@ function ImageGallery({ images = [], productName, tags = [], discount }) {
       </div>
 
       {/* Thumbnails */}
-      {images.length > 1 && (
+      {total > 1 && (
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-          {images.map((img, i) => (
+          {items.map((item, i) => (
             <button
               key={i}
               onClick={() => setActive(i)}
-              className={`flex-shrink-0 w-16 h-20 rounded-xl overflow-hidden border-2 transition-all ${
+              className={`relative flex-shrink-0 w-16 h-20 rounded-xl overflow-hidden border-2 transition-all bg-black ${
                 i === active ? "border-gray-800 shadow-md" : "border-gray-200 hover:border-gray-400"
               }`}
-              aria-label={`Select image ${i + 1}`}
+              aria-label={item.type === "video" ? "Play video" : `Select image ${i + 1}`}
               aria-pressed={i === active}
             >
-              <img src={img} alt={`${productName} thumbnail ${i + 1}`} className="w-full h-full object-cover" />
+              {item.type === "video" ? (
+                <>
+                  {item.thumb && <img src={item.thumb} alt={`${productName} video`} className="w-full h-full object-cover opacity-80" />}
+                  <span className="absolute inset-0 flex items-center justify-center">
+                    <span className="w-7 h-7 rounded-full bg-white/90 flex items-center justify-center">
+                      <Play size={12} fill={CHARCOAL} style={{ color: CHARCOAL }} />
+                    </span>
+                  </span>
+                </>
+              ) : (
+                <img src={item.url} alt={`${productName} thumbnail ${i + 1}`} className="w-full h-full object-cover" />
+              )}
             </button>
           ))}
         </div>
@@ -400,7 +450,7 @@ function RelatedProducts({ products = [], currentId, category }) {
           >
             <div className="rounded-xl overflow-hidden bg-gray-50 aspect-[3/4] mb-2">
               <img
-                src={product.images?.[0] || "https://placehold.co/300x400?text=Image"}
+                src={getImageUrls(product)[0] || "https://placehold.co/300x400?text=Image"}
                 alt={product.productName}
                 className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
               />
@@ -501,11 +551,9 @@ export default function ProductDetails() {
 
   const inWishlist = isInWishlist(product._id || product.sku);
 
-  // Resolve images from old or new schema
-  const images = product.media?.images?.map(i => i.url) ||
-    (Array.isArray(product.images) && typeof product.images[0] === "string"
-      ? product.images
-      : product.images?.map(i => i.url || i) || []);
+  // Resolve media (works with old & new schema)
+  const images = getImageUrls(product);
+  const video = getVideo(product);
 
   return (
     <>
@@ -534,6 +582,7 @@ export default function ProductDetails() {
             {/* ── Left: Gallery ── */}
             <ImageGallery
               images={images}
+              video={video}
               productName={product.productName}
               tags={product.tags}
               discount={discount}
