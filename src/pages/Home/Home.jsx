@@ -15,6 +15,8 @@ import FAQSection from "./FAQSection/FAQSection";
 import Newsletter from "./Newsletter/Newsletter";
 import FloatingWhatsApp from "./FloatingWhatsApp/FloatingWhatsApp";
 import BackToTop from "../../components/Shared/BackToTop/BackToTop";
+import ConnectSection from "./ConnectSection/ConnectSection";
+import ConnectBar from "./ConnectBar/ConnectBar";
 
 // ─── Main Home Page ───────────────────────────────────────────────────────────
 const Home = () => {
@@ -22,6 +24,7 @@ const Home = () => {
     <div className="bg-white">
       <HeroSection/>
       <TrustBar />
+      <ConnectBar />
       <CategoriesSection/>
       <PricingShowcase />
       <FeaturesSection />
@@ -30,6 +33,7 @@ const Home = () => {
       <UAECoverage />
       <PartnerCTA />
       <FAQSection />
+      <ConnectSection />
       <Newsletter />
       <FloatingWhatsApp />
     </div>

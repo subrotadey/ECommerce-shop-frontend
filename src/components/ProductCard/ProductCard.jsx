@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 
 const getFirstImage = (product) => {
   const list = product.media?.images?.some((i) => i?.url) ? product.media.images : product.images;
+  console.log("list", list);
   const first = Array.isArray(list)
     ? (list.find((i) => i?.isMain && i?.url) || list[0])
     : null;
