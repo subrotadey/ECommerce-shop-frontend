@@ -1,84 +1,152 @@
-//src/pages/Home/Testimonials/Testimonials.jsx
-import FadeIn from '../../../components/Animations/FadeIn';
-import { useState } from "react";
-import {Star, MapPin } from "lucide-react";
 
-// ─── Design Tokens ────────────────────────────────────────────────────────────
-// Palette: White base, Warm Gold accent, Deep Charcoal text, Sage Green touch
-const GOLD = "#B8922A";
-const GOLD_LIGHT = "#D4AA4A";
-const CHARCOAL = "#1A1A1A";
-const SAGE = "#4A7C6F";
+import {
+  Factory,
+  Ruler,
+  BadgePercent,
+  MessageCircle,
+  CheckCircle2,
+} from "lucide-react";
 
-const Testimonials = () => {
+import FadeIn from "../../../components/Animations/FadeIn";
 
-    const TESTIMONIALS = [
+const COMMITMENTS = [
   {
-    name: "Fatima Al-Rashidi",
-    store: "Elegant Modest, Dubai Mall",
-    rating: 5,
-    text: "We've been sourcing our entire Abaya line from here for 2 years. The quality is consistently excellent and our customers keep coming back. Profit margins are 60% better than our previous supplier.",
-    avatar: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=80&q=80",
-    location: "Dubai, UAE"
+    icon: Factory,
+    title: "Manufacturer Direct",
+    description:
+      "Source wholesale abaya collections directly from Anis Abaya UAE.",
+    points: [
+      "Wholesale-focused business",
+      "Abaya manufacturing and supply",
+    ],
   },
   {
-    name: "Sarah Mohammad",
-    store: "Hijab House, Sharjah",
-    rating: 5,
-    text: "The wholesale pricing makes it possible for us to compete with bigger stores. Fast delivery, beautiful packaging, and the quality speaks for itself. My customers love the collections.",
-    avatar: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=80&q=80",
-    location: "Sharjah, UAE"
+    icon: Ruler,
+    title: "Flexible Size Selection",
+    description:
+      "Choose different sizes within the same product color to build your order.",
+    points: [
+      "Six standard sizes",
+      "Multiple available colors",
+    ],
   },
   {
-    name: "Aisha Karimi",
-    store: "Modesty & Grace, Abu Dhabi",
-    rating: 5,
-    text: "Exceptional supplier. We placed our first order of 50 pieces and were blown away. Now we order 300+ monthly. The account manager understands our business like a true partner.",
-    avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=80&q=80",
-    location: "Abu Dhabi, UAE"
+    icon: BadgePercent,
+    title: "Transparent Wholesale Terms",
+    description:
+      "Understand the minimum order quantity and discount structure before placing an order.",
+    points: [
+      "12 pieces minimum per product color",
+      "5% discount on 100+ total pieces",
+    ],
   },
 ];
 
-    const [active, setActive] = useState(0);
-    const t = TESTIMONIALS[active];
-    return (
-        <section className="py-20 bg-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <FadeIn className="text-center mb-12">
-          <div className="inline-block text-xs font-bold uppercase tracking-widest px-3 py-1 mb-4 rounded-full" style={{ color: GOLD, background: `${GOLD}10` }}>Real Results</div>
-          <h2 className="text-3xl sm:text-4xl font-bold mb-4" style={{ color: CHARCOAL }}>What Our Retail Partners Say</h2>
+const Testimonials = () => {
+  return (
+    <section className="bg-[#F7F5EF] py-16 sm:py-20 lg:py-24">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+
+        {/* Heading */}
+        <FadeIn className="mb-12 text-center sm:mb-14">
+          <span className="mb-4 inline-flex items-center rounded-full border border-[#D4AF37]/30 bg-[#D4AF37]/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#8C6B16]">
+            Our Commitment
+          </span>
+
+          <h2 className="mb-4 text-3xl font-bold leading-tight text-[#123C32] sm:text-4xl lg:text-5xl">
+            A Wholesale Partnership You Can Understand
+          </h2>
+
+          <p className="mx-auto max-w-2xl text-sm leading-7 text-[#666666] sm:text-base">
+            At Anis Abaya UAE, we keep our wholesale ordering process
+            clear, flexible, and focused on the needs of fashion retailers.
+          </p>
         </FadeIn>
 
-        <div className="max-w-3xl mx-auto">
-          <div className="bg-gray-50 rounded-3xl p-8 sm:p-12 relative overflow-hidden mb-6">
-            {/* Quote mark */}
-            <div className="absolute top-6 right-8 text-8xl font-serif leading-none opacity-10" style={{ color: GOLD }}>"</div>
-            <div className="flex gap-1 mb-6">
-              {[...Array(t.rating)].map((_, i) => <Star key={i} size={18} fill={GOLD} color={GOLD} />)}
-            </div>
-            <p className="text-lg sm:text-xl text-gray-700 leading-relaxed mb-8 italic">"{t.text}"</p>
-            <div className="flex items-center gap-4">
-              <img src={t.avatar} alt={t.name} className="w-14 h-14 rounded-full object-cover border-2 border-white shadow-md" />
-              <div>
-                <div className="font-bold" style={{ color: CHARCOAL }}>{t.name}</div>
-                <div className="text-sm text-gray-500">{t.store}</div>
-                <div className="text-xs text-gray-400 flex items-center gap-1 mt-0.5"><MapPin size={11} />{t.location}</div>
-              </div>
-            </div>
-          </div>
+        {/* Commitment Cards */}
+        <div className="grid gap-6 md:grid-cols-3">
+          {COMMITMENTS.map((item, index) => {
+            const Icon = item.icon;
 
-          {/* Dots */}
-          <div className="flex justify-center gap-2">
-            {TESTIMONIALS.map((_, i) => (
-              <button key={i} onClick={() => setActive(i)}
-                className="rounded-full transition-all"
-                style={{ width: active === i ? 24 : 8, height: 8, background: active === i ? CHARCOAL : "#D1D5DB" }} />
-            ))}
-          </div>
+            return (
+              <FadeIn key={item.title} delay={index * 100}>
+                <div className="group h-full rounded-2xl border border-[#123C32]/10 bg-white p-7 transition-all duration-300 hover:-translate-y-1 hover:border-[#D4AF37]/50 hover:shadow-xl hover:shadow-[#123C32]/5 sm:p-8">
+
+                  {/* Icon */}
+                  <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#123C32]/[0.07] transition-colors duration-300 group-hover:bg-[#123C32]">
+                    <Icon
+                      size={25}
+                      strokeWidth={1.7}
+                      className="text-[#123C32] transition-colors duration-300 group-hover:text-[#D4AF37]"
+                    />
+                  </div>
+
+                  {/* Accent */}
+                  <div className="mb-4 h-[2px] w-9 rounded-full bg-[#D4AF37] transition-all duration-300 group-hover:w-16" />
+
+                  {/* Content */}
+                  <h3 className="mb-3 text-xl font-semibold text-[#123C32]">
+                    {item.title}
+                  </h3>
+
+                  <p className="mb-6 text-sm leading-7 text-[#666666]">
+                    {item.description}
+                  </p>
+
+                  {/* Points */}
+                  <div className="space-y-3 border-t border-[#123C32]/10 pt-5">
+                    {item.points.map((point) => (
+                      <div key={point} className="flex items-start gap-2.5">
+                        <CheckCircle2
+                          size={17}
+                          className="mt-0.5 shrink-0 text-[#B8922A]"
+                        />
+
+                        <span className="text-sm leading-6 text-[#555555]">
+                          {point}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                </div>
+              </FadeIn>
+            );
+          })}
         </div>
+
+        {/* WhatsApp Contact CTA */}
+        <FadeIn className="mt-10">
+          <div className="flex flex-col items-center justify-between gap-5 rounded-2xl bg-[#123C32] p-7 text-center sm:flex-row sm:px-9 sm:text-left">
+
+            <div>
+              <h3 className="text-xl font-semibold text-white">
+                Have Questions About Wholesale Orders?
+              </h3>
+
+              <p className="mt-2 text-sm leading-6 text-white/65">
+                Contact our team to discuss products, colors, sizes,
+                and wholesale ordering requirements.
+              </p>
+            </div>
+
+            <a
+              href="https://wa.me/971551896390"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Contact Anis Abaya UAE on WhatsApp"
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-[#D4AF37] px-6 py-3.5 text-sm font-bold text-[#123C32] transition-all duration-300 hover:bg-[#E5C76A] hover:shadow-lg"
+            >
+              <MessageCircle size={18} />
+              Contact on WhatsApp
+            </a>
+
+          </div>
+        </FadeIn>
+
       </div>
     </section>
-    );
+  );
 };
 
 export default Testimonials;

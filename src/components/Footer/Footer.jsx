@@ -1,284 +1,315 @@
+
 import { Link } from 'react-router-dom';
-import { 
-  Facebook, 
-  Instagram, 
-  Twitter, 
-  Youtube, 
-  Mail, 
-  Phone, 
+import {
+  Facebook,
+  Instagram,
+  Music2,
+  Mail,
+  Phone,
   MapPin,
   ArrowRight,
-  Heart
+  Heart,
+  MessageCircle,
+  Globe,
 } from 'lucide-react';
+
 import logo from '../../assets/images/logo.png';
-import { useState } from 'react';
 
 const Footer = () => {
-  const [email, setEmail] = useState('');
-  const [isSubscribing, setIsSubscribing] = useState(false);
-
-  const handleSubscribe = async (e) => {
-    e.preventDefault();
-    if (!email) return;
-    
-    setIsSubscribing(true);
-    // Add your newsletter subscription logic here
-    setTimeout(() => {
-      setIsSubscribing(false);
-      setEmail('');
-      alert('Thank you for subscribing!');
-    }, 1000);
-  };
+  const currentYear = new Date().getFullYear();
 
   const companyLinks = [
     { name: 'About Us', path: '/about' },
-    { name: 'Our Story', path: '/story' },
-    { name: 'Careers', path: '/careers' },
-    { name: 'Press', path: '/press' },
-    { name: 'Blog', path: '/blog' }
+    { name: 'Our Story', path: '/about' },
+    { name: 'Contact Us', path: '/contact' },
   ];
 
   const shopLinks = [
+    { name: 'Shop All', path: '/shop' },
     { name: 'Abaya Collection', path: '/abaya' },
-    { name: 'Hijab Collection', path: '/hijab' },
     { name: 'New Arrivals', path: '/new-arrivals' },
     { name: 'Best Sellers', path: '/best-sellers' },
-    { name: 'Sale', path: '/sale' }
   ];
 
   const supportLinks = [
-    { name: 'Help Center', path: '/help' },
-    { name: 'Track Order', path: '/track-order' },
-    { name: 'Returns & Exchange', path: '/returns' },
-    { name: 'Shipping Info', path: '/shipping' },
-    { name: 'Contact Us', path: '/contact' }
+    { name: 'Wholesale Information', path: '/wholesale' },
+    { name: 'Track My Order', path: '/track-order' },
+    { name: 'Privacy Policy', path: '/privacy-policy' },
+    { name: 'Terms & Conditions', path: '/terms-conditions' },
   ];
 
   const socialLinks = [
-    { icon: Facebook, href: 'https://facebook.com', label: 'Facebook' },
-    { icon: Instagram, href: 'https://instagram.com', label: 'Instagram' },
-    { icon: Twitter, href: 'https://twitter.com', label: 'Twitter' },
-    { icon: Youtube, href: 'https://youtube.com', label: 'YouTube' }
+    {
+      icon: MessageCircle,
+      href: 'https://wa.me/971551896390',
+      label: 'WhatsApp',
+    },
+    {
+      icon: Mail,
+      href: 'mailto:anisabaya290@gmail.com',
+      label: 'Email',
+    },
+    {
+      icon: Phone,
+      href: 'tel:+971551896390',
+      label: 'Phone',
+    },
+    {
+      icon: Music2,
+      href: 'https://www.tiktok.com/@anis_abaya_uae',
+      label: 'TikTok',
+    },
+    {
+      icon: Facebook,
+      href: 'https://www.facebook.com/AnisAbayauae',
+      label: 'Facebook',
+    },
+    {
+      icon: Instagram,
+      href: 'https://www.instagram.com/anis_abaya_uae',
+      label: 'Instagram',
+    },
   ];
 
   return (
-    <footer className="bg-linear-to-b from-gray-50 to-white border-t border-gray-200">
-      {/* Main Footer Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 lg:gap-12">
-          {/* Brand Section - Takes 4 columns on large screens */}
+    <footer className="bg-[#F7F5EF] border-t border-[#D4AF37]/25">
+      {/* Main Footer */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-14 pb-10">
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-10 lg:gap-8">
+
+          {/* Brand Section */}
           <div className="lg:col-span-4">
-            <Link to="/" className="inline-block mb-4">
-              <img 
-                src={logo} 
-                alt="Anis Abaiya" 
-                className="h-10 w-auto hover:opacity-80 transition-opacity" 
+            <Link to="/" className="inline-block mb-5">
+              <img
+                src={logo}
+                alt="Anis Abaya UAE"
+                className="h-12 w-auto object-contain"
               />
             </Link>
-            
 
-            {/* Contact Info */}
-            <div className="space-y-3 text-sm text-gray-600">
-              <a 
-                href="tel:01757777765" 
-                className="flex items-center gap-2 hover:text-amber-600 transition-colors group"
+            <p className="text-sm text-[#1A1A1A]/70 leading-7 max-w-sm mb-6">
+              Anis Abaya UAE is a premium abaya manufacturer and
+              wholesale supplier based in the UAE. We provide
+              quality abayas for boutiques, retailers and fashion
+              businesses worldwide.
+            </p>
+
+            <div className="space-y-3 text-sm">
+              <a
+                href="https://wa.me/971551896390"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 text-[#1A1A1A]/70 hover:text-[#123C32] transition-colors"
               >
-                <Phone className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                <span>01757777765</span>
+                <MessageCircle size={17} className="text-[#D4AF37]" />
+                <span>+971 55 189 6390</span>
               </a>
-              <a 
-                href="mailto:info@anisabaiya.com" 
-                className="flex items-center gap-2 hover:text-amber-600 transition-colors group"
+
+              <a
+                href="mailto:anisabaya290@gmail.com"
+                className="flex items-center gap-3 text-[#1A1A1A]/70 hover:text-[#123C32] transition-colors"
               >
-                <Mail className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                <span>info@anisabaiya.com</span>
+                <Mail size={17} className="text-[#D4AF37]" />
+                <span>anisabaya290@gmail.com</span>
               </a>
-              <div className="flex items-center gap-2 hover:text-amber-600 transition-colors group">
-                <MapPin className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                <span>Dubai</span>
+
+              <div className="flex items-center gap-3 text-[#1A1A1A]/70">
+                <MapPin size={17} className="text-[#D4AF37]" />
+                <span>United Arab Emirates</span>
               </div>
             </div>
 
             {/* Social Links */}
-            <div className="flex items-center gap-3 mt-6">
-              {socialLinks.map((social) => (
-                <a
-                  key={social.label}
-                  href={social.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={social.label}
-                  className="w-9 h-9 rounded-full bg-gray-100 hover:bg-amber-500 flex items-center justify-center text-gray-600 hover:text-white transition-all duration-300 hover:scale-110"
-                >
-                  <social.icon className="w-4 h-4" />
-                </a>
-              ))}
+            <div className="flex flex-wrap items-center gap-3 mt-7">
+              {socialLinks.map((social) => {
+                const Icon = social.icon;
+
+                return (
+                  <a
+                    key={social.label}
+                    href={social.href}
+                    target={
+                      social.label === 'Email' || social.label === 'Phone'
+                        ? undefined
+                        : '_blank'
+                    }
+                    rel={
+                      social.label === 'Email' || social.label === 'Phone'
+                        ? undefined
+                        : 'noopener noreferrer'
+                    }
+                    aria-label={social.label}
+                    title={social.label}
+                    className="w-10 h-10 rounded-full border border-[#123C32]/15 bg-white flex items-center justify-center text-[#123C32] hover:bg-[#123C32] hover:text-[#D4AF37] hover:border-[#123C32] transition-all duration-300"
+                  >
+                    <Icon size={17} />
+                  </a>
+                );
+              })}
             </div>
           </div>
 
-          {/* Company Links - Takes 2 columns */}
+          {/* Company Links */}
           <div className="lg:col-span-2">
-            <h3 className="font-bold text-gray-900 mb-4 text-sm uppercase tracking-wider">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-[#123C32] mb-5">
               Company
             </h3>
+
             <ul className="space-y-3">
               {companyLinks.map((link) => (
-                <li key={link.path}>
+                <li key={link.name}>
                   <Link
                     to={link.path}
-                    className="text-gray-600 hover:text-amber-600 text-sm transition-colors inline-flex items-center gap-1 group"
+                    className="text-sm text-[#1A1A1A]/65 hover:text-[#123C32] transition-colors inline-flex items-center gap-2 group"
                   >
                     <span>{link.name}</span>
-                    <ArrowRight className="w-3 h-3 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+                    <ArrowRight
+                      size={13}
+                      className="opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all"
+                    />
                   </Link>
                 </li>
               ))}
             </ul>
           </div>
 
-          {/* Shop Links - Takes 2 columns */}
+          {/* Shop Links */}
           <div className="lg:col-span-2">
-            <h3 className="font-bold text-gray-900 mb-4 text-sm uppercase tracking-wider">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-[#123C32] mb-5">
               Shop
             </h3>
+
             <ul className="space-y-3">
               {shopLinks.map((link) => (
                 <li key={link.path}>
                   <Link
                     to={link.path}
-                    className="text-gray-600 hover:text-amber-600 text-sm transition-colors inline-flex items-center gap-1 group"
+                    className="text-sm text-[#1A1A1A]/65 hover:text-[#123C32] transition-colors inline-flex items-center gap-2 group"
                   >
                     <span>{link.name}</span>
-                    <ArrowRight className="w-3 h-3 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+                    <ArrowRight
+                      size={13}
+                      className="opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all"
+                    />
                   </Link>
                 </li>
               ))}
             </ul>
           </div>
 
-          {/* Support Links - Takes 2 columns */}
+          {/* Support Links */}
           <div className="lg:col-span-2">
-            <h3 className="font-bold text-gray-900 mb-4 text-sm uppercase tracking-wider">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-[#123C32] mb-5">
               Support
             </h3>
+
             <ul className="space-y-3">
               {supportLinks.map((link) => (
                 <li key={link.path}>
                   <Link
                     to={link.path}
-                    className="text-gray-600 hover:text-amber-600 text-sm transition-colors inline-flex items-center gap-1 group"
+                    className="text-sm text-[#1A1A1A]/65 hover:text-[#123C32] transition-colors inline-flex items-center gap-2 group"
                   >
                     <span>{link.name}</span>
-                    <ArrowRight className="w-3 h-3 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+                    <ArrowRight
+                      size={13}
+                      className="opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all"
+                    />
                   </Link>
                 </li>
               ))}
             </ul>
           </div>
 
-          {/* Newsletter Section - Takes 2 columns */}
+          {/* Wholesale CTA */}
           <div className="lg:col-span-2">
-            <h3 className="font-bold text-gray-900 mb-4 text-sm uppercase tracking-wider">
-              Newsletter
+            <h3 className="text-sm font-bold uppercase tracking-wider text-[#123C32] mb-5">
+              Wholesale Enquiries
             </h3>
-            <p className="text-gray-600 text-sm mb-4 leading-relaxed">
-              Get exclusive offers, new arrivals, and style inspiration.
+
+            <p className="text-sm text-[#1A1A1A]/65 leading-6 mb-5">
+              Looking for premium abayas for your boutique or
+              retail business? Contact our team for wholesale
+              enquiries and product information.
             </p>
-            <form onSubmit={handleSubscribe} className="space-y-3">
-              <div className="relative">
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Your email address"
-                  required
-                  className="w-full px-4 py-2.5 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none text-sm transition-all"
-                />
-                <button
-                  type="submit"
-                  disabled={isSubscribing}
-                  className="absolute right-1 top-1 bottom-1 px-3 bg-amber-500 hover:bg-amber-600 text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  aria-label="Subscribe"
-                >
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </div>
-              <p className="text-xs text-gray-500">
-                By subscribing, you agree to our Privacy Policy.
-              </p>
-            </form>
+
+            <a
+              href="https://wa.me/971551896390"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2 px-4 py-3 bg-[#123C32] text-white text-sm font-semibold rounded-lg hover:bg-[#1A1A1A] transition-colors"
+            >
+              Contact Us
+              <ArrowRight size={16} />
+            </a>
           </div>
         </div>
-        
 
-        {/* Payment & Trust Badges */}
-        
-        <div className='mt-12'>
-            <p className="text-gray-600 text-sm leading-relaxed text-center">
-              Your destination for premium quality abayas and hijabs. 
-              Combining tradition with contemporary elegance.
-            </p>
-            <div className=" border-t mt-4 border-gray-200">
-            
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-2 text-xs text-gray-500">
-              <span className="font-semibold text-gray-700">We Accept:</span>
-              <div className="flex items-center gap-2">
-                {['Visa', 'Mastercard', 'bKash', 'Nagad'].map((payment) => (
-                  <span 
-                    key={payment}
-                    className="px-2 py-1 bg-white border border-gray-200 rounded text-gray-600 font-medium"
-                  >
-                    {payment}
-                  </span>
-                ))}
+        {/* Wholesale Information */}
+        <div className="mt-12 pt-7 border-t border-[#123C32]/10">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-5">
+
+            <div className="flex items-center gap-3">
+              <Globe size={20} className="text-[#D4AF37]" />
+
+              <div>
+                <p className="text-sm font-semibold text-[#123C32]">
+                  Worldwide Wholesale Supply
+                </p>
+                <p className="text-xs text-[#1A1A1A]/60 mt-1">
+                  Direct from UAE Manufacturer
+                </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-4 text-xs text-gray-500">
-              <div className="flex items-center gap-1.5">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                <span>Secure Checkout</span>
-              </div>
-              <span>•</span>
-              <span>100% Original Products</span>
-              <span>•</span>
-              <span>Easy Returns</span>
-            </div>
+            <p className="text-xs text-[#1A1A1A]/60 text-center md:text-right max-w-lg leading-6">
+              Delivery charges are not included. Shipping costs
+              are payable by the customer. Shipping arrangements
+              are confirmed separately through WhatsApp.
+            </p>
           </div>
-        </div>
         </div>
       </div>
-      
 
       {/* Bottom Bar */}
-      <div className="border-t border-gray-200 bg-gray-50/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm">
-            <p className="text-gray-600 flex items-center gap-1">
-              © {new Date().getFullYear()} Anis Abaiya. Made with 
-              <Heart className="w-4 h-4 text-red-500 fill-red-500 inline-block mx-0.5" />
-              by <a href="https://github.com/subrotadey" target="_blank" rel="noopener noreferrer" className="text-amber-600 hover:text-amber-700 font-medium">Subrota Dey</a>
+      <div className="border-t border-[#123C32]/10 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+
+            <p className="text-xs text-[#1A1A1A]/60 flex items-center gap-1.5 text-center">
+              © {currentYear} Anis Abaya UAE. All rights reserved.
+              <span className="inline-flex items-center gap-1 ml-1">
+                Made with
+                <Heart
+                  size={13}
+                  className="text-red-500 fill-red-500"
+                />
+                by
+                <a
+                  href="http://wa.me/+8801609102858"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold text-[#123C32] hover:text-[#D4AF37] transition-colors"
+                >
+                  Subrota Dey
+                </a>
+              </span>
             </p>
 
-            <div className="flex items-center gap-6">
-              <Link 
-                to="/privacy-policy" 
-                className="text-gray-600 hover:text-amber-600 transition-colors"
+            <div className="flex flex-wrap items-center justify-center gap-5 text-xs">
+              <Link
+                to="/privacy-policy"
+                className="text-[#1A1A1A]/60 hover:text-[#123C32] transition-colors"
               >
                 Privacy Policy
               </Link>
-              <Link 
-                to="/terms-conditions" 
-                className="text-gray-600 hover:text-amber-600 transition-colors"
+
+              <Link
+                to="/terms-conditions"
+                className="text-[#1A1A1A]/60 hover:text-[#123C32] transition-colors"
               >
                 Terms & Conditions
-              </Link>
-              <Link 
-                to="/sitemap" 
-                className="text-gray-600 hover:text-amber-600 transition-colors"
-              >
-                Sitemap
               </Link>
             </div>
           </div>

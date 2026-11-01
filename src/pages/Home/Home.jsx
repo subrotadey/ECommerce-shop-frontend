@@ -23,18 +23,18 @@ const Home = () => {
   return (
     <div className="bg-white">
       <HeroSection/>
-      <TrustBar />
       <ConnectBar />
+      <TrustBar />
       <CategoriesSection/>
       <PricingShowcase />
       <FeaturesSection />
       <HowItWorks />
       <Testimonials />
       <UAECoverage />
-      <PartnerCTA />
+      {/* <PartnerCTA /> */}
       <FAQSection />
       <ConnectSection />
-      <Newsletter />
+      {/* <Newsletter /> */}
       <FloatingWhatsApp />
     </div>
   );

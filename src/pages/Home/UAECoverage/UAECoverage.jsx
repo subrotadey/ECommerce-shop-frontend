@@ -1,93 +1,225 @@
+
 import { useState } from "react";
-import { Link } from "react-router";
-import {ArrowRight} from "lucide-react";
+import { Link } from "react-router-dom";
+import {
+  ArrowRight,
+  MapPin,
+  Globe2,
+  PackageCheck,
+  MessageCircle,
+} from "lucide-react";
 import FadeIn from "../../../components/Animations/FadeIn";
 
-// ─── Design Tokens ────────────────────────────────────────────────────────────
-// Palette: White base, Warm Gold accent, Deep Charcoal text, Sage Green touch
-const GOLD = "#B8922A";
-const GOLD_LIGHT = "#D4AA4A";
+const EMERALD = "#123C32";
+const GOLD = "#D4AF37";
 const CHARCOAL = "#1A1A1A";
-const SAGE = "#4A7C6F";
+const IVORY = "#F7F5EF";
 
 const UAECoverage = () => {
-    const [hover, setHover] = useState(null);
+  const [hover, setHover] = useState(null);
 
-    const UAE_CITIES = [
-        { name: "Dubai", x: "62%", y: "68%", stores: "180+" },
-        { name: "Abu Dhabi", x: "28%", y: "72%", stores: "95+" },
-        { name: "Sharjah", x: "67%", y: "56%", stores: "70+" },
-        { name: "Ajman", x: "70%", y: "48%", stores: "45+" },
-        { name: "Ras Al Khaimah", x: "72%", y: "28%", stores: "30+" },
-        { name: "Fujairah", x: "88%", y: "55%", stores: "25+" },
-    ];
-    return (
-        <section className="py-20" style={{ background: "#FAFAF8" }}>
+  const UAE_CITIES = [
+    { name: "Abu Dhabi", x: "28%", y: "72%" },
+    { name: "Dubai", x: "62%", y: "68%" },
+    { name: "Sharjah", x: "67%", y: "56%" },
+    { name: "Ajman", x: "70%", y: "48%" },
+    { name: "Ras Al Khaimah", x: "72%", y: "28%" },
+    { name: "Fujairah", x: "88%", y: "55%" },
+  ];
+
+  return (
+    <section
+      className="py-20 sm:py-24"
+      style={{ backgroundColor: IVORY }}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid lg:grid-cols-2 gap-12 items-center">
+        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+
+          {/* Left Content */}
           <FadeIn>
-            <div className="inline-block text-xs font-bold uppercase tracking-widest px-3 py-1 mb-4 rounded-full" style={{ color: GOLD, background: `${GOLD}10` }}>UAE Coverage</div>
-            <h2 className="text-3xl sm:text-4xl font-bold mb-4" style={{ color: CHARCOAL }}>We Deliver Across All Emirates</h2>
-            <p className="text-gray-500 mb-8 leading-relaxed">From the heart of Dubai to the northern Emirates — we have active retail partners and reliable delivery routes across the entire UAE.</p>
+            <div>
+              <div
+                className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest px-4 py-2 mb-5 rounded-full"
+                style={{
+                  color: EMERALD,
+                  backgroundColor: `${EMERALD}10`,
+                }}
+              >
+                <MapPin size={14} />
+                UAE Wholesale Coverage
+              </div>
 
-            <div className="grid grid-cols-2 gap-3 mb-8">
-              {UAE_CITIES.map(city => (
-                <div key={city.name}
-                  className="flex items-center gap-3 p-4 rounded-xl border transition-all cursor-default"
-                  style={{ borderColor: hover === city.name ? GOLD : "#E5E7EB", background: hover === city.name ? `${GOLD}06` : "white" }}
-                  onMouseEnter={() => setHover(city.name)}
-                  onMouseLeave={() => setHover(null)}>
-                  <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: GOLD }} />
-                  <div>
-                    <div className="font-semibold text-sm" style={{ color: CHARCOAL }}>{city.name}</div>
-                    <div className="text-xs text-gray-400">{city.stores} partner stores</div>
+              <h2
+                className="text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight mb-5"
+                style={{ color: CHARCOAL }}
+              >
+                Wholesale Abaya Supply Across the UAE
+              </h2>
+
+              <p className="text-gray-600 leading-relaxed mb-8">
+                Anis Abaya UAE welcomes wholesale enquiries from businesses
+                across all seven Emirates. Whether you run a boutique,
+                fashion store, or clothing business, our team is ready to
+                discuss your bulk order and shipping arrangements.
+              </p>
+
+              {/* Emirates */}
+              <div className="grid grid-cols-2 gap-3 mb-8">
+                {UAE_CITIES.map((city) => (
+                  <div
+                    key={city.name}
+                    className="flex items-center gap-3 p-4 rounded-xl border transition-all duration-300"
+                    style={{
+                      borderColor:
+                        hover === city.name ? GOLD : "#E5E7EB",
+                      backgroundColor:
+                        hover === city.name ? "#FFFFFF" : "#FFFFFF",
+                    }}
+                    onMouseEnter={() => setHover(city.name)}
+                    onMouseLeave={() => setHover(null)}
+                  >
+                    <div
+                      className="w-2.5 h-2.5 rounded-full shrink-0"
+                      style={{
+                        backgroundColor:
+                          hover === city.name ? GOLD : EMERALD,
+                      }}
+                    />
+
+                    <span
+                      className="font-semibold text-sm"
+                      style={{ color: CHARCOAL }}
+                    >
+                      {city.name}
+                    </span>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
 
-            <Link to="/contact"
-              className="inline-flex items-center gap-2 px-7 py-4 rounded-xl text-white font-semibold shadow-lg hover:opacity-90 transition-all"
-              style={{ background: CHARCOAL }}>
-              Find Delivery in Your Area
-              <ArrowRight size={18} />
-            </Link>
+              {/* Delivery Note */}
+              <div
+                className="flex items-start gap-3 p-4 rounded-xl mb-8"
+                style={{ backgroundColor: "#FFFFFF" }}
+              >
+                <PackageCheck
+                  size={21}
+                  className="shrink-0 mt-0.5"
+                  style={{ color: EMERALD }}
+                />
+
+                <p className="text-sm text-gray-600 leading-relaxed">
+                  Delivery charges are not included. Shipping costs are
+                  payable by the customer.
+                </p>
+              </div>
+
+              
+            </div>
           </FadeIn>
 
-          {/* UAE Map illustration */}
+          {/* Right Map Illustration */}
           <FadeIn delay={200}>
-            <div className="relative bg-white rounded-3xl border border-gray-100 shadow-lg overflow-hidden" style={{ minHeight: 400 }}>
+            <div
+              className="relative rounded-3xl border overflow-hidden shadow-sm"
+              style={{
+                minHeight: 420,
+                backgroundColor: "#FFFFFF",
+                borderColor: "#E8E5DC",
+              }}
+            >
+              {/* Decorative Background */}
+              <div
+                className="absolute inset-0"
+                style={{
+                  background:
+                    "radial-gradient(circle at 50% 45%, #D4AF3712, transparent 65%)",
+                }}
+              />
+
+              {/* Decorative UAE Illustration */}
               <div className="absolute inset-0 flex items-center justify-center">
-                {/* Stylized UAE outline */}
-                <svg viewBox="0 0 400 280" className="w-full h-full opacity-10" style={{ fill: CHARCOAL }}>
+                <svg
+                  viewBox="0 0 400 280"
+                  className="w-full h-full opacity-[0.08]"
+                  style={{ fill: EMERALD }}
+                  aria-hidden="true"
+                >
                   <path d="M340,20 L380,60 L390,100 L370,140 L340,160 L300,200 L260,220 L200,240 L160,230 L120,210 L80,180 L40,150 L20,120 L30,90 L60,70 L100,50 L150,30 L200,20 L250,15 L300,18 Z" />
                 </svg>
-                {/* City dots */}
-                {UAE_CITIES.map(city => (
-                  <div key={city.name} className="absolute" style={{ left: city.x, top: city.y, transform: "translate(-50%,-50%)" }}>
+
+                {/* City Markers */}
+                {UAE_CITIES.map((city) => (
+                  <div
+                    key={city.name}
+                    className="absolute"
+                    style={{
+                      left: city.x,
+                      top: city.y,
+                      transform: "translate(-50%, -50%)",
+                    }}
+                  >
                     <div className="relative">
-                      <div className="w-3 h-3 rounded-full border-2 border-white shadow-lg" style={{ background: hover === city.name ? GOLD : CHARCOAL }} />
+                      <div
+                        className="w-4 h-4 rounded-full border-[3px] border-white shadow-md transition-transform duration-300"
+                        style={{
+                          backgroundColor:
+                            hover === city.name ? GOLD : EMERALD,
+                          transform:
+                            hover === city.name ? "scale(1.3)" : "scale(1)",
+                        }}
+                      />
+
                       {hover === city.name && (
-                        <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-white rounded-xl shadow-xl px-3 py-2 text-xs font-bold whitespace-nowrap border border-gray-100" style={{ color: CHARCOAL }}>
-                          {city.name}: {city.stores} stores
+                        <div
+                          className="absolute -top-10 left-1/2 -translate-x-1/2 px-3 py-2 rounded-lg text-xs font-semibold whitespace-nowrap shadow-lg z-20"
+                          style={{
+                            color: "#FFFFFF",
+                            backgroundColor: EMERALD,
+                          }}
+                        >
+                          {city.name}
                         </div>
                       )}
                     </div>
                   </div>
                 ))}
               </div>
-              <div className="absolute inset-0 bg-gradient-to-br from-amber-50/30 to-emerald-50/20" />
-              <div className="relative z-10 p-6 text-center mt-8">
-                <div className="text-sm font-bold mb-2" style={{ color: CHARCOAL }}>Active UAE Retail Network</div>
-                <div className="text-4xl font-black mb-1" style={{ color: GOLD }}>445+</div>
-                <div className="text-sm text-gray-500">Partner Stores Across UAE</div>
+
+              {/* Overlay Information */}
+              <div className="absolute inset-0 flex flex-col items-center justify-end text-center p-8 pb-10">
+                <div
+                  className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4"
+                  style={{
+                    backgroundColor: `${GOLD}20`,
+                    color: EMERALD,
+                  }}
+                >
+                  <Globe2 size={28} />
+                </div>
+
+                <h3
+                  className="text-xl sm:text-2xl font-bold mb-2"
+                  style={{ color: CHARCOAL }}
+                >
+                  Serving Wholesale Businesses
+                </h3>
+
+                <p className="text-sm text-gray-500 max-w-xs leading-relaxed">
+                  Connect with Anis Abaya UAE for bulk order enquiries
+                  and shipping arrangements across the Emirates.
+                </p>
+
+                <div
+                  className="w-16 h-1 rounded-full mt-6"
+                  style={{ backgroundColor: GOLD }}
+                />
               </div>
             </div>
           </FadeIn>
         </div>
       </div>
     </section>
-    );
+  );
 };
 
 export default UAECoverage;

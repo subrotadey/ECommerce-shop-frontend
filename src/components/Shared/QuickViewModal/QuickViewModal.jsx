@@ -1,4 +1,5 @@
 // src/components/Shared/QuickViewModal/QuickViewModal.jsx
+import { createPortal } from "react-dom";
 import { Link } from "react-router";
 import SizeSelector from "../../Product/SizeSelector";
 import ColorSelector from "../../Product/ColorSelector";
@@ -23,8 +24,10 @@ export default function QuickViewModal({ product, onClose }) {
 
     if (!product) return null;
 
-    return (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
+    // Portal → renders on <body>, so no parent stacking context can trap it.
+    // z-[200] → above the fixed Navbar (z-[100]) and its drawers (z-[110]/z-[120]).
+    return createPortal(
+        <div className="fixed inset-0 bg-black/50 z-[200] flex items-center justify-center p-4" onClick={onClose}>
             <div className="bg-white rounded-2xl max-w-5xl w-full p-0 relative overflow-hidden max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
                 <button onClick={onClose} className="btn btn-sm btn-circle absolute right-2 top-2 z-10">✕</button>
 
@@ -87,6 +90,7 @@ export default function QuickViewModal({ product, onClose }) {
                     </div>
                 </section>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }
