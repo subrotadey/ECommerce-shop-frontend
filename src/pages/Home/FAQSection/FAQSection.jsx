@@ -11,19 +11,23 @@ const IVORY = "#F7F5EF";
 const FAQS = [
   {
     q: "What is the minimum order quantity (MOQ)?",
-    a: "Our minimum order quantity is 12 pieces per individual product and color combination. You can mix different available sizes within the same color, as long as the total quantity for that product and color reaches 12 pieces.",
+    a: "The minimum order quantity is 12 pieces per product per color. For example, if you select one color of a particular product, you must order at least 12 pieces in that color. You can mix different available sizes within those 12 pieces.",
   },
   {
-    q: "Can I mix different sizes in one order?",
-    a: "Yes. You can mix all six available sizes within the same product and color combination. Our standard sizes are S (52), M (54), L (56), XL (58), XXL (60), and 3XL (62).",
+    q: "Can I order multiple colors of the same product?",
+    a: "Yes. You can select multiple available colors, including 10 or more colors, depending on product availability. However, each color requires a separate minimum order of 12 pieces. For example, 1 color requires 12 pieces, 2 colors require 24 pieces, 3 colors require 36 pieces, and 5 colors require 60 pieces. Each color must independently meet the 12-piece MOQ.",
+  },
+  {
+    q: "Can I mix different sizes within the minimum order?",
+    a: "Yes. You can mix different available sizes within the same product and color. For example, you can order 3 pieces of S (52), 3 pieces of M (54), 2 pieces of L (56), 2 pieces of XL (58), 1 piece of XXL (60), and 1 piece of 3XL (62), making a total of 12 pieces for that color.",
+  },
+  {
+    q: "What sizes are available?",
+    a: "Our standard size options are S (52), M (54), L (56), XL (58), XXL (60), and 3XL (62). Available sizes may vary depending on the product and stock.",
   },
   {
     q: "Do you offer discounts on bulk orders?",
-    a: "Yes. Orders containing 12–99 pieces receive the standard wholesale pricing. Orders with a total quantity of 100 pieces or more receive an additional 5% discount on the merchandise subtotal. Delivery charges are excluded from the discount calculation.",
-  },
-  {
-    q: "Can I order multiple colors?",
-    a: "Yes. You can select multiple available colors for a product. However, each individual product and color combination must independently meet the minimum order quantity of 12 pieces.",
+    a: "Yes. Orders containing 12–99 pieces receive the standard wholesale pricing. Orders with a total quantity of 100 pieces or more receive an additional 5% discount on the merchandise subtotal. The total quantity is calculated across all products and colors in one order. Delivery charges are excluded from the discount calculation.",
   },
   {
     q: "Do you accept international wholesale orders?",
@@ -79,7 +83,8 @@ const FAQSection = () => {
 
             <p className="text-gray-500 text-sm sm:text-base max-w-xl mx-auto leading-relaxed">
               Everything you need to know about wholesale ordering,
-              minimum quantities, bulk discounts, payments, and delivery.
+              minimum quantities, color selection, bulk discounts,
+              payments, and delivery.
             </p>
           </div>
         </FadeIn>
