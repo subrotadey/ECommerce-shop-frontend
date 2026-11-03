@@ -1,4 +1,4 @@
-// utils/axios.js - FIXED VERSION WITH PROPER TOKEN HANDLING
+// utils/axios.js
 import axios from 'axios';
 import { auth } from '../firebase/firebase.init';
 

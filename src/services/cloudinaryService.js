@@ -1,4 +1,4 @@
-// src/services/cloudinaryService.js (FIXED VERSION)
+// src/services/cloudinaryService.js
 
 import axios from 'axios';
 import {
