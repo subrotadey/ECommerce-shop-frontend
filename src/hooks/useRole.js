@@ -17,7 +17,7 @@ const useRole = (email) => {
         return { role: null };
       }
       
-      const res = await axiosInstance.get(`/api/users/role/${email}`);
+      const res = await axiosInstance.get(`/users/role/${email}`);
       return res.data;
     },
     enabled: !!email,

@@ -376,7 +376,7 @@ const MyOrders = () => {
     queryFn: async () => {
       const params = { page, limit: LIMIT };
       if (statusFilter !== "all") params.status = statusFilter;
-      const { data } = await axiosInstance.get(`/api/users/${userId}/orders`, {
+      const { data } = await axiosInstance.get(`/users/${userId}/orders`, {
         params,
       });
       return data;

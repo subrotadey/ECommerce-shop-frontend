@@ -1,274 +1,466 @@
 // src/services/cloudinaryService.js
 
 import axios from 'axios';
+import axiosInstance from '../utils/axios';
+
 import {
-    CLOUDINARY_CONFIG,
-    IMAGE_UPLOAD_CONFIG,
-    VIDEO_UPLOAD_CONFIG,
-    getVideoThumbnailUrl,
+  CLOUDINARY_CONFIG,
+  IMAGE_UPLOAD_CONFIG,
+  VIDEO_UPLOAD_CONFIG,
+  formatTransformations,
+  getVideoThumbnailUrl,
+  getCloudinaryUrl,
+  isCloudinaryConfigured,
 } from '../config/cloudinary';
 
-// Get API base URL (WITHOUT /api suffix)
-const getApiUrl = () => {
-  const url = import.meta.env.VITE_API_URL || 'https://ecommerce-shop-backend-gr7k.onrender.com';
-  console.log('🔧 Base API URL:', url);
-  return url;
+// --------------------------------------
+// CLOUDINARY HELPERS
+// --------------------------------------
+
+const RESOURCE_TYPES = ['image', 'video'];
+
+// Backend শুধু এই দুই status-কে "delete সফল" বলে।
+const VERIFIED_DELETE_STATUSES = ['deleted', 'not_found'];
+
+const getCloudinaryUploadUrl = (resourceType) => {
+  if (!isCloudinaryConfigured()) {
+    throw new Error('Cloudinary configuration is missing.');
+  }
+
+  if (!RESOURCE_TYPES.includes(resourceType)) {
+    throw new Error('Invalid Cloudinary resource type.');
+  }
+
+  return `https://api.cloudinary.com/v1_1/${CLOUDINARY_CONFIG.cloudName}/${resourceType}/upload`;
 };
 
-/**
- * Upload image to Cloudinary
- */
-export const uploadImage = async (file, folder = IMAGE_UPLOAD_CONFIG.folder) => {
-  console.log('📤 Starting image upload:', {
-    fileName: file.name,
-    fileSize: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
-    fileType: file.type,
-  });
+const getFileExtension = (file) => {
+  return file?.name?.split('.').pop()?.toLowerCase() || '';
+};
 
-  try {
-    // Validate file format
-    const fileExtension = file.type.split('/')[1];
-    if (!IMAGE_UPLOAD_CONFIG.allowedFormats.includes(fileExtension)) {
-      throw new Error(`Invalid file format. Only ${IMAGE_UPLOAD_CONFIG.allowedFormats.join(', ')} allowed.`);
-    }
+const validateFile = (file, config, resourceType) => {
+  if (!file || typeof file !== 'object') {
+    throw new Error('Please select a valid file.');
+  }
 
-    // Validate file size
-    if (file.size > IMAGE_UPLOAD_CONFIG.maxFileSize) {
-      throw new Error(`File size exceeds ${IMAGE_UPLOAD_CONFIG.maxFileSize / 1024 / 1024}MB limit.`);
-    }
+  const extension = getFileExtension(file);
 
-    // Create form data
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', CLOUDINARY_CONFIG.uploadPreset);
-    formData.append('folder', folder);
-
-    console.log('📡 Uploading to Cloudinary...', {
-      cloudName: CLOUDINARY_CONFIG.cloudName,
-      uploadPreset: CLOUDINARY_CONFIG.uploadPreset,
-      folder: folder,
-    });
-
-    // Upload to Cloudinary
-    const response = await axios.post(
-      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CONFIG.cloudName}/image/upload`,
-      formData,
-      {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        onUploadProgress: (progressEvent) => {
-          const percentCompleted = Math.round(
-            (progressEvent.loaded * 100) / progressEvent.total
-          );
-          console.log(`📊 Upload progress: ${percentCompleted}%`);
-        },
-      }
+  if (!config.allowedFormats.includes(extension)) {
+    throw new Error(
+      `Invalid file format. Allowed formats: ${config.allowedFormats.join(', ')}.`
     );
+  }
 
-    console.log('✅ Image uploaded successfully:', {
-      url: response.data.secure_url,
-      publicId: response.data.public_id,
-      format: response.data.format,
-    });
+  if (file.size > config.maxFileSize) {
+    const maxSizeMB = config.maxFileSize / (1024 * 1024);
 
-    return {
-      url: response.data.secure_url,
-      publicId: response.data.public_id,
-      thumbnailUrl: response.data.eager?.[0]?.secure_url || response.data.secure_url,
-      width: response.data.width,
-      height: response.data.height,
-      format: response.data.format,
-      size: response.data.bytes,
-    };
-  } catch (error) {
-    console.error('❌ Image upload error:', error);
-    console.error('Error details:', error.response?.data);
-    throw new Error(error.response?.data?.error?.message || error.message);
+    throw new Error(`File size cannot exceed ${maxSizeMB} MB.`);
+  }
+
+  if (
+    file.type &&
+    !file.type.toLowerCase().startsWith(`${resourceType}/`)
+  ) {
+    throw new Error(`Please select a valid ${resourceType} file.`);
   }
 };
 
-/**
- * Upload video to Cloudinary
- */
-export const uploadVideo = async (file, folder = VIDEO_UPLOAD_CONFIG.folder) => {
-  console.log('🎬 Starting video upload:', {
-    fileName: file.name,
-    fileSize: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
-    fileType: file.type,
-  });
+const getErrorMessage = (error, fallbackMessage) => {
+  return (
+    error?.response?.data?.error?.message ||
+    error?.response?.data?.message ||
+    error?.message ||
+    fallbackMessage
+  );
+};
 
+const createProgressHandler = (onProgress) => {
+  return (event) => {
+    if (!onProgress || !event.total) return;
+
+    const percentage = Math.round(
+      (event.loaded * 100) / event.total
+    );
+
+    onProgress(percentage);
+  };
+};
+
+const createUploadFormData = (file, folder, resourceType = 'image') => {
+  const formData = new FormData();
+
+  formData.append('file', file);
+  formData.append(
+    'upload_preset',
+    resourceType === 'video'
+      ? CLOUDINARY_CONFIG.videoUploadPreset
+      : CLOUDINARY_CONFIG.uploadPreset
+  );
+  formData.append('folder', folder);
+
+  return formData;
+};
+
+// publicId + resourceType থেকে unique key।
+// Image ও video-র publicId আলাদা namespace-এ থাকে, তাই type সহ key।
+export const getAssetKey = (asset) =>
+  `${asset?.resourceType || 'image'}:${asset?.publicId}`;
+
+// --------------------------------------
+// IMAGE UPLOAD
+// --------------------------------------
+
+export const uploadImage = async (
+  file,
+  folder = IMAGE_UPLOAD_CONFIG.folder,
+  onProgress
+) => {
   try {
-    // Validate file format
-    const fileExtension = file.type.split('/')[1];
-    if (!VIDEO_UPLOAD_CONFIG.allowedFormats.includes(fileExtension)) {
-      throw new Error(`Invalid file format. Only ${VIDEO_UPLOAD_CONFIG.allowedFormats.join(', ')} allowed.`);
-    }
+    validateFile(file, IMAGE_UPLOAD_CONFIG, 'image');
 
-    // Validate file size
-    if (file.size > VIDEO_UPLOAD_CONFIG.maxFileSize) {
-      throw new Error(`File size exceeds ${VIDEO_UPLOAD_CONFIG.maxFileSize / 1024 / 1024}MB limit.`);
-    }
+    const formData = createUploadFormData(file, folder, 'video');
 
-    // Create form data
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', CLOUDINARY_CONFIG.uploadPreset);
-    formData.append('folder', folder);
-    formData.append('resource_type', 'video');
-
-    console.log('📡 Uploading video to Cloudinary...');
-
+    // Keep unsigned upload parameters minimal.
+    // Transformations are applied through Cloudinary delivery URLs.
     const response = await axios.post(
-      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CONFIG.cloudName}/video/upload`,
+      getCloudinaryUploadUrl('image'),
       formData,
       {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        onUploadProgress: (progressEvent) => {
-          const percentCompleted = Math.round(
-            (progressEvent.loaded * 100) / progressEvent.total
-          );
-          console.log(`📊 Video upload progress: ${percentCompleted}%`);
-        },
+        onUploadProgress: createProgressHandler(onProgress),
       }
     );
 
-    console.log('✅ Video uploaded successfully:', {
-      url: response.data.secure_url,
-      publicId: response.data.public_id,
-      duration: response.data.duration,
-    });
+    const data = response.data;
 
     return {
-      url: response.data.secure_url,
-      publicId: response.data.public_id,
-      thumbnailUrl: getVideoThumbnailUrl(response.data.public_id),
-      duration: response.data.duration,
-      width: response.data.width,
-      height: response.data.height,
-      format: response.data.format,
-      size: response.data.bytes,
+      url: data.secure_url,
+      publicId: data.public_id,
+      thumbnailUrl: getCloudinaryUrl(
+        data.public_id,
+        IMAGE_UPLOAD_CONFIG.thumbnailTransformation
+      ),
+      width: data.width,
+      height: data.height,
+      format: data.format,
+      size: data.bytes,
+      isMain: false,
     };
   } catch (error) {
-    console.error('❌ Video upload error:', error);
-    console.error('Error details:', error.response?.data);
-    throw new Error(error.response?.data?.error?.message || error.message);
+    console.error(
+      'Cloudinary image upload error:',
+      error.response?.data || error
+    );
+
+    throw new Error(
+      getErrorMessage(error, 'Image upload failed.')
+    );
   }
 };
 
-/**
- * Delete asset from Cloudinary via Backend API (FIXED)
- */
-export const deleteAsset = async (publicId, resourceType = 'image') => {
+// --------------------------------------
+// VIDEO UPLOAD
+// --------------------------------------
+
+export const uploadVideo = async (
+  file,
+  folder = VIDEO_UPLOAD_CONFIG.folder,
+  onProgress
+) => {
   try {
-    console.log('🗑️ Starting deletion process');
-    console.log('📦 Public ID:', publicId);
-    console.log('📂 Resource Type:', resourceType);
+    validateFile(file, VIDEO_UPLOAD_CONFIG, 'video');
 
-    if (!publicId) {
-      throw new Error('Public ID is required for deletion');
-    }
+    const formData = createUploadFormData(file, folder);
 
-    const API_URL = getApiUrl();
-    const endpoint = resourceType === 'video' 
-      ? `${API_URL}/cloudinary/delete/video`
-      : `${API_URL}/cloudinary/delete/image`;
+    const response = await axios.post(
+      getCloudinaryUploadUrl('video'),
+      formData,
+      {
+        onUploadProgress: createProgressHandler(onProgress),
+      }
+    );
 
-    console.log('📡 DELETE request to:', endpoint);
-    console.log('📤 Sending data:', { publicId });
+    const data = response.data;
 
-    const response = await axios({
-      method: 'DELETE',
-      url: endpoint,
+    return {
+      url: data.secure_url,
+      publicId: data.public_id,
+      thumbnailUrl: getVideoThumbnailUrl(data.public_id),
+      duration: data.duration,
+      width: data.width,
+      height: data.height,
+      format: data.format,
+      size: data.bytes,
+    };
+  } catch (error) {
+    console.error(
+      'Cloudinary video upload error:',
+      error.response?.data || error
+    );
+
+    throw new Error(
+      getErrorMessage(error, 'Video upload failed.')
+    );
+  }
+};
+
+// --------------------------------------
+// DELETE SINGLE ASSET (VERIFIED)
+// --------------------------------------
+//
+// সফল হলে resolve করে: { publicId, resourceType, status, alreadyDeleted }
+//   status = 'deleted'   -> Cloudinary থেকে এইমাত্র মুছেছে
+//   status = 'not_found' -> আগেই মুছে গেছে (এটিও সফল ধরা হয়)
+//
+// ব্যর্থ হলে reject করে। Error-এ থাকে:
+//   error.inUse  -> true হলে saved product এখনো asset ব্যবহার করছে (backend 409)
+//   error.status -> HTTP status
+//   error.publicId, error.resourceType
+//
+// Backend verify না করলে কখনো success ধরা হবে না।
+
+export const deleteAsset = async (
+  publicId,
+  resourceType = 'image'
+) => {
+  if (!publicId) {
+    throw new Error('Cloudinary public ID is required.');
+  }
+
+  if (!RESOURCE_TYPES.includes(resourceType)) {
+    throw new Error('Invalid Cloudinary resource type.');
+  }
+
+  const endpoint =
+    resourceType === 'video'
+      ? '/cloudinary/delete/video'
+      : '/cloudinary/delete/image';
+
+  let response;
+
+  try {
+    response = await axiosInstance.delete(endpoint, {
       data: { publicId },
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      timeout: 10000, // 10 second timeout
+      timeout: 30000,
     });
-
-    console.log('✅ Delete response:', response.data);
-
-    if (response.data.success) {
-      console.log('✅ Asset deleted from Cloudinary successfully');
-      return response.data;
-    } else {
-      throw new Error(response.data.message || 'Delete failed');
-    }
-
   } catch (error) {
-    console.error('❌ Asset deletion error:', error);
-    
-    // Handle network errors
-    if (error.code === 'ECONNABORTED') {
-      throw new Error('Request timeout - server might be slow');
-    }
-    
-    if (error.code === 'ERR_NETWORK') {
-      throw new Error('Network error - check if backend is running');
-    }
-
-    // Handle server errors
-    if (error.response) {
-      console.error('Server error response:', error.response.data);
-      throw new Error(error.response.data?.message || 'Server error during deletion');
-    }
-
-    throw new Error(error.message || 'Failed to delete asset');
-  }
-};
-
-/**
- * Delete multiple assets from Cloudinary (batch)
- */
-export const deleteMultipleAssets = async (publicIds) => {
-  try {
-    if (!Array.isArray(publicIds) || publicIds.length === 0) {
-      throw new Error('Public IDs array is required');
-    }
-
-    console.log(`🗑️ Batch deleting ${publicIds.length} assets from Cloudinary`);
-
-    const API_URL = getApiUrl();
-    
-    const response = await axios.post(
-      `${API_URL}/api/cloudinary/delete/batch`,
-      { publicIds },
-      {
-        headers: { 'Content-Type': 'application/json' },
-        timeout: 30000, // 30 seconds for batch operations
-      }
+    const deleteError = new Error(
+      getErrorMessage(error, 'Failed to delete Cloudinary asset.')
     );
 
-    console.log('✅ Batch delete complete:', response.data);
-    return response.data;
+    deleteError.status = error?.response?.status;
+    deleteError.inUse =
+      error?.response?.status === 409 ||
+      error?.response?.data?.inUse === true;
+    deleteError.publicId = publicId;
+    deleteError.resourceType = resourceType;
 
-  } catch (error) {
-    console.error('❌ Batch delete error:', error);
-    
-    if (error.response) {
-      throw new Error(error.response.data?.message || 'Batch delete failed');
+    throw deleteError;
+  }
+
+  const data = response?.data;
+
+  if (
+    data?.success !== true ||
+    !VERIFIED_DELETE_STATUSES.includes(data?.status)
+  ) {
+    const verifyError = new Error(
+      data?.message || 'Cloudinary did not confirm the deletion.'
+    );
+
+    verifyError.status = response?.status;
+    verifyError.publicId = publicId;
+    verifyError.resourceType = resourceType;
+
+    throw verifyError;
+  }
+
+  return {
+    ...data,
+    publicId,
+    resourceType,
+    status: data.status,
+    alreadyDeleted: data.status === 'not_found',
+  };
+};
+
+// --------------------------------------
+// DELETE MULTIPLE ASSETS (VERIFIED)
+// --------------------------------------
+//
+// প্রতিটি asset আলাদাভাবে verify হয়। কোনোটি ব্যর্থ হলে বাকিগুলো থামে না।
+//
+// ফেরত দেয়:
+//   success -> সব asset verified delete হলে true
+//   deleted -> সফল asset-এর তালিকা ({ publicId, resourceType, status })
+//   failed  -> ব্যর্থ asset-এর তালিকা ({ publicId, resourceType, error, inUse })
+//             publicId ও resourceType এখানে সবসময় থাকে, retry-র জন্য।
+//   results -> আগের মতো Promise.allSettled-এর ফলাফল (backward compatibility)
+
+export const deleteMultipleAssets = async (assets = []) => {
+  const uniqueAssets = [
+    ...new Map(
+      assets
+        .filter((asset) => asset?.publicId)
+        .map((asset) => [
+          getAssetKey(asset),
+          {
+            publicId: asset.publicId,
+            resourceType: asset.resourceType || 'image',
+          },
+        ])
+    ).values(),
+  ];
+
+  const results = await Promise.allSettled(
+    uniqueAssets.map((asset) =>
+      deleteAsset(asset.publicId, asset.resourceType)
+    )
+  );
+
+  const deleted = [];
+  const failed = [];
+
+  results.forEach((result, index) => {
+    const asset = uniqueAssets[index];
+
+    if (result.status === 'fulfilled') {
+      deleted.push({
+        publicId: asset.publicId,
+        resourceType: asset.resourceType,
+        status: result.value.status,
+      });
+    } else {
+      failed.push({
+        publicId: asset.publicId,
+        resourceType: asset.resourceType,
+        error: result.reason?.message || 'Deletion failed.',
+        inUse: Boolean(result.reason?.inUse),
+      });
     }
-    
-    throw new Error(error.message || 'Failed to batch delete assets');
+  });
+
+  return {
+    success: failed.length === 0,
+    deleted,
+    failed,
+    results,
+  };
+};
+
+// --------------------------------------
+// MULTIPLE IMAGE UPLOAD
+// --------------------------------------
+
+export const uploadMultipleImages = async (
+  files,
+  folder = IMAGE_UPLOAD_CONFIG.folder,
+  onProgress
+) => {
+  const selectedFiles = Array.from(files || []);
+
+  if (!selectedFiles.length) return [];
+
+  if (selectedFiles.length > IMAGE_UPLOAD_CONFIG.maxFiles) {
+    throw new Error(
+      `You can upload a maximum of ${IMAGE_UPLOAD_CONFIG.maxFiles} images.`
+    );
+  }
+
+  const uploadedImages = [];
+
+  try {
+    for (let index = 0; index < selectedFiles.length; index++) {
+      const image = await uploadImage(
+        selectedFiles[index],
+        folder,
+        (fileProgress) => {
+          onProgress?.({
+            current: index + 1,
+            total: selectedFiles.length,
+            fileProgress,
+            percentage: Math.round(
+              ((index * 100) + fileProgress) / selectedFiles.length
+            ),
+          });
+        }
+      );
+
+      uploadedImages.push({
+        ...image,
+        order: uploadedImages.length,
+        isMain: uploadedImages.length === 0,
+      });
+    }
+
+    return uploadedImages;
+  } catch (error) {
+    // মাঝপথে ব্যর্থ হলে আগে upload হওয়া image মুছে ফেলার চেষ্টা।
+    const cleanup = await deleteMultipleAssets(
+      uploadedImages.map((image) => ({
+        publicId: image.publicId,
+        resourceType: 'image',
+      }))
+    );
+
+    // মুছতে না পারা asset হারাতে দেওয়া যাবে না: caller track করতে পারবে।
+    error.orphanedAssets = cleanup.failed;
+
+    throw error;
   }
 };
 
-/**
- * Batch upload images
- */
-export const uploadMultipleImages = async (files, folder) => {
-  console.log(`📤 Starting batch upload of ${files.length} images`);
-  
-  const uploadPromises = files.map((file, index) => {
-    console.log(`📸 Uploading image ${index + 1}/${files.length}`);
-    return uploadImage(file, folder);
-  });
-  
+// --------------------------------------
+// MULTIPLE VIDEO UPLOAD
+// --------------------------------------
+
+export const uploadMultipleVideos = async (
+  files,
+  folder = VIDEO_UPLOAD_CONFIG.folder,
+  onProgress
+) => {
+  const selectedFiles = Array.from(files || []);
+
+  if (!selectedFiles.length) return [];
+
+  if (selectedFiles.length > VIDEO_UPLOAD_CONFIG.maxFiles) {
+    throw new Error(
+      `You can upload a maximum of ${VIDEO_UPLOAD_CONFIG.maxFiles} videos.`
+    );
+  }
+
+  const uploadedVideos = [];
+
   try {
-    const results = await Promise.all(uploadPromises);
-    console.log(`✅ Batch upload complete: ${results.length} images uploaded`);
-    return results;
+    for (let index = 0; index < selectedFiles.length; index++) {
+      const video = await uploadVideo(
+        selectedFiles[index],
+        folder,
+        (fileProgress) => {
+          onProgress?.({
+            current: index + 1,
+            total: selectedFiles.length,
+            fileProgress,
+            percentage: Math.round(
+              ((index * 100) + fileProgress) / selectedFiles.length
+            ),
+          });
+        }
+      );
+
+      uploadedVideos.push(video);
+    }
+
+    return uploadedVideos;
   } catch (error) {
-    console.error('❌ Batch upload error:', error);
+    const cleanup = await deleteMultipleAssets(
+      uploadedVideos.map((video) => ({
+        publicId: video.publicId,
+        resourceType: 'video',
+      }))
+    );
+
+    error.orphanedAssets = cleanup.failed;
+
     throw error;
   }
 };

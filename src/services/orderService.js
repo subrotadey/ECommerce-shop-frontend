@@ -36,7 +36,7 @@ export const getOrderById = async (orderId) => {
  */
 export const getUserOrders = async (userId, params = {}) => {
   try {
-    const { data } = await axiosInstance.get(`/api/users/${userId}/orders`, { params });
+    const { data } = await axiosInstance.get(`/users/${userId}/orders`, { params });
     return data;
   } catch (error) {
     console.error('Get user orders error:', error);

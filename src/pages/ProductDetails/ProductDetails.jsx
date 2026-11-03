@@ -66,18 +66,43 @@ export function getImageUrls(product) {
   return (Array.isArray(product.images) ? product.images : []).map(toUrl).filter(Boolean);
 }
 
-export function getVideo(product) {
-  const v = product?.media?.video || product?.video;
-  if (!v) return null;
-  if (typeof v === "string") return { url: v };
-  return v.url ? v : null;
+// সব video (সর্বোচ্চ 3টি)। নতুন media.videos আগে, না থাকলে legacy video।
+export function getVideos(product) {
+  if (!product) return [];
+
+  const normalize = (input) => {
+    const list = Array.isArray(input) ? input : input ? [input] : [];
+    const seen = new Set();
+
+    return list
+      .map((v) => (typeof v === "string" ? { url: v } : v))
+      .filter((v) => {
+        if (!v?.url || seen.has(v.url)) return false;
+        seen.add(v.url);
+        return true;
+      });
+  };
+
+  const candidates = [
+    product.media?.videos,
+    product.videos,
+    product.media?.video,
+    product.video,
+  ];
+
+  for (const candidate of candidates) {
+    const videos = normalize(candidate);
+    if (videos.length > 0) return videos.slice(0, 3);
+  }
+
+  return [];
 }
 
 // ─── Image + Video Gallery ────────────────────────────────────────────────────
-function ImageGallery({ images = [], video = null, productName, tags = [], discount }) {
+function ImageGallery({ images = [], videos = [], productName, tags = [], discount }) {
   const items = [
     ...images.map((url) => ({ type: "image", url })),
-    ...(video ? [{ type: "video", url: video.url, thumb: video.thumbnailUrl }] : []),
+    ...videos.map((video) => ({ type: "video", url: video.url, thumb: video.thumbnailUrl })),
   ];
   const [active, setActive] = useState(0);
   const [zoomed, setZoomed] = useState(false);
@@ -553,7 +578,7 @@ export default function ProductDetails() {
 
   // Resolve media (works with old & new schema)
   const images = getImageUrls(product);
-  const video = getVideo(product);
+  const videos = getVideos(product);
 
   return (
     <>
@@ -582,7 +607,7 @@ export default function ProductDetails() {
             {/* ── Left: Gallery ── */}
             <ImageGallery
               images={images}
-              video={video}
+              videos={videos}
               productName={product.productName}
               tags={product.tags}
               discount={discount}

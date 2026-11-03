@@ -1,159 +1,116 @@
-// utils/tokenHelper.js
-import { auth } from "../firebase/firebase.init";
+
+// src/utils/tokenHelper.js
+
+import { auth } from '../firebase/firebase.init';
+import axiosInstance from './axios';
 
 /**
- * Get Firebase ID Token with multiple fallback methods
- * @returns {Promise<string|null>} Firebase ID token or null
+ * Get Firebase ID Token.
+ *
+ * @param {boolean} forceRefresh
+ * @returns {Promise<string|null>}
  */
-export const getFirebaseToken = async () => {
+export const getFirebaseToken = async (forceRefresh = false) => {
   try {
-    // Method 1: Get from current user (most reliable)
     const currentUser = auth.currentUser;
-    
-    if (currentUser) {
-      console.log("✅ Getting token from auth.currentUser");
-      const token = await currentUser.getIdToken(true); // Force refresh
-      
-      // Store in localStorage for backup
-      if (token) {
-        localStorage.setItem("firebaseToken", token);
-        console.log("✅ Token retrieved and stored");
-        return token;
-      }
+
+    if (!currentUser) {
+      return null;
     }
 
-    // Method 2: Try localStorage backup
-    const storedToken = localStorage.getItem("firebaseToken");
-    if (storedToken) {
-      console.log("⚠️ Using token from localStorage (backup)");
-      return storedToken;
-    }
+    const token = await currentUser.getIdToken(forceRefresh);
 
-    console.error("❌ No authentication token available");
-    return null;
-
+    return token || null;
   } catch (error) {
-    console.error("❌ Error getting Firebase token:", error);
-    
-    // Last resort: try localStorage
-    const backupToken = localStorage.getItem("firebaseToken");
-    if (backupToken) {
-      console.log("⚠️ Using backup token after error");
-      return backupToken;
-    }
-    
+    console.error('Error getting Firebase token:', error);
     return null;
   }
 };
 
 /**
- * Verify if token is still valid
+ * Verify current user's authentication through backend.
+ *
  * @returns {Promise<boolean>}
  */
 export const verifyToken = async () => {
   try {
-    const token = await getFirebaseToken();
-    if (!token) return false;
+    if (!auth.currentUser) {
+      return false;
+    }
 
-    // Make a test API call to verify token
-    const response = await fetch(`${import.meta.env.VITE_API_URL}/users/profile/full`, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
+    const response = await axiosInstance.get('/users/profile/full');
 
-    return response.ok;
+    return response.status >= 200 && response.status < 300;
   } catch (error) {
-    console.error("Token verification failed:", error);
+    console.error('Token verification failed:', error);
     return false;
   }
 };
 
 /**
- * Clear token from storage (for logout)
+ * Clear legacy tokens from localStorage.
+ *
+ * Firebase logout must be handled separately
+ * using signOut(auth).
  */
 export const clearToken = () => {
-  localStorage.removeItem("firebaseToken");
-  console.log("✅ Token cleared from storage");
+  localStorage.removeItem('firebaseToken');
+  localStorage.removeItem('accessToken');
 };
 
 /**
- * Refresh token manually
+ * Force refresh Firebase ID Token.
+ *
  * @returns {Promise<string|null>}
  */
 export const refreshToken = async () => {
-  try {
-    const currentUser = auth.currentUser;
-    
-    if (!currentUser) {
-      console.error("❌ No user logged in");
-      return null;
-    }
-
-    console.log("🔄 Refreshing token...");
-    const token = await currentUser.getIdToken(true); // Force refresh
-    
-    if (token) {
-      localStorage.setItem("firebaseToken", token);
-      console.log("✅ Token refreshed successfully");
-      return token;
-    }
-
-    return null;
-  } catch (error) {
-    console.error("❌ Error refreshing token:", error);
-    return null;
-  }
+  return await getFirebaseToken(true);
 };
 
 /**
- * Make authenticated API request with automatic token handling
- * @param {string} url - API endpoint
- * @param {object} options - Fetch options
+ * Make authenticated API request using fetch.
+ *
+ * @param {string} url
+ * @param {object} options
  * @returns {Promise<Response>}
  */
 export const authenticatedFetch = async (url, options = {}) => {
-  try {
-    const token = await getFirebaseToken();
-    
-    if (!token) {
-      throw new Error("No authentication token available");
-    }
+  const token = await getFirebaseToken();
 
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        ...options.headers,
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    // If token expired (401), try to refresh and retry once
-    if (response.status === 401) {
-      console.log("⚠️ Token expired, attempting refresh...");
-      
-      const newToken = await refreshToken();
-      
-      if (newToken) {
-        console.log("✅ Retrying with new token...");
-        
-        return fetch(url, {
-          ...options,
-          headers: {
-            ...options.headers,
-            'Authorization': `Bearer ${newToken}`,
-            'Content-Type': 'application/json'
-          }
-        });
-      }
-    }
-
-    return response;
-  } catch (error) {
-    console.error("Authenticated fetch error:", error);
-    throw error;
+  if (!token) {
+    throw new Error('No authenticated Firebase user found.');
   }
+
+  const makeRequest = (accessToken) => {
+    const headers = new Headers(options.headers || {});
+
+    headers.set('Authorization', `Bearer ${accessToken}`);
+
+    if (
+      !headers.has('Content-Type') &&
+      !(options.body instanceof FormData)
+    ) {
+      headers.set('Content-Type', 'application/json');
+    }
+
+    return fetch(url, {
+      ...options,
+      headers,
+    });
+  };
+
+  let response = await makeRequest(token);
+
+  // Retry once if token expires.
+  if (response.status === 401 && auth.currentUser) {
+    const newToken = await refreshToken();
+
+    if (newToken) {
+      response = await makeRequest(newToken);
+    }
+  }
+
+  return response;
 };
 
 export default {
@@ -161,5 +118,5 @@ export default {
   verifyToken,
   clearToken,
   refreshToken,
-  authenticatedFetch
+  authenticatedFetch,
 };

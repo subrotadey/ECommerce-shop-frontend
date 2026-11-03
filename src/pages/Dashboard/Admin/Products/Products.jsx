@@ -1,17 +1,16 @@
-// ============================================
-// pages/admin/Products/Products.jsx - FIXED VERSION
-// ============================================
+// pages/admin/Products/Products.jsx
 import { Download, Edit2, Eye, Plus, Search, Trash2, Upload, X } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ProductForm from '../../../../components/ProductForm/ProductForm';
 import { useAllProducts } from '../../../../hooks/useProducts';
+import { getProductVideos } from '../../../../hooks/useMediaLifecycle';
 import { createProduct, updateProduct, deleteProduct } from '../../../../services/productService';
 import notify from '../../../../utils/notification';
 
 const Products = () => {
     const navigate = useNavigate();
-    
+
     // 1. Fetching Data
     const {
         data: allProducts = [],
@@ -28,6 +27,10 @@ const Products = () => {
     const [editingProduct, setEditingProduct] = useState(null);
     const [viewingProduct, setViewingProduct] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isClosing, setIsClosing] = useState(false);
+
+    // ProductForm-এর unsaved media নিয়ন্ত্রণ
+    const formRef = useRef(null);
 
     const categories = ['all', 'Abaya', 'Hijab', 'Dresses', 'Tops', 'Bottoms', 'Accessories'];
     const statuses = ['all', 'active', 'low_stock', 'out_of_stock', 'draft'];
@@ -44,7 +47,7 @@ const Products = () => {
                 product.mainCategory?.toLowerCase() === selectedCategory.toLowerCase() ||
                 product.categories?.includes(selectedCategory);
 
-            let currentStatus = product.stock === 0 ? 'out_of_stock' : 
+            let currentStatus = product.stock === 0 ? 'out_of_stock' :
                                product.stock < 10 ? 'low_stock' : 'active';
             const statusMatch = selectedStatus === 'all' || currentStatus === selectedStatus;
 
@@ -66,55 +69,102 @@ const Products = () => {
     };
 
     // 3. Handlers
-    const handleCloseModal = () => {
+
+    // Modal Close: এই session-এর unsaved upload Cloudinary থেকে মুছে তারপর বন্ধ।
+    // Original (আগে saved) media কখনো ছোঁয়া হয় না।
+    const handleCloseModal = async () => {
+        if (isSubmitting || isClosing) return;
+
+        const form = formRef.current;
+
+        if (form?.isBusy?.()) return;
+
+        // Unsaved media না থাকলে সঙ্গে সঙ্গে বন্ধ।
+        if (!form?.hasUnsavedMedia?.()) {
+            setShowAddModal(false);
+            setEditingProduct(null);
+            return;
+        }
+
+        const confirmed = await notify.confirm(
+            'Discard product changes?',
+            'Unsaved changes will be lost. Files uploaded in this session will be deleted from Cloudinary.',
+            'Discard',
+            'Continue Editing'
+        );
+
+        if (!confirmed) return;
+
+        setIsClosing(true);
+        notify.loading('Cleaning up uploads...');
+
+        let failedCount = 0;
+
+        try {
+            const result = await form.discardUnsaved();
+            failedCount = result.failed.length;
+        } catch (error) {
+            console.error('Cloudinary cleanup error:', error);
+            failedCount = 1;
+        } finally {
+            notify.close();
+            setIsClosing(false);
+        }
+
+        // ব্যর্থ asset failed queue-তে (localStorage) আছে, retry করা যাবে।
         setShowAddModal(false);
         setEditingProduct(null);
+
+        if (failedCount > 0) {
+            notify.warning(
+                'Closed, but some uploaded files could not be deleted.',
+                'They are saved for retry. Open the product form and press "Retry deletion".',
+                5000
+            );
+        } else {
+            notify.success('Unsaved uploads cleaned up successfully.');
+        }
     };
 
     const handleCloseViewModal = () => {
         setViewingProduct(null);
     };
 
-    // ✅ FIXED: Create/Update Product Handler
+    // Create/Update Product Handler
     const handleCreateProduct = async (values) => {
-        try {
-            setIsSubmitting(true);
-            notify.loading('Saving product...');
+        setIsSubmitting(true);
 
+        try {
             if (editingProduct) {
-                // UPDATE existing product
-                console.log('🔄 Updating product:', editingProduct._id);
                 await updateProduct(editingProduct._id, values);
-                notify.close();
-                notify.success('Product updated successfully!');
             } else {
-                // CREATE new product
-                console.log('➕ Creating new product');
                 await createProduct(values);
-                notify.close();
-                notify.success('Product created successfully!');
             }
 
-            // Refresh data and close modal
-            await refetch();
-            handleCloseModal();
+            // Refresh failure should not turn a successful save into an error.
+            try {
+                await refetch();
+            } catch (refreshError) {
+                console.error('Product refresh failed:', refreshError);
+            }
+
+            // isSubmitting ProductForm cleanup শেষ না হওয়া পর্যন্ত true থাকে।
         } catch (error) {
-            notify.close();
-            notify.error(
-                editingProduct ? 'Update Failed' : 'Create Failed',
-                error.message || 'Something went wrong'
-            );
             console.error('Product save error:', error);
-        } finally {
             setIsSubmitting(false);
+            throw error;
         }
     };
 
-    // ✅ FIXED: Delete Handler
+    const handleSaveComplete = () => {
+        setIsSubmitting(false);
+        setShowAddModal(false);
+        setEditingProduct(null);
+    };
+
+    // Delete Handler
     const handleDeleteProduct = async (productId) => {
         try {
-            console.log('🗑️ Attempting to delete product:', productId);
-            
             const confirmed = await notify.confirm(
                 'Delete Product?',
                 'Are you sure you want to delete this product? This action cannot be undone.',
@@ -122,16 +172,12 @@ const Products = () => {
                 'Cancel'
             );
 
-            if (!confirmed) {
-                console.log('❌ Delete cancelled by user');
-                return;
-            }
+            if (!confirmed) return;
 
             notify.loading('Deleting product...');
 
-            // Call delete API
             const result = await deleteProduct(productId);
-            
+
             if (result.cancelled) {
                 notify.close();
                 return;
@@ -139,8 +185,7 @@ const Products = () => {
 
             notify.close();
             notify.success('Product deleted successfully!');
-            
-            // Refresh the product list
+
             await refetch();
         } catch (error) {
             notify.close();
@@ -152,38 +197,30 @@ const Products = () => {
         }
     };
 
-    // ✅ FIXED: View Product Handler
     const handleViewProduct = (product) => {
-        console.log('👁️ Viewing product:', product.productName);
         setViewingProduct(product);
     };
 
-    // ✅ FIXED: Edit Product Handler
     const handleEditProduct = (product) => {
-        console.log('✏️ Editing product:', product.productName);
+        if (isSubmitting || isClosing) return;
         setEditingProduct(product);
         setShowAddModal(true);
     };
 
-    // ✅ Export Handler (Placeholder)
     const handleExport = async () => {
         try {
             notify.info('Export feature coming soon!');
-            // TODO: Implement CSV export
-            console.log('📥 Exporting products...');
         } catch (error) {
             notify.error('Export Failed', error.message);
         }
     };
 
-    // ✅ Import Handler (Placeholder)
     const handleImport = () => {
         notify.info('Import feature coming soon!');
-        // TODO: Implement CSV import
-        console.log('📤 Import products...');
     };
 
-    // ✅ FIXED: Get Initial Values for Edit
+    // Get Initial Values for Edit
+    // Legacy `video` ও নতুন `videos[]` দুটোই videos[] হয়ে যায়।
     const getInitialValues = (product) => {
         if (!product) return null;
 
@@ -199,7 +236,7 @@ const Products = () => {
             categories: product.categories || [],
             tags: product.tags || [],
             images: product.media?.images || product.images || [],
-            video: product.media?.video || product.video || null,
+            videos: getProductVideos(product),
             descriptionHtml: product.descriptionHtml || '',
             additionalInfo: product.additionalInfo || {
                 fabric: '',
@@ -210,6 +247,9 @@ const Products = () => {
             },
         };
     };
+
+    // View modal-এর জন্য
+    const viewingVideos = viewingProduct ? getProductVideos(viewingProduct) : [];
 
     // 4. Render
     if (isLoading) {
@@ -225,8 +265,8 @@ const Products = () => {
             <div className="text-red-500 text-center p-10">
                 <p className="text-xl font-semibold mb-2">Error loading products</p>
                 <p className="text-sm">Please try refreshing the page</p>
-                <button 
-                    onClick={() => refetch()} 
+                <button
+                    onClick={() => refetch()}
                     className="btn btn-primary btn-sm mt-4"
                 >
                     Retry
@@ -244,13 +284,13 @@ const Products = () => {
                     <p className="text-gray-600 mt-1">Manage your product inventory</p>
                 </div>
                 <div className="flex gap-3">
-                    <button 
+                    <button
                         onClick={handleExport}
                         className="btn btn-outline btn-sm gap-2"
                     >
                         <Download size={16} /> Export
                     </button>
-                    <button 
+                    <button
                         onClick={handleImport}
                         className="btn btn-outline btn-sm gap-2"
                     >
@@ -258,6 +298,7 @@ const Products = () => {
                     </button>
                     <button
                         onClick={() => {
+                            if (isSubmitting || isClosing) return;
                             setEditingProduct(null);
                             setShowAddModal(true);
                         }}
@@ -372,9 +413,9 @@ const Products = () => {
                                                         {product.media?.images?.[0] || product.images?.[0] ? (
                                                             <img
                                                                 src={
-                                                                    product.media?.images?.[0]?.thumbnailUrl || 
+                                                                    product.media?.images?.[0]?.thumbnailUrl ||
                                                                     product.media?.images?.[0]?.url ||
-                                                                    product.images?.[0]?.thumbnailUrl || 
+                                                                    product.images?.[0]?.thumbnailUrl ||
                                                                     product.images?.[0]?.url
                                                                 }
                                                                 alt={product.productName}
@@ -416,9 +457,9 @@ const Products = () => {
                                         </td>
                                         <td>
                                             <div className="flex gap-2">
-                                                <button 
+                                                <button
                                                     onClick={() => handleViewProduct(product)}
-                                                    className="btn btn-ghost btn-xs text-gray-500" 
+                                                    className="btn btn-ghost btn-xs text-gray-500"
                                                     title="View"
                                                 >
                                                     <Eye size={16} />
@@ -459,7 +500,7 @@ const Products = () => {
                 </div>
             </div>
 
-            {/* ✅ Add/Edit Product Modal */}
+            {/* Add/Edit Product Modal */}
             {showAddModal && (
                 <div className="modal modal-open z-50">
                     <div className="modal-box w-11/12 max-w-5xl bg-gray-50 p-0 overflow-hidden relative h-[90vh]">
@@ -470,7 +511,7 @@ const Products = () => {
                             <button
                                 onClick={handleCloseModal}
                                 className="btn btn-sm btn-circle btn-ghost"
-                                disabled={isSubmitting}
+                                disabled={isSubmitting || isClosing}
                             >
                                 <X size={20} />
                             </button>
@@ -478,18 +519,26 @@ const Products = () => {
 
                         <div className="overflow-y-auto h-[calc(90vh-60px)]">
                             <ProductForm
+                                ref={formRef}
+                                key={editingProduct?._id || 'new'}
                                 initialValues={getInitialValues(editingProduct)}
                                 isEditing={!!editingProduct}
                                 onSubmit={handleCreateProduct}
                                 isSubmitting={isSubmitting}
+                                onSaveComplete={handleSaveComplete}
                             />
                         </div>
                     </div>
-                    <div className="modal-backdrop" onClick={handleCloseModal}></div>
+                    {!isSubmitting && !isClosing && (
+                        <div
+                            className="modal-backdrop"
+                            onClick={handleCloseModal}
+                        />
+                    )}
                 </div>
             )}
 
-            {/* ✅ View Product Modal */}
+            {/* View Product Modal */}
             {viewingProduct && (
                 <div className="modal modal-open z-50">
                     <div className="modal-box w-11/12 max-w-4xl bg-white">
@@ -531,6 +580,23 @@ const Products = () => {
                                         </div>
                                     ))}
                                 </div>
+
+                                {/* Videos */}
+                                {viewingVideos.length > 0 && (
+                                    <div className="mt-3 space-y-2">
+                                        <p className="text-sm text-gray-500">Videos</p>
+                                        {viewingVideos.map((video) => (
+                                            <video
+                                                key={video.publicId}
+                                                src={video.url}
+                                                poster={video.thumbnailUrl}
+                                                controls
+                                                preload="metadata"
+                                                className="w-full max-h-48 bg-black rounded"
+                                            />
+                                        ))}
+                                    </div>
+                                )}
                             </div>
 
                             {/* Details */}
@@ -604,7 +670,7 @@ const Products = () => {
                         {viewingProduct.descriptionHtml && (
                             <div className="mt-6 border-t pt-6">
                                 <h4 className="font-semibold mb-3">Description</h4>
-                                <div 
+                                <div
                                     className="prose max-w-none"
                                     dangerouslySetInnerHTML={{ __html: viewingProduct.descriptionHtml }}
                                 />

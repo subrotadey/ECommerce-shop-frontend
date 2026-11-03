@@ -1,86 +1,74 @@
-// utils/axios.js
+// src/utils/axios.js
+
 import axios from 'axios';
 import { auth } from '../firebase/firebase.init';
 
+const API_BASE_URL = (
+  import.meta.env.VITE_API_URL ||
+  'https://ecommerce-shop-backend-gr7k.onrender.com'
+).replace(/\/+$/, '');
+
 const axiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'https://ecommerce-shop-backend-gr7k.onrender.com',
+  baseURL: API_BASE_URL,
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 10000,
+  timeout: 15000,
 });
 
-//  REQUEST INTERCEPTOR - Token add করা
+// Request Interceptor
 axiosInstance.interceptors.request.use(
   async (config) => {
-    try {
-      // Get current user from Firebase
-      const currentUser = auth.currentUser;
-      
-      if (currentUser) {
-        // Get fresh token
-        const token = await currentUser.getIdToken(false); // false = use cached if available
-        
+    const currentUser = auth.currentUser;
+
+    if (currentUser) {
+      try {
+        const token = await currentUser.getIdToken(false);
+
         if (token) {
-          config.headers.authorization = `Bearer ${token}`;
+          config.headers = config.headers || {};
+          config.headers.Authorization = `Bearer ${token}`;
         }
-      } else {
-        // Fallback: Try localStorage
-        const storedToken = localStorage.getItem('firebaseToken') || localStorage.getItem('accessToken');
-        if (storedToken) {
-          config.headers.authorization = `Bearer ${storedToken}`;
-          console.log(' Using stored token for:', config.url);
-        } else {
-          console.warn(' No token available for:', config.url);
-        }
+      } catch (error) {
+        console.error('Firebase token error:', error);
+        return Promise.reject(error);
       }
-    } catch (error) {
-      console.error('Error getting token:', error);
     }
-    
+
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// RESPONSE INTERCEPTOR - Error handling
+// Response Interceptor
 axiosInstance.interceptors.response.use(
-  (response) => {
-    return response;
-  },
+  (response) => response,
+
   async (error) => {
     const originalRequest = error.config;
 
-    // Token expired handling
-    if (error.response?.status === 401 && !originalRequest._retry && auth.currentUser) {
+    if (
+      error.response?.status === 401 &&
+      originalRequest &&
+      !originalRequest._retry &&
+      auth.currentUser
+    ) {
       originalRequest._retry = true;
 
       try {
-        const currentUser = auth.currentUser;
-        
-        if (currentUser) {
-          // Force refresh token
-          const newToken = await currentUser.getIdToken(true); // true = force refresh
-          
-          if (newToken) {
-            localStorage.setItem('firebaseToken', newToken);
-            
-            // Retry original request with new token
-            originalRequest.headers.authorization = `Bearer ${newToken}`;
-            return axiosInstance(originalRequest);
-          }
-        } else {
-          localStorage.removeItem('firebaseToken');
-          localStorage.removeItem('accessToken');
-          window.location.href = '/login';
+        const newToken = await auth.currentUser.getIdToken(true);
+
+        if (!newToken) {
+          return Promise.reject(error);
         }
+
+        originalRequest.headers = originalRequest.headers || {};
+        originalRequest.headers.Authorization = `Bearer ${newToken}`;
+
+        return axiosInstance(originalRequest);
       } catch (refreshError) {
-        localStorage.removeItem('firebaseToken');
-        localStorage.removeItem('accessToken');
-        window.location.href = '/login';
+        console.error('Firebase token refresh failed:', refreshError);
         return Promise.reject(refreshError);
       }
     }

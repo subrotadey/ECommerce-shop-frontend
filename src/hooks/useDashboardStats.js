@@ -6,17 +6,17 @@ import axiosInstance from "../utils/axios";
 // ── individual fetchers ───────────────────────────────────────────────────────
 
 const fetchMainStats = async () => {
-  const { data } = await axiosInstance.get("/api/admin/stats/dashboard");
+  const { data } = await axiosInstance.get("/admin/stats/dashboard");
   return data;
 };
 
 const fetchRevenueChart = async () => {
-  const { data } = await axiosInstance.get("/api/admin/stats/revenue-chart");
+  const { data } = await axiosInstance.get("/admin/stats/revenue-chart");
   return data;
 };
 
 const fetchTopProducts = async () => {
-  const { data } = await axiosInstance.get("/api/admin/stats/top-products");
+  const { data } = await axiosInstance.get("/admin/stats/top-products");
   return data;
 };
 

@@ -1,11 +1,17 @@
-// src/components/ProductForm.jsx (IMPROVED)
+// src/components/ProductForm/ProductForm.jsx
 import { useFormik } from 'formik';
-import { useState } from 'react';
+import { forwardRef, useImperativeHandle, useState } from 'react';
 import * as Yup from 'yup';
 import notify from '../../utils/notification';
 import DescriptionEditor from './DescriptionEditor';
 import ImageUploadSection from './ImageUploadSection';
 import VideoUploadSection from './VideoUploadSection';
+import {
+    useMediaLifecycle,
+    buildMediaAssets,
+    getProductVideos,
+} from '../../hooks/useMediaLifecycle';
+import { VIDEO_UPLOAD_CONFIG } from '../../config/cloudinary';
 
 // Validation Schema
 const validationSchema = Yup.object({
@@ -29,6 +35,10 @@ const validationSchema = Yup.object({
     images: Yup.array()
         .min(1, 'At least one image is required')
         .max(10, 'Maximum 10 images allowed'),
+    videos: Yup.array().max(
+        VIDEO_UPLOAD_CONFIG.maxFiles,
+        `Maximum ${VIDEO_UPLOAD_CONFIG.maxFiles} videos allowed`
+    ),
     descriptionHtml: Yup.string()
         .required('Description is required')
         .test('min-length', 'Description must be at least 50 characters', (value) => {
@@ -37,47 +47,129 @@ const validationSchema = Yup.object({
         }),
 });
 
-const ProductForm = ({ initialValues, onSubmit, isEditing = false }) => {
+const DEFAULT_VALUES = {
+    sku: '',
+    productName: '',
+    newPrice: '',
+    oldPrice: '',
+    stock: '',
+    sizes: [],
+    colors: [],
+    mainCategory: 'abaya',
+    categories: [],
+    tags: [],
+    images: [],
+    videos: [],
+    descriptionHtml: '',
+    additionalInfo: {
+        fabric: '',
+        hijabIncluded: false,
+        workType: '',
+        washCare: '',
+        countryOfOrigin: 'Dubai',
+    },
+};
+
+// Legacy `video` (single object) ও নতুন `videos[]` দুটোই এখানে videos[] হয়ে যায়।
+// Form-এর ভেতরে শুধু `videos` থাকে, `video` আর নয়।
+const buildInitialValues = (initialValues) => {
+    const source = initialValues || DEFAULT_VALUES;
+    const { video, ...rest } = source;
+
+    return {
+        ...DEFAULT_VALUES,
+        ...rest,
+        videos: getProductVideos({ videos: source.videos, video }),
+    };
+};
+
+// ref দিয়ে parent (Products.jsx) পায়:
+//   hasUnsavedMedia() -> Modal Close-এ "Discard?" confirm দেখাতে হবে কি না
+//   discardUnsaved()  -> এই session-এর unsaved upload Cloudinary থেকে মোছে
+//   isBusy()          -> delete চলছে কি না
+const ProductForm = forwardRef(function ProductForm(
+    {
+        initialValues,
+        onSubmit,
+        isEditing = false,
+        isSubmitting: isParentSubmitting = false,
+        onSaveComplete,
+    },
+    ref
+) {
     const [sizeInput, setSizeInput] = useState('');
     const [colorInput, setColorInput] = useState('');
     const [categoryInput, setCategoryInput] = useState('');
     const [tagInput, setTagInput] = useState('');
 
+    // Form খোলার সময় একবারই বানানো হয়।
+    const [baseValues] = useState(() => buildInitialValues(initialValues));
+
+    const media = useMediaLifecycle({
+        initialImages: baseValues.images,
+        initialVideos: baseValues.videos,
+    });
+
+    useImperativeHandle(
+        ref,
+        () => ({
+            hasUnsavedMedia: media.hasUnsavedMedia,
+            discardUnsaved: media.discardUnsaved,
+            isBusy: () => media.isDeleting,
+        }),
+        [media.hasUnsavedMedia, media.discardUnsaved, media.isDeleting]
+    );
+
     const formik = useFormik({
-        initialValues: initialValues || {
-            sku: '',
-            productName: '',
-            newPrice: '',
-            oldPrice: '',
-            stock: '',
-            sizes: [],
-            colors: [],
-            mainCategory: 'abaya',
-            categories: [],
-            tags: [],
-            images: [],
-            video: null,
-            descriptionHtml: '',
-            additionalInfo: {
-                fabric: '',
-                hijabIncluded: false,
-                workType: '',
-                washCare: '',
-                countryOfOrigin: 'Dubai',
-            },
-        },
+        initialValues: baseValues,
         validationSchema,
         onSubmit: async (values, { setSubmitting }) => {
+            let saveSucceeded = false;
+
             try {
                 notify.loading('Saving product...');
+
+                // 1. MongoDB save। ব্যর্থ হলে এখানেই catch-এ যাবে,
+                //    Cloudinary-তে কিছুই মোছা হবে না।
                 await onSubmit(values);
+                saveSucceeded = true;
+
+                // 2. Save সফল। এখন পুরোনো (removed) ও অব্যবহৃত upload মোছা।
+                //    এখানে ব্যর্থ হলে save ব্যর্থ ধরা হবে না।
+                let cleanupFailedCount = 0;
+
+                try {
+                    const cleanup = await media.finalizeSave(
+                        buildMediaAssets({
+                            images: values.images,
+                            videos: values.videos,
+                        })
+                    );
+                    cleanupFailedCount = cleanup.failed.length;
+                } catch (cleanupError) {
+                    console.error('Media cleanup error:', cleanupError);
+                    cleanupFailedCount = 1;
+                }
+
                 notify.close();
+
                 notify.success(
-                    isEditing ? 'Product updated successfully!' : 'Product created successfully!',
+                    isEditing
+                        ? 'Product updated successfully!'
+                        : 'Product created successfully!',
                     'Your changes have been saved'
                 );
+
+                if (cleanupFailedCount > 0) {
+                    notify.warning(
+                        'Product saved, but some old media could not be deleted from Cloudinary.',
+                        'They are saved for retry.',
+                        5000
+                    );
+                }
             } catch (error) {
                 notify.close();
+
                 notify.error(
                     'Failed to save product',
                     error.message || 'Please try again',
@@ -86,10 +178,41 @@ const ProductForm = ({ initialValues, onSubmit, isEditing = false }) => {
             } finally {
                 setSubmitting(false);
             }
+
+            // Modal বন্ধ হবে save ও cleanup শেষ হওয়ার পর।
+            if (saveSucceeded) {
+                onSaveComplete?.();
+            }
         },
     });
 
-    // Add handlers
+    // --------------------------------------
+    // MEDIA HANDLERS
+    // --------------------------------------
+
+    const handleImagesChange = (images) => formik.setFieldValue('images', images);
+    const handleVideosChange = (videos) => formik.setFieldValue('videos', videos);
+
+    const handleRetryFailed = async () => {
+        const result = await media.retryFailed();
+
+        if (result.failed.length === 0) {
+            notify.success(
+                `${result.deleted.length} file(s) deleted from Cloudinary.`
+            );
+        } else {
+            notify.warning(
+                `${result.failed.length} file(s) still could not be deleted.`,
+                'Please try again later.',
+                4000
+            );
+        }
+    };
+
+    // --------------------------------------
+    // LIST HANDLERS
+    // --------------------------------------
+
     const handleAddSize = () => {
         if (sizeInput.trim() && !formik.values.sizes.includes(sizeInput.trim())) {
             formik.setFieldValue('sizes', [...formik.values.sizes, sizeInput.trim()]);
@@ -150,19 +273,50 @@ const ProductForm = ({ initialValues, onSubmit, isEditing = false }) => {
         notify.info('Tag removed', '', 1000);
     };
 
+    // --------------------------------------
+    // RESET
+    // --------------------------------------
+    // এই session-এর unsaved upload Cloudinary থেকে মোছে, তারপর form
+    // original মানে ফেরে। Original (আগে saved) media কখনো ছোঁয়া হয় না।
+
     const handleReset = async () => {
         const confirmed = await notify.confirm(
             'Reset form?',
-            'All unsaved changes will be lost',
+            'All unsaved changes will be lost and files uploaded in this session will be deleted.',
             'Yes, reset',
             'Cancel'
         );
 
-        if (confirmed) {
-            formik.resetForm();
+        if (!confirmed) return;
+
+        notify.loading('Resetting form...');
+
+        let failedCount = 0;
+
+        try {
+            const result = await media.discardUnsaved();
+            failedCount = result.failed.length;
+        } catch (error) {
+            console.error('Reset cleanup error:', error);
+            failedCount = 1;
+        }
+
+        notify.close();
+
+        formik.resetForm();
+
+        if (failedCount > 0) {
+            notify.warning(
+                'Form reset, but some uploaded files could not be deleted.',
+                'They are saved for retry.',
+                4000
+            );
+        } else {
             notify.info('Form reset', '', 1500);
         }
     };
+
+    const isBusy = formik.isSubmitting || isParentSubmitting || media.isDeleting;
 
     return (
         <form onSubmit={formik.handleSubmit} className="max-w-5xl mx-auto p-6 space-y-8">
@@ -175,6 +329,24 @@ const ProductForm = ({ initialValues, onSubmit, isEditing = false }) => {
                     Fill in the details below to {isEditing ? 'update' : 'create'} a product
                 </p>
             </div>
+
+            {/* Failed Cloudinary deletions */}
+            {media.failedAssets.length > 0 && (
+                <div className="rounded-lg border border-yellow-300 bg-yellow-50 p-4 flex items-center justify-between gap-4">
+                    <p className="text-sm text-yellow-800">
+                        {media.failedAssets.length} file(s) could not be deleted from
+                        Cloudinary and are waiting for retry.
+                    </p>
+                    <button
+                        type="button"
+                        onClick={handleRetryFailed}
+                        disabled={media.isRetrying || isBusy}
+                        className="px-4 py-2 bg-yellow-600 text-white text-sm rounded-lg hover:bg-yellow-700 disabled:opacity-50 whitespace-nowrap"
+                    >
+                        {media.isRetrying ? 'Retrying...' : 'Retry deletion'}
+                    </button>
+                </div>
+            )}
 
             {/* Basic Info Section */}
             <div className="bg-white rounded-lg border p-6 space-y-4">
@@ -573,19 +745,25 @@ const ProductForm = ({ initialValues, onSubmit, isEditing = false }) => {
                 </h2>
                 <ImageUploadSection
                     images={formik.values.images}
-                    onChange={(images) => formik.setFieldValue('images', images)}
+                    onChange={handleImagesChange}
                     error={formik.touched.images && formik.errors.images}
+                    onAssetsUploaded={media.registerUploads}
+                    onAssetsOrphaned={media.trackOrphanedAssets}
+                    onRemoveAsset={media.removeAsset}
                 />
             </div>
 
             {/* Video Section */}
             <div className="bg-white rounded-lg border p-6">
                 <h2 className="text-xl font-semibold text-gray-800 border-b pb-2 mb-4">
-                    Product Video
+                    Product Videos
                 </h2>
                 <VideoUploadSection
-                    video={formik.values.video}
-                    onChange={(video) => formik.setFieldValue('video', video)}
+                    videos={formik.values.videos}
+                    onChange={handleVideosChange}
+                    error={formik.touched.videos && formik.errors.videos}
+                    onAssetsUploaded={media.registerUploads}
+                    onRemoveAsset={media.removeAsset}
                 />
             </div>
 
@@ -605,15 +783,15 @@ const ProductForm = ({ initialValues, onSubmit, isEditing = false }) => {
             <div className="flex justify-end gap-4 pt-6 border-t">
                 <button
                     type="button"
-                    className="px-6 py-2 border rounded-lg hover:bg-gray-50 transition-colors"
+                    className="px-6 py-2 border rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
                     onClick={handleReset}
-                    disabled={formik.isSubmitting}
+                    disabled={isBusy}
                 >
                     Reset
                 </button>
                 <button
                     type="submit"
-                    disabled={formik.isSubmitting || !formik.isValid}
+                    disabled={isBusy || !formik.isValid}
                     className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                     {formik.isSubmitting
@@ -625,6 +803,6 @@ const ProductForm = ({ initialValues, onSubmit, isEditing = false }) => {
             </div>
         </form>
     );
-};
+});
 
 export default ProductForm;

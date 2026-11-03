@@ -1,6 +1,6 @@
 // src/components/ProductForm/DescriptionEditor.jsx
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 
@@ -99,6 +99,10 @@ const MenuBar = ({ editor }) => {
 };
 
 const DescriptionEditor = ({ value, onChange, error }) => {
+    // সর্বশেষ onChange ref-এ রাখা হয়, যাতে editor বারবার নতুন করে তৈরি না হয়।
+    const onChangeRef = useRef(onChange);
+    onChangeRef.current = onChange;
+
     const editor = useEditor({
         extensions: [
             StarterKit.configure({
@@ -116,15 +120,18 @@ const DescriptionEditor = ({ value, onChange, error }) => {
             },
         },
         onUpdate: ({ editor }) => {
-            const html = editor.getHTML();
-            onChange(html);
+            onChangeRef.current?.(editor.getHTML());
         },
-    }, [onChange]);
+    }, []);
 
-    // Sync external value changes with editor
+    // শুধু বাইরের কারণে value বদলালে (যেমন Reset) editor আপডেট হবে।
+    // Editor-এ focus থাকলে (ব্যবহারকারী লিখছে) কখনো ছোঁয়া হবে না।
     useEffect(() => {
-        if (editor && value !== undefined && value !== editor.getHTML()) {
-            editor.commands.setContent(value || '<p></p>');
+        if (!editor || value === undefined) return;
+        if (editor.isFocused) return;
+
+        if (value !== editor.getHTML()) {
+            editor.commands.setContent(value || '<p></p>', false);
         }
     }, [value, editor]);
 

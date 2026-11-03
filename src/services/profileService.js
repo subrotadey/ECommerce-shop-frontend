@@ -80,7 +80,7 @@ export const updateUserProfile = async (profileData) => {
  */
 export const getUserRole = async (email) => {
   try {
-    const response = await api.get(`/api/users/role/${email}`);
+    const response = await api.get(`/users/role/${email}`);
     if (!response.data.success) {
       throw new Error(response.data.message || 'Failed to fetch role');
     }
@@ -161,7 +161,7 @@ export const deleteImageFromCloudinary = async (publicId) => {
 
     console.log('🗑️ Deleting image from Cloudinary:', publicId);
 
-    const response = await api.delete('/api/cloudinary/delete/image', {
+    const response = await api.delete('/cloudinary/delete/image', {
       data: { publicId },
     });
 
