@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../utils/axios';
 import useAuth from './useAuth';
 
-const API_URL = '/api/cart'; // ✅ Use relative path (axiosInstance has baseURL)
+const API_URL = '/cart'; // ✅ Use relative path (axiosInstance has baseURL)
 
 const useCart = () => {
   const queryClient = useQueryClient();

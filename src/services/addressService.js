@@ -3,7 +3,7 @@
 
 import axiosInstance from '../utils/axios';
 
-const BASE = '/api/addresses';
+const BASE = '/addresses';
 
 // ── Get all addresses for logged-in user ────────────────────────────────────
 export const fetchUserAddresses = async () => {

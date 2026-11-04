@@ -1,23 +1,53 @@
 // pages/admin/Products/Products.jsx
 import { Download, Edit2, Eye, Plus, Search, Trash2, Upload, X } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import ProductForm from '../../../../components/ProductForm/ProductForm';
-import { useAllProducts } from '../../../../hooks/useProducts';
+import { SIZE_CHART } from '../../../../components/ProductForm/inventoryUtils';
+import { useAdminProducts } from '../../../../hooks/useProducts';
 import { getProductVideos } from '../../../../hooks/useMediaLifecycle';
 import { createProduct, updateProduct, deleteProduct } from '../../../../services/productService';
 import notify from '../../../../utils/notification';
 
-const Products = () => {
-    const navigate = useNavigate();
+const LOW_STOCK_THRESHOLD = 10;
 
-    // 1. Fetching Data
+const CATEGORIES = ['all', 'Abaya', 'Hijab'];
+const STATUSES = ['all', 'active', 'draft', 'archived', 'low_stock', 'out_of_stock'];
+
+// Product-এর দেখানো অবস্থা: status আগে, তারপর stock।
+// status না থাকলে (পুরোনো data) active ধরা হয়।
+const getDisplayStatus = (product) => {
+    if (product.status === 'draft') return 'draft';
+    if (product.status === 'archived') return 'archived';
+
+    const stock = Number(product.stock) || 0;
+    if (stock === 0) return 'out_of_stock';
+    if (stock < LOW_STOCK_THRESHOLD) return 'low_stock';
+    return 'active';
+};
+
+const STATUS_BADGE = {
+    active: { className: 'badge-success', label: 'Active' },
+    low_stock: { className: 'badge-warning', label: 'Low Stock' },
+    out_of_stock: { className: 'badge-error', label: 'Out of Stock' },
+    draft: { className: 'badge-ghost border-gray-300', label: 'Draft' },
+    archived: { className: 'badge-neutral', label: 'Archived' },
+};
+
+const formatAed = (value) => `AED ${Number(value || 0).toLocaleString('en-US')}`;
+
+const getProductImages = (product) => product.media?.images || product.images || [];
+
+const Products = () => {
+    const queryClient = useQueryClient();
+
+    // 1. Fetching Data (admin: draft সহ সব)
     const {
         data: allProducts = [],
         isLoading,
         isError,
-        refetch
-    } = useAllProducts();
+        refetch,
+    } = useAdminProducts();
 
     // State for UI
     const [searchTerm, setSearchTerm] = useState('');
@@ -29,48 +59,54 @@ const Products = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isClosing, setIsClosing] = useState(false);
 
-    // ProductForm-এর unsaved media নিয়ন্ত্রণ
+    // ProductForm-এর unsaved media ও dirty state নিয়ন্ত্রণ
     const formRef = useRef(null);
-
-    const categories = ['all', 'Abaya', 'Hijab', 'Dresses', 'Tops', 'Bottoms', 'Accessories'];
-    const statuses = ['all', 'active', 'low_stock', 'out_of_stock', 'draft'];
 
     // 2. Filter Logic
     const filteredProducts = useMemo(() => {
-        if (!allProducts) return [];
+        const term = searchTerm.toLowerCase();
 
-        return allProducts.filter(product => {
-            const nameMatch = product.productName?.toLowerCase().includes(searchTerm.toLowerCase());
-            const skuMatch = product.sku?.toLowerCase().includes(searchTerm.toLowerCase());
+        return allProducts.filter((product) => {
+            const nameMatch = product.productName?.toLowerCase().includes(term);
+            const skuMatch = product.sku?.toLowerCase().includes(term);
 
-            const categoryMatch = selectedCategory === 'all' ||
+            const categoryMatch =
+                selectedCategory === 'all' ||
                 product.mainCategory?.toLowerCase() === selectedCategory.toLowerCase() ||
                 product.categories?.includes(selectedCategory);
 
-            let currentStatus = product.stock === 0 ? 'out_of_stock' :
-                               product.stock < 10 ? 'low_stock' : 'active';
-            const statusMatch = selectedStatus === 'all' || currentStatus === selectedStatus;
+            const statusMatch =
+                selectedStatus === 'all' || getDisplayStatus(product) === selectedStatus;
 
             return (nameMatch || skuMatch) && categoryMatch && statusMatch;
         });
     }, [allProducts, searchTerm, selectedCategory, selectedStatus]);
 
-    // Helper Functions
-    const getStatusColor = (stock) => {
-        if (stock === 0) return 'badge-error';
-        if (stock < 10) return 'badge-warning';
-        return 'badge-success';
-    };
-
-    const getStatusLabel = (stock) => {
-        if (stock === 0) return 'Out of Stock';
-        if (stock < 10) return 'Low Stock';
-        return 'Active';
-    };
+    const stats = useMemo(() => {
+        const counts = { active: 0, draft: 0, low_stock: 0, out_of_stock: 0 };
+        allProducts.forEach((product) => {
+            const status = getDisplayStatus(product);
+            if (status in counts) counts[status] += 1;
+        });
+        return counts;
+    }, [allProducts]);
 
     // 3. Handlers
 
-    // Modal Close: এই session-এর unsaved upload Cloudinary থেকে মুছে তারপর বন্ধ।
+    // Save-এর পর admin তালিকা ও public (Storefront) cache দুটোই নতুন করা।
+    const refreshProducts = async () => {
+        await Promise.all([
+            refetch(),
+            queryClient.invalidateQueries({ queryKey: ['products'] }),
+        ]);
+    };
+
+    const closeModal = () => {
+        setShowAddModal(false);
+        setEditingProduct(null);
+    };
+
+    // Modal Close ও Cancel: field বদলেছে বা unsaved media থাকলে confirm।
     // Original (আগে saved) media কখনো ছোঁয়া হয় না।
     const handleCloseModal = async () => {
         if (isSubmitting || isClosing) return;
@@ -79,10 +115,10 @@ const Products = () => {
 
         if (form?.isBusy?.()) return;
 
-        // Unsaved media না থাকলে সঙ্গে সঙ্গে বন্ধ।
-        if (!form?.hasUnsavedMedia?.()) {
-            setShowAddModal(false);
-            setEditingProduct(null);
+        const hasChanges = form?.isDirty?.() || form?.hasUnsavedMedia?.();
+
+        if (!hasChanges) {
+            closeModal();
             return;
         }
 
@@ -112,8 +148,7 @@ const Products = () => {
         }
 
         // ব্যর্থ asset failed queue-তে (localStorage) আছে, retry করা যাবে।
-        setShowAddModal(false);
-        setEditingProduct(null);
+        closeModal();
 
         if (failedCount > 0) {
             notify.warning(
@@ -121,14 +156,10 @@ const Products = () => {
                 'They are saved for retry. Open the product form and press "Retry deletion".',
                 5000
             );
-        } else {
-            notify.success('Unsaved uploads cleaned up successfully.');
         }
     };
 
-    const handleCloseViewModal = () => {
-        setViewingProduct(null);
-    };
+    const handleCloseViewModal = () => setViewingProduct(null);
 
     // Create/Update Product Handler
     const handleCreateProduct = async (values) => {
@@ -143,7 +174,7 @@ const Products = () => {
 
             // Refresh failure should not turn a successful save into an error.
             try {
-                await refetch();
+                await refreshProducts();
             } catch (refreshError) {
                 console.error('Product refresh failed:', refreshError);
             }
@@ -158,8 +189,7 @@ const Products = () => {
 
     const handleSaveComplete = () => {
         setIsSubmitting(false);
-        setShowAddModal(false);
-        setEditingProduct(null);
+        closeModal();
     };
 
     // Delete Handler
@@ -174,32 +204,21 @@ const Products = () => {
 
             if (!confirmed) return;
 
-            notify.loading('Deleting product...');
-
             const result = await deleteProduct(productId);
 
-            if (result.cancelled) {
-                notify.close();
-                return;
-            }
+            if (result.cancelled) return;
 
-            notify.close();
             notify.success('Product deleted successfully!');
 
-            await refetch();
+            await refreshProducts();
         } catch (error) {
             notify.close();
-            notify.error(
-                'Delete Failed',
-                error.message || 'Failed to delete product'
-            );
+            notify.error('Delete Failed', error.message || 'Failed to delete product');
             console.error('Delete error:', error);
         }
     };
 
-    const handleViewProduct = (product) => {
-        setViewingProduct(product);
-    };
+    const handleViewProduct = (product) => setViewingProduct(product);
 
     const handleEditProduct = (product) => {
         if (isSubmitting || isClosing) return;
@@ -207,49 +226,40 @@ const Products = () => {
         setShowAddModal(true);
     };
 
-    const handleExport = async () => {
-        try {
-            notify.info('Export feature coming soon!');
-        } catch (error) {
-            notify.error('Export Failed', error.message);
-        }
+    const handleAddProduct = () => {
+        if (isSubmitting || isClosing) return;
+        setEditingProduct(null);
+        setShowAddModal(true);
     };
 
-    const handleImport = () => {
-        notify.info('Import feature coming soon!');
-    };
+    const handleExport = () => notify.info('Export feature coming soon!');
+    const handleImport = () => notify.info('Import feature coming soon!');
 
     // Get Initial Values for Edit
-    // Legacy `video` ও নতুন `videos[]` দুটোই videos[] হয়ে যায়।
+    // stock/sizes/colors পাঠানো হয় না: backend inventory থেকে নিজে হিসাব করে।
     const getInitialValues = (product) => {
         if (!product) return null;
 
         return {
             sku: product.sku || '',
             productName: product.productName || '',
-            newPrice: product.newPrice || product.price || '',
-            oldPrice: product.oldPrice || '',
-            stock: product.stock || 0,
-            sizes: product.sizes || [],
-            colors: product.colors || [],
+            status: product.status || 'active',
             mainCategory: product.mainCategory || 'abaya',
+            newPrice: product.newPrice ?? '',
+            oldPrice: product.oldPrice ?? '',
+            inventory: product.inventory || [],
             categories: product.categories || [],
             tags: product.tags || [],
-            images: product.media?.images || product.images || [],
+            images: getProductImages(product),
             videos: getProductVideos(product),
             descriptionHtml: product.descriptionHtml || '',
-            additionalInfo: product.additionalInfo || {
-                fabric: '',
-                hijabIncluded: false,
-                workType: '',
-                washCare: '',
-                countryOfOrigin: 'Dubai',
-            },
+            additionalInfo: product.additionalInfo || {},
         };
     };
 
     // View modal-এর জন্য
     const viewingVideos = viewingProduct ? getProductVideos(viewingProduct) : [];
+    const viewingImages = viewingProduct ? getProductImages(viewingProduct) : [];
 
     // 4. Render
     if (isLoading) {
@@ -265,10 +275,7 @@ const Products = () => {
             <div className="text-red-500 text-center p-10">
                 <p className="text-xl font-semibold mb-2">Error loading products</p>
                 <p className="text-sm">Please try refreshing the page</p>
-                <button
-                    onClick={() => refetch()}
-                    className="btn btn-primary btn-sm mt-4"
-                >
+                <button onClick={() => refetch()} className="btn btn-primary btn-sm mt-4">
                     Retry
                 </button>
             </div>
@@ -284,54 +291,39 @@ const Products = () => {
                     <p className="text-gray-600 mt-1">Manage your product inventory</p>
                 </div>
                 <div className="flex gap-3">
-                    <button
-                        onClick={handleExport}
-                        className="btn btn-outline btn-sm gap-2"
-                    >
+                    <button onClick={handleExport} className="btn btn-outline btn-sm gap-2">
                         <Download size={16} /> Export
                     </button>
-                    <button
-                        onClick={handleImport}
-                        className="btn btn-outline btn-sm gap-2"
-                    >
+                    <button onClick={handleImport} className="btn btn-outline btn-sm gap-2">
                         <Upload size={16} /> Import
                     </button>
-                    <button
-                        onClick={() => {
-                            if (isSubmitting || isClosing) return;
-                            setEditingProduct(null);
-                            setShowAddModal(true);
-                        }}
-                        className="btn btn-primary btn-sm gap-2"
-                    >
+                    <button onClick={handleAddProduct} className="btn btn-primary btn-sm gap-2">
                         <Plus size={16} /> Add Product
                     </button>
                 </div>
             </div>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                     <p className="text-sm text-gray-600">Total Products</p>
                     <p className="text-2xl font-bold text-gray-900 mt-1">{allProducts.length}</p>
                 </div>
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                     <p className="text-sm text-gray-600">Active</p>
-                    <p className="text-2xl font-bold text-green-600 mt-1">
-                        {allProducts.filter(p => p.stock >= 10).length}
-                    </p>
+                    <p className="text-2xl font-bold text-green-600 mt-1">{stats.active}</p>
+                </div>
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                    <p className="text-sm text-gray-600">Draft</p>
+                    <p className="text-2xl font-bold text-gray-500 mt-1">{stats.draft}</p>
                 </div>
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                     <p className="text-sm text-gray-600">Low Stock</p>
-                    <p className="text-2xl font-bold text-yellow-600 mt-1">
-                        {allProducts.filter(p => p.stock > 0 && p.stock < 10).length}
-                    </p>
+                    <p className="text-2xl font-bold text-yellow-600 mt-1">{stats.low_stock}</p>
                 </div>
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                     <p className="text-sm text-gray-600">Out of Stock</p>
-                    <p className="text-2xl font-bold text-red-600 mt-1">
-                        {allProducts.filter(p => p.stock === 0).length}
-                    </p>
+                    <p className="text-2xl font-bold text-red-600 mt-1">{stats.out_of_stock}</p>
                 </div>
             </div>
 
@@ -340,7 +332,10 @@ const Products = () => {
                 <div className="flex flex-col md:flex-row gap-4">
                     <div className="flex-1">
                         <div className="relative">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                            <Search
+                                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                                size={20}
+                            />
                             <input
                                 type="text"
                                 placeholder="Search products by name or SKU..."
@@ -355,7 +350,7 @@ const Products = () => {
                         value={selectedCategory}
                         onChange={(e) => setSelectedCategory(e.target.value)}
                     >
-                        {categories.map(cat => (
+                        {CATEGORIES.map((cat) => (
                             <option key={cat} value={cat}>
                                 {cat === 'all' ? 'All Categories' : cat}
                             </option>
@@ -366,7 +361,7 @@ const Products = () => {
                         value={selectedStatus}
                         onChange={(e) => setSelectedStatus(e.target.value)}
                     >
-                        {statuses.map(status => (
+                        {STATUSES.map((status) => (
                             <option key={status} value={status}>
                                 {status === 'all' ? 'All Status' : status.replace('_', ' ')}
                             </option>
@@ -379,16 +374,16 @@ const Products = () => {
             <div className="bg-white rounded-lg shadow-sm border border-gray-200">
                 <div className="overflow-x-auto">
                     <table className="table w-full">
-                        <thead className='bg-gray-50'>
-                            <tr className='text-gray-600'>
+                        <thead className="bg-gray-50">
+                            <tr className="text-gray-600">
                                 <th>
                                     <input type="checkbox" className="checkbox checkbox-sm" />
                                 </th>
                                 <th>Product</th>
                                 <th>SKU</th>
                                 <th>Category</th>
-                                <th>Price</th>
-                                <th>Stock</th>
+                                <th>Price (AED)</th>
+                                <th>Total Stock</th>
                                 <th>Status</th>
                                 <th>Actions</th>
                             </tr>
@@ -401,87 +396,102 @@ const Products = () => {
                                     </td>
                                 </tr>
                             ) : (
-                                filteredProducts.map((product) => (
-                                    <tr key={product._id} className="hover">
-                                        <td>
-                                            <input type="checkbox" className="checkbox checkbox-sm" />
-                                        </td>
-                                        <td>
-                                            <div className="flex items-center gap-3">
-                                                <div className="avatar">
-                                                    <div className="w-12 h-12 rounded-lg bg-gray-100 border">
-                                                        {product.media?.images?.[0] || product.images?.[0] ? (
-                                                            <img
-                                                                src={
-                                                                    product.media?.images?.[0]?.thumbnailUrl ||
-                                                                    product.media?.images?.[0]?.url ||
-                                                                    product.images?.[0]?.thumbnailUrl ||
-                                                                    product.images?.[0]?.url
-                                                                }
-                                                                alt={product.productName}
-                                                            />
-                                                        ) : (
-                                                            <span className="flex items-center justify-center h-full text-2xl">🧥</span>
-                                                        )}
+                                filteredProducts.map((product) => {
+                                    const displayStatus = getDisplayStatus(product);
+                                    const badge = STATUS_BADGE[displayStatus];
+                                    const stock = Number(product.stock) || 0;
+                                    const firstImage = getProductImages(product)[0];
+                                    const colorNames = (product.inventory?.length
+                                        ? product.inventory.map((row) => row.color)
+                                        : product.colors || []
+                                    ).join(', ');
+
+                                    return (
+                                        <tr key={product._id} className="hover">
+                                            <td>
+                                                <input type="checkbox" className="checkbox checkbox-sm" />
+                                            </td>
+                                            <td>
+                                                <div className="flex items-center gap-3">
+                                                    <div className="avatar">
+                                                        <div className="w-12 h-12 rounded-lg bg-gray-100 border">
+                                                            {firstImage ? (
+                                                                <img
+                                                                    src={firstImage.thumbnailUrl || firstImage.url}
+                                                                    alt={product.productName}
+                                                                />
+                                                            ) : (
+                                                                <span className="flex items-center justify-center h-full text-2xl">
+                                                                    🧥
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <div className="font-medium text-gray-900">
+                                                            {product.productName}
+                                                        </div>
+                                                        <div className="text-xs text-gray-500 truncate max-w-[150px]">
+                                                            {colorNames}
+                                                        </div>
                                                     </div>
                                                 </div>
-                                                <div>
-                                                    <div className="font-medium text-gray-900">{product.productName}</div>
-                                                    <div className="text-xs text-gray-500 truncate max-w-[150px]">
-                                                        {product.colors && product.colors.join(', ')}
-                                                    </div>
+                                            </td>
+                                            <td className="text-gray-600 font-mono text-xs">{product.sku}</td>
+                                            <td>
+                                                <span className="badge badge-ghost badge-sm capitalize">
+                                                    {product.mainCategory}
+                                                </span>
+                                            </td>
+                                            <td className="font-semibold text-gray-900">
+                                                {formatAed(product.newPrice)}
+                                            </td>
+                                            <td>
+                                                <span
+                                                    className={`font-medium ${
+                                                        stock === 0
+                                                            ? 'text-red-600'
+                                                            : stock < LOW_STOCK_THRESHOLD
+                                                                ? 'text-yellow-600'
+                                                                : 'text-gray-900'
+                                                    }`}
+                                                >
+                                                    {stock}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span className={`badge ${badge.className} badge-sm`}>
+                                                    {badge.label}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        onClick={() => handleViewProduct(product)}
+                                                        className="btn btn-ghost btn-xs text-gray-500"
+                                                        title="View"
+                                                    >
+                                                        <Eye size={16} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleEditProduct(product)}
+                                                        className="btn btn-ghost btn-xs text-blue-600"
+                                                        title="Edit"
+                                                    >
+                                                        <Edit2 size={16} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteProduct(product._id)}
+                                                        className="btn btn-ghost btn-xs text-red-600"
+                                                        title="Delete"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
                                                 </div>
-                                            </div>
-                                        </td>
-                                        <td className="text-gray-600 font-mono text-xs">{product.sku}</td>
-                                        <td>
-                                            <span className="badge badge-ghost badge-sm capitalize">
-                                                {product.mainCategory}
-                                            </span>
-                                        </td>
-                                        <td className="font-semibold text-gray-900">
-                                            ${product.newPrice}
-                                        </td>
-                                        <td>
-                                            <span className={`font-medium ${
-                                                product.stock === 0 ? 'text-red-600' :
-                                                product.stock < 10 ? 'text-yellow-600' : 'text-gray-900'
-                                            }`}>
-                                                {product.stock}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <span className={`badge ${getStatusColor(product.stock)} badge-sm`}>
-                                                {getStatusLabel(product.stock)}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div className="flex gap-2">
-                                                <button
-                                                    onClick={() => handleViewProduct(product)}
-                                                    className="btn btn-ghost btn-xs text-gray-500"
-                                                    title="View"
-                                                >
-                                                    <Eye size={16} />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleEditProduct(product)}
-                                                    className="btn btn-ghost btn-xs text-blue-600"
-                                                    title="Edit"
-                                                >
-                                                    <Edit2 size={16} />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDeleteProduct(product._id)}
-                                                    className="btn btn-ghost btn-xs text-red-600"
-                                                    title="Delete"
-                                                >
-                                                    <Trash2 size={16} />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))
+                                            </td>
+                                        </tr>
+                                    );
+                                })
                             )}
                         </tbody>
                     </table>
@@ -526,14 +536,12 @@ const Products = () => {
                                 onSubmit={handleCreateProduct}
                                 isSubmitting={isSubmitting}
                                 onSaveComplete={handleSaveComplete}
+                                onCancel={handleCloseModal}
                             />
                         </div>
                     </div>
                     {!isSubmitting && !isClosing && (
-                        <div
-                            className="modal-backdrop"
-                            onClick={handleCloseModal}
-                        />
+                        <div className="modal-backdrop" onClick={handleCloseModal} />
                     )}
                 </div>
             )}
@@ -543,7 +551,16 @@ const Products = () => {
                 <div className="modal modal-open z-50">
                     <div className="modal-box w-11/12 max-w-4xl bg-white">
                         <div className="flex justify-between items-center mb-4">
-                            <h3 className="font-bold text-2xl">{viewingProduct.productName}</h3>
+                            <div className="flex items-center gap-3">
+                                <h3 className="font-bold text-2xl">{viewingProduct.productName}</h3>
+                                <span
+                                    className={`badge ${
+                                        STATUS_BADGE[getDisplayStatus(viewingProduct)].className
+                                    }`}
+                                >
+                                    {STATUS_BADGE[getDisplayStatus(viewingProduct)].label}
+                                </span>
+                            </div>
                             <button
                                 onClick={handleCloseViewModal}
                                 className="btn btn-sm btn-circle btn-ghost"
@@ -556,12 +573,9 @@ const Products = () => {
                             {/* Images */}
                             <div>
                                 <div className="w-full h-64 bg-gray-100 rounded-lg overflow-hidden mb-3">
-                                    {viewingProduct.media?.images?.[0] || viewingProduct.images?.[0] ? (
+                                    {viewingImages[0] ? (
                                         <img
-                                            src={
-                                                viewingProduct.media?.images?.[0]?.url ||
-                                                viewingProduct.images?.[0]?.url
-                                            }
+                                            src={(viewingImages.find((i) => i.isMain) || viewingImages[0]).url}
                                             alt={viewingProduct.productName}
                                             className="w-full h-full object-cover"
                                         />
@@ -570,8 +584,8 @@ const Products = () => {
                                     )}
                                 </div>
                                 <div className="grid grid-cols-4 gap-2">
-                                    {(viewingProduct.media?.images || viewingProduct.images || []).slice(1, 5).map((img, idx) => (
-                                        <div key={idx} className="w-full h-20 bg-gray-100 rounded overflow-hidden">
+                                    {viewingImages.slice(1, 5).map((img, idx) => (
+                                        <div key={img.publicId || idx} className="w-full h-20 bg-gray-100 rounded overflow-hidden">
                                             <img
                                                 src={img.thumbnailUrl || img.url}
                                                 alt={`Product ${idx + 2}`}
@@ -607,40 +621,26 @@ const Products = () => {
                                         <p className="font-mono text-lg">{viewingProduct.sku}</p>
                                     </div>
                                     <div>
-                                        <p className="text-sm text-gray-500">Price</p>
-                                        <p className="text-2xl font-bold text-gray-900">${viewingProduct.newPrice}</p>
+                                        <p className="text-sm text-gray-500">Wholesale Price</p>
+                                        <p className="text-2xl font-bold text-gray-900">
+                                            {formatAed(viewingProduct.newPrice)}
+                                        </p>
                                         {viewingProduct.oldPrice && (
-                                            <p className="text-sm text-gray-500 line-through">${viewingProduct.oldPrice}</p>
+                                            <p className="text-sm text-gray-500 line-through">
+                                                {formatAed(viewingProduct.oldPrice)}
+                                            </p>
                                         )}
                                     </div>
                                     <div>
-                                        <p className="text-sm text-gray-500">Stock</p>
-                                        <p className="text-lg font-semibold">{viewingProduct.stock} units</p>
+                                        <p className="text-sm text-gray-500">Total Stock</p>
+                                        <p className="text-lg font-semibold">{viewingProduct.stock || 0} pcs</p>
                                     </div>
                                     <div>
                                         <p className="text-sm text-gray-500">Category</p>
-                                        <span className="badge badge-ghost capitalize">{viewingProduct.mainCategory}</span>
+                                        <span className="badge badge-ghost capitalize">
+                                            {viewingProduct.mainCategory}
+                                        </span>
                                     </div>
-                                    {viewingProduct.sizes && viewingProduct.sizes.length > 0 && (
-                                        <div>
-                                            <p className="text-sm text-gray-500 mb-2">Available Sizes</p>
-                                            <div className="flex gap-2">
-                                                {viewingProduct.sizes.map((size, idx) => (
-                                                    <span key={idx} className="badge badge-outline">{size}</span>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-                                    {viewingProduct.colors && viewingProduct.colors.length > 0 && (
-                                        <div>
-                                            <p className="text-sm text-gray-500 mb-2">Available Colors</p>
-                                            <div className="flex gap-2">
-                                                {viewingProduct.colors.map((color, idx) => (
-                                                    <span key={idx} className="badge badge-outline">{color}</span>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
                                 </div>
 
                                 <div className="mt-6 flex gap-3">
@@ -665,6 +665,43 @@ const Products = () => {
                                 </div>
                             </div>
                         </div>
+
+                        {/* Inventory */}
+                        {viewingProduct.inventory?.length > 0 && (
+                            <div className="mt-6 border-t pt-6">
+                                <h4 className="font-semibold mb-3">Inventory by Color & Size</h4>
+                                <div className="overflow-x-auto">
+                                    <table className="table table-sm w-full">
+                                        <thead>
+                                            <tr>
+                                                <th>Color</th>
+                                                {SIZE_CHART.map(({ size, length }) => (
+                                                    <th key={size} className="text-center">
+                                                        {size} ({length})
+                                                    </th>
+                                                ))}
+                                                <th className="text-center">Total</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {viewingProduct.inventory.map((row) => (
+                                                <tr key={row.color}>
+                                                    <td className="font-medium">{row.color}</td>
+                                                    {SIZE_CHART.map(({ size }) => (
+                                                        <td key={size} className="text-center">
+                                                            {row.sizes?.find((s) => s.size === size)?.stock ?? 0}
+                                                        </td>
+                                                    ))}
+                                                    <td className="text-center font-semibold">
+                                                        {(row.sizes || []).reduce((sum, s) => sum + (s.stock || 0), 0)}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
 
                         {/* Description */}
                         {viewingProduct.descriptionHtml && (

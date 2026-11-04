@@ -7,7 +7,6 @@ import {
   CLOUDINARY_CONFIG,
   IMAGE_UPLOAD_CONFIG,
   VIDEO_UPLOAD_CONFIG,
-  formatTransformations,
   getVideoThumbnailUrl,
   getCloudinaryUrl,
   isCloudinaryConfigured,
@@ -118,7 +117,7 @@ export const uploadImage = async (
   try {
     validateFile(file, IMAGE_UPLOAD_CONFIG, 'image');
 
-    const formData = createUploadFormData(file, folder, 'video');
+    const formData = createUploadFormData(file, folder, 'image');
 
     // Keep unsigned upload parameters minimal.
     // Transformations are applied through Cloudinary delivery URLs.
@@ -169,7 +168,7 @@ export const uploadVideo = async (
   try {
     validateFile(file, VIDEO_UPLOAD_CONFIG, 'video');
 
-    const formData = createUploadFormData(file, folder);
+    const formData = createUploadFormData(file, folder, 'video');
 
     const response = await axios.post(
       getCloudinaryUploadUrl('video'),

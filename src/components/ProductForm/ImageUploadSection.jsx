@@ -1,5 +1,5 @@
 // src/components/ProductForm/ImageUploadSection.jsx
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { uploadMultipleImages } from '../../services/cloudinaryService';
 import { IMAGE_UPLOAD_CONFIG } from '../../config/cloudinary';
@@ -33,7 +33,10 @@ const ImageUploadSection = ({
 
     // Async কাজের পরে সবসময় সর্বশেষ images ব্যবহার করার জন্য।
     const imagesRef = useRef(images);
-    imagesRef.current = images;
+
+    useEffect(() => {
+        imagesRef.current = images;
+    }, [images]);
 
     const isRemoving = removingKeys.length > 0;
     const isBusy = uploading || isRemoving;
@@ -283,6 +286,24 @@ const ImageUploadSection = ({
     };
 
     // --------------------------------------
+    // REORDER (direction: -1 = আগে, +1 = পরে)
+    // --------------------------------------
+    // isMain flag ছবির সঙ্গেই সরে, তাই ঠিক একটি Main থাকে। order নতুন করে বসে।
+
+    const handleMove = (index, direction) => {
+        if (isBusy) return;
+
+        const target = index + direction;
+
+        if (target < 0 || target >= images.length) return;
+
+        const reordered = images.map((image) => ({ ...image }));
+        [reordered[index], reordered[target]] = [reordered[target], reordered[index]];
+
+        onChange(normalizeImages(reordered));
+    };
+
+    // --------------------------------------
     // UI
     // --------------------------------------
 
@@ -391,69 +412,102 @@ const ImageUploadSection = ({
 
             {/* Image Preview Grid */}
             {images.length > 0 && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {images.map((image, index) => {
-                        const key = image.publicId || image.url || String(index);
-                        const isBeingRemoved = removingKeys.includes(key);
+                <>
+                    {images.length > 1 && (
+                        <p className="text-xs text-gray-500">
+                            Hover an image and use ← → to change the order.
+                        </p>
+                    )}
 
-                        return (
-                            <div
-                                key={image.publicId || image.url || index}
-                                className={`relative group border rounded-lg overflow-hidden ${
-                                    isBeingRemoved ? 'opacity-50' : ''
-                                }`}
-                            >
-                                <img
-                                    src={image.thumbnailUrl || image.url}
-                                    alt={`Product image ${index + 1}`}
-                                    className="w-full h-48 object-cover"
-                                    loading="lazy"
-                                />
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {images.map((image, index) => {
+                            const key = image.publicId || image.url || String(index);
+                            const isBeingRemoved = removingKeys.includes(key);
 
-                                {/* Main Badge */}
-                                {image.isMain && (
-                                    <div className="absolute top-2 left-2 bg-emerald-600 text-white text-xs px-2 py-1 rounded">
-                                        Main Image
-                                    </div>
-                                )}
+                            return (
+                                <div
+                                    key={image.publicId || image.url || index}
+                                    className={`relative group border rounded-lg overflow-hidden ${
+                                        isBeingRemoved ? 'opacity-50' : ''
+                                    }`}
+                                >
+                                    <img
+                                        src={image.thumbnailUrl || image.url}
+                                        alt={`Product image ${index + 1}`}
+                                        className="w-full h-48 object-cover"
+                                        loading="lazy"
+                                    />
 
-                                {/* Image Actions */}
-                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                    {isBeingRemoved ? (
-                                        <span className="text-white text-xs">Removing...</span>
-                                    ) : (
-                                        <>
-                                            {!image.isMain && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleSetMain(index)}
-                                                    disabled={isBusy}
-                                                    className="px-3 py-1 bg-emerald-600 text-white text-xs rounded hover:bg-emerald-700 disabled:opacity-50"
-                                                >
-                                                    Set Main
-                                                </button>
-                                            )}
-
-                                            <button
-                                                type="button"
-                                                onClick={() => handleRemove(index)}
-                                                disabled={isBusy}
-                                                className="px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 disabled:opacity-50"
-                                            >
-                                                Remove
-                                            </button>
-                                        </>
+                                    {/* Main Badge */}
+                                    {image.isMain && (
+                                        <div className="absolute top-2 left-2 bg-emerald-600 text-white text-xs px-2 py-1 rounded">
+                                            Main Image
+                                        </div>
                                     )}
-                                </div>
 
-                                {/* Order Number */}
-                                <div className="absolute bottom-2 right-2 bg-gray-800 text-white text-xs px-2 py-1 rounded">
-                                    #{index + 1}
+                                    {/* Image Actions */}
+                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
+                                        {isBeingRemoved ? (
+                                            <span className="text-white text-xs">Removing...</span>
+                                        ) : (
+                                            <>
+                                                <div className="flex gap-2">
+                                                    {!image.isMain && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleSetMain(index)}
+                                                            disabled={isBusy}
+                                                            className="px-3 py-1 bg-emerald-600 text-white text-xs rounded hover:bg-emerald-700 disabled:opacity-50"
+                                                        >
+                                                            Set Main
+                                                        </button>
+                                                    )}
+
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleRemove(index)}
+                                                        disabled={isBusy}
+                                                        className="px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 disabled:opacity-50"
+                                                    >
+                                                        Remove
+                                                    </button>
+                                                </div>
+
+                                                {images.length > 1 && (
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleMove(index, -1)}
+                                                            disabled={isBusy || index === 0}
+                                                            aria-label={`Move image ${index + 1} earlier`}
+                                                            className="px-3 py-1 bg-white text-gray-800 text-xs rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                                                        >
+                                                            ←
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleMove(index, 1)}
+                                                            disabled={isBusy || index === images.length - 1}
+                                                            aria-label={`Move image ${index + 1} later`}
+                                                            className="px-3 py-1 bg-white text-gray-800 text-xs rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                                                        >
+                                                            →
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </>
+                                        )}
+                                    </div>
+
+                                    {/* Order Number */}
+                                    <div className="absolute bottom-2 right-2 bg-gray-800 text-white text-xs px-2 py-1 rounded">
+                                        #{index + 1}
+                                    </div>
                                 </div>
-                            </div>
-                        );
-                    })}
-                </div>
+                            );
+                        })}
+                    </div>
+                </>
             )}
         </div>
     );

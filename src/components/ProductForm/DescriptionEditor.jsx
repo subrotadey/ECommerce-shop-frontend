@@ -101,7 +101,10 @@ const MenuBar = ({ editor }) => {
 const DescriptionEditor = ({ value, onChange, error }) => {
     // সর্বশেষ onChange ref-এ রাখা হয়, যাতে editor বারবার নতুন করে তৈরি না হয়।
     const onChangeRef = useRef(onChange);
-    onChangeRef.current = onChange;
+
+    useEffect(() => {
+        onChangeRef.current = onChange;
+    }, [onChange]);
 
     const editor = useEditor({
         extensions: [
@@ -131,7 +134,7 @@ const DescriptionEditor = ({ value, onChange, error }) => {
         if (editor.isFocused) return;
 
         if (value !== editor.getHTML()) {
-            editor.commands.setContent(value || '<p></p>', false);
+            editor.commands.setContent(value || '<p></p>', { emitUpdate: false });
         }
     }, [value, editor]);
 

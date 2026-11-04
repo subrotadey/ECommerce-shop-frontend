@@ -44,7 +44,7 @@ const AddressSelector = ({ selectedId, onSelect, onAddNew }) => {
   const [loading, setLoading]     = useState(true);
 
   useEffect(() => {
-    axiosInstance.get("/api/addresses")
+    axiosInstance.get("/addresses")
       .then(res => {
         if (res.data.success) {
           const list = res.data.addresses || [];
@@ -64,7 +64,7 @@ const AddressSelector = ({ selectedId, onSelect, onAddNew }) => {
   // Re-select after adding a new address
   const refresh = () => {
     setLoading(true);
-    axiosInstance.get("/api/addresses")
+    axiosInstance.get("/addresses")
       .then(res => {
         if (res.data.success) {
           const list = res.data.addresses || [];
@@ -254,7 +254,7 @@ const Checkout = () => {
   // ── Save new address (called from AddressForm) ───────────────────────────
   const handleSaveNewAddress = async (formData) => {
     try {
-      const res = await axiosInstance.post("/api/addresses", formData);
+      const res = await axiosInstance.post("/addresses", formData);
       if (res.data.success) {
         setShowAddressForm(false);
         Swal.fire({ position: "top-end", icon: "success", title: "Address saved!", showConfirmButton: false, timer: 1500, toast: true });
@@ -274,7 +274,7 @@ const Checkout = () => {
     }
     setProcessing(true);
     try {
-      const res = await axiosInstance.post("/api/orders/cod", {
+      const res = await axiosInstance.post("/orders/cod", {
         items,
         userId: currentUser.email,
         customerEmail: currentUser.email,

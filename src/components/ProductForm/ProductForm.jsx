@@ -1,11 +1,13 @@
 // src/components/ProductForm/ProductForm.jsx
 import { useFormik } from 'formik';
-import { forwardRef, useImperativeHandle, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import * as Yup from 'yup';
 import notify from '../../utils/notification';
 import DescriptionEditor from './DescriptionEditor';
 import ImageUploadSection from './ImageUploadSection';
 import VideoUploadSection from './VideoUploadSection';
+import InventoryMatrix from './InventoryMatrix';
+import { calculateTotalStock, normalizeInventoryForForm } from './inventoryUtils';
 import {
     useMediaLifecycle,
     buildMediaAssets,
@@ -13,49 +15,80 @@ import {
 } from '../../hooks/useMediaLifecycle';
 import { VIDEO_UPLOAD_CONFIG } from '../../config/cloudinary';
 
-// Validation Schema
-const validationSchema = Yup.object({
-    sku: Yup.string().required('SKU is required'),
-    productName: Yup.string()
-        .required('Product name is required')
-        .min(10, 'Name must be at least 10 characters'),
-    newPrice: Yup.number()
-        .required('Price is required')
-        .positive('Price must be positive'),
-    oldPrice: Yup.number()
-        .min(Yup.ref('newPrice'), 'Old price must be greater than new price')
-        .nullable(),
-    stock: Yup.number()
-        .required('Stock is required')
-        .min(0, 'Stock cannot be negative'),
-    sizes: Yup.array().min(1, 'At least one size required'),
-    colors: Yup.array().min(1, 'At least one color required'),
-    mainCategory: Yup.string().required('Main category is required'),
-    categories: Yup.array().min(1, 'At least one category required'),
-    images: Yup.array()
-        .min(1, 'At least one image is required')
-        .max(10, 'Maximum 10 images allowed'),
-    videos: Yup.array().max(
-        VIDEO_UPLOAD_CONFIG.maxFiles,
-        `Maximum ${VIDEO_UPLOAD_CONFIG.maxFiles} videos allowed`
-    ),
-    descriptionHtml: Yup.string()
-        .required('Description is required')
-        .test('min-length', 'Description must be at least 50 characters', (value) => {
-            const textContent = value?.replace(/<[^>]*>/g, '') || '';
-            return textContent.length >= 50;
-        }),
-});
+// --------------------------------------
+// CONSTANTS
+// --------------------------------------
+
+const MAIN_CATEGORIES = ['abaya', 'hijab'];
+
+const stripHtml = (html) => (html || '').replace(/<[^>]*>/g, '').trim();
+
+// Active product-এ কঠোর নিয়ম, Draft-এ শিথিল (Backend-এর buildProductDocument-এর সঙ্গে মিল)
+const buildValidationSchema = (status) => {
+    const isActive = status === 'active';
+
+    return Yup.object({
+        sku: Yup.string().trim().required('SKU is required').max(60, 'SKU is too long'),
+        productName: Yup.string()
+            .trim()
+            .required('Product name is required')
+            .min(10, 'Name must be at least 10 characters')
+            .max(200, 'Product name is too long'),
+        mainCategory: Yup.string()
+            .oneOf(MAIN_CATEGORIES, 'Main category must be Abaya or Hijab')
+            .required('Main category is required'),
+        newPrice: Yup.number()
+            .typeError('Wholesale price is required')
+            .required('Wholesale price is required')
+            .positive('Price must be greater than 0'),
+        oldPrice: Yup.number()
+            .transform((value, original) =>
+                original === '' || original === null ? null : value
+            )
+            .nullable()
+            .typeError('Enter a valid number')
+            .test(
+                'compare-at',
+                'Compare-at price must not be lower than the wholesale price',
+                function (value) {
+                    if (value === null || value === undefined || value === 0) return true;
+                    const price = Number(this.parent.newPrice);
+                    return !Number.isFinite(price) || value >= price;
+                }
+            ),
+        inventory: isActive
+            ? Yup.array().min(1, 'Add at least one color with stock quantities')
+            : Yup.array(),
+        categories: isActive
+            ? Yup.array().min(1, 'At least one category required')
+            : Yup.array(),
+        images: isActive
+            ? Yup.array()
+                  .min(1, 'At least one image is required')
+                  .max(10, 'Maximum 10 images allowed')
+            : Yup.array().max(10, 'Maximum 10 images allowed'),
+        videos: Yup.array().max(
+            VIDEO_UPLOAD_CONFIG.maxFiles,
+            `Maximum ${VIDEO_UPLOAD_CONFIG.maxFiles} videos allowed`
+        ),
+        descriptionHtml: isActive
+            ? Yup.string().test(
+                  'min-length',
+                  'Description must be at least 50 characters',
+                  (value) => stripHtml(value).length >= 50
+              )
+            : Yup.string(),
+    });
+};
 
 const DEFAULT_VALUES = {
     sku: '',
     productName: '',
+    mainCategory: 'abaya',
+    status: 'active',
     newPrice: '',
     oldPrice: '',
-    stock: '',
-    sizes: [],
-    colors: [],
-    mainCategory: 'abaya',
+    inventory: [],
     categories: [],
     tags: [],
     images: [],
@@ -63,30 +96,167 @@ const DEFAULT_VALUES = {
     descriptionHtml: '',
     additionalInfo: {
         fabric: '',
-        hijabIncluded: false,
         workType: '',
         washCare: '',
-        countryOfOrigin: 'Dubai',
+        countryOfOrigin: 'UAE',
+        hijabIncluded: false,
     },
 };
 
-// Legacy `video` (single object) ও নতুন `videos[]` দুটোই এখানে videos[] হয়ে যায়।
-// Form-এর ভেতরে শুধু `videos` থাকে, `video` আর নয়।
+const ALL_TOUCHED = {
+    sku: true,
+    productName: true,
+    mainCategory: true,
+    newPrice: true,
+    oldPrice: true,
+    inventory: true,
+    categories: true,
+    images: true,
+    videos: true,
+    descriptionHtml: true,
+};
+
+// Legacy `video`, এবং server-derived stock/sizes/colors form-এ রাখা হয় না।
 const buildInitialValues = (initialValues) => {
     const source = initialValues || DEFAULT_VALUES;
-    const { video, ...rest } = source;
+    // eslint-disable-next-line no-unused-vars
+    const { video, stock, sizes, colors, ...rest } = source;
 
     return {
         ...DEFAULT_VALUES,
         ...rest,
+        status: rest.status || 'active',
+        mainCategory: MAIN_CATEGORIES.includes(rest.mainCategory)
+            ? rest.mainCategory
+            : 'abaya',
+        oldPrice: rest.oldPrice ?? '',
+        inventory: normalizeInventoryForForm(rest.inventory),
         videos: getProductVideos({ videos: source.videos, video }),
+        additionalInfo: {
+            ...DEFAULT_VALUES.additionalInfo,
+            ...(rest.additionalInfo || {}),
+            countryOfOrigin: rest.additionalInfo?.countryOfOrigin || 'UAE',
+        },
     };
 };
 
+const inputClass =
+    'w-full h-10 px-3 border border-gray-300 rounded-lg bg-white text-[#1A1A1A] focus:outline-none focus:ring-2 focus:ring-[#123C32] disabled:bg-gray-100';
+
+// --------------------------------------
+// SMALL UI PIECES
+// --------------------------------------
+
+const Section = ({ number, title, hint, children }) => (
+    <section className="bg-white rounded-xl border border-gray-200 p-5 md:p-6 space-y-4">
+        <div className="border-b border-gray-100 pb-3">
+            <h2 className="text-lg font-semibold text-[#123C32] flex items-center gap-2">
+                <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#123C32] text-xs text-white">
+                    {number}
+                </span>
+                {title}
+            </h2>
+            {hint && <p className="mt-1 text-xs text-gray-500">{hint}</p>}
+        </div>
+        {children}
+    </section>
+);
+
+const Field = ({ label, required, error, hint, children }) => (
+    <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+            {label} {required && <span className="text-red-500">*</span>}
+        </label>
+        {children}
+        {hint && !error && <p className="mt-1 text-xs text-gray-500">{hint}</p>}
+        {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+    </div>
+);
+
+const ChipInput = ({ label, placeholder, items, onChange, required, error, disabled }) => {
+    const [input, setInput] = useState('');
+
+    const handleAdd = () => {
+        const value = input.trim().replace(/\s+/g, ' ');
+        if (!value) return;
+
+        if (value.length > 60) {
+            notify.warning(`${label} is too long`, 'Maximum 60 characters.', 2000);
+            return;
+        }
+
+        if (items.some((item) => item.toLowerCase() === value.toLowerCase())) {
+            notify.warning(`${label} already exists`, '', 1500);
+            return;
+        }
+
+        onChange([...items, value]);
+        setInput('');
+    };
+
+    return (
+        <Field label={label} required={required} error={error}>
+            <div className="flex gap-2">
+                <input
+                    type="text"
+                    value={input}
+                    disabled={disabled}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAdd();
+                        }
+                    }}
+                    placeholder={placeholder}
+                    className={`flex-1 ${inputClass}`}
+                />
+                <button
+                    type="button"
+                    onClick={handleAdd}
+                    disabled={disabled || !input.trim()}
+                    className="h-10 px-4 bg-[#123C32] text-white rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                >
+                    Add
+                </button>
+            </div>
+
+            {items.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                    {items.map((item) => (
+                        <span
+                            key={item}
+                            className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#F7F5EF] border border-[#D4AF37]/50 text-sm text-[#1A1A1A]"
+                        >
+                            {item}
+                            <button
+                                type="button"
+                                disabled={disabled}
+                                onClick={() => onChange(items.filter((i) => i !== item))}
+                                aria-label={`Remove ${item}`}
+                                className="text-gray-400 hover:text-red-600"
+                            >
+                                ×
+                            </button>
+                        </span>
+                    ))}
+                </div>
+            )}
+        </Field>
+    );
+};
+
+// --------------------------------------
+// FORM
+// --------------------------------------
 // ref দিয়ে parent (Products.jsx) পায়:
-//   hasUnsavedMedia() -> Modal Close-এ "Discard?" confirm দেখাতে হবে কি না
+//   hasUnsavedMedia() -> unsaved upload / pending removal আছে কি না
+//   isDirty()         -> Formik-এর field বদলেছে কি না
 //   discardUnsaved()  -> এই session-এর unsaved upload Cloudinary থেকে মোছে
 //   isBusy()          -> delete চলছে কি না
+//
+// onCancel: Cancel বোতামে parent-এর close/confirm handler চলে।
+
 const ProductForm = forwardRef(function ProductForm(
     {
         initialValues,
@@ -94,15 +264,10 @@ const ProductForm = forwardRef(function ProductForm(
         isEditing = false,
         isSubmitting: isParentSubmitting = false,
         onSaveComplete,
+        onCancel,
     },
     ref
 ) {
-    const [sizeInput, setSizeInput] = useState('');
-    const [colorInput, setColorInput] = useState('');
-    const [categoryInput, setCategoryInput] = useState('');
-    const [tagInput, setTagInput] = useState('');
-
-    // Form খোলার সময় একবারই বানানো হয়।
     const [baseValues] = useState(() => buildInitialValues(initialValues));
 
     const media = useMediaLifecycle({
@@ -110,174 +275,133 @@ const ProductForm = forwardRef(function ProductForm(
         initialVideos: baseValues.videos,
     });
 
+    // Save বোতামের status Formik state-এর আগেই validation-এ লাগে, তাই ref।
+    const intendedStatusRef = useRef(null);
+    const valuesStatusRef = useRef(baseValues.status);
+
+    const formik = useFormik({
+        initialValues: baseValues,
+        validationSchema: () =>
+            buildValidationSchema(intendedStatusRef.current ?? valuesStatusRef.current),
+        // Save বোতামগুলো handleSave দিয়ে নিজেই চালায়। Enter চাপলে submit হয় না।
+        onSubmit: () => {},
+    });
+
+        useEffect(() => {
+            valuesStatusRef.current = formik.values.status;
+    }, [formik.values.status]);
+
     useImperativeHandle(
         ref,
         () => ({
             hasUnsavedMedia: media.hasUnsavedMedia,
+            isDirty: () => formik.dirty,
             discardUnsaved: media.discardUnsaved,
             isBusy: () => media.isDeleting,
         }),
-        [media.hasUnsavedMedia, media.discardUnsaved, media.isDeleting]
+        [media.hasUnsavedMedia, media.discardUnsaved, media.isDeleting, formik.dirty]
     );
 
-    const formik = useFormik({
-        initialValues: baseValues,
-        validationSchema,
-        onSubmit: async (values, { setSubmitting }) => {
-            let saveSucceeded = false;
+    const isBusy = formik.isSubmitting || isParentSubmitting || media.isDeleting;
+
+    // --------------------------------------
+    // SAVE
+    // --------------------------------------
+
+    const save = async (values) => {
+        let saveSucceeded = false;
+        formik.setSubmitting(true);
+
+        try {
+            notify.loading('Saving product...');
+
+            // 1. MongoDB save। ব্যর্থ হলে Cloudinary-তে কিছুই মোছা হয় না।
+            await onSubmit(values);
+            saveSucceeded = true;
+
+            // 2. Save সফল: removed ও অব্যবহৃত upload মোছা।
+            let cleanupFailedCount = 0;
 
             try {
-                notify.loading('Saving product...');
+                const cleanup = await media.finalizeSave(
+                    buildMediaAssets({ images: values.images, videos: values.videos })
+                );
+                cleanupFailedCount = cleanup.failed.length;
+            } catch (cleanupError) {
+                console.error('Media cleanup error:', cleanupError);
+                cleanupFailedCount = 1;
+            }
 
-                // 1. MongoDB save। ব্যর্থ হলে এখানেই catch-এ যাবে,
-                //    Cloudinary-তে কিছুই মোছা হবে না।
-                await onSubmit(values);
-                saveSucceeded = true;
+            notify.close();
 
-                // 2. Save সফল। এখন পুরোনো (removed) ও অব্যবহৃত upload মোছা।
-                //    এখানে ব্যর্থ হলে save ব্যর্থ ধরা হবে না।
-                let cleanupFailedCount = 0;
-
-                try {
-                    const cleanup = await media.finalizeSave(
-                        buildMediaAssets({
-                            images: values.images,
-                            videos: values.videos,
-                        })
-                    );
-                    cleanupFailedCount = cleanup.failed.length;
-                } catch (cleanupError) {
-                    console.error('Media cleanup error:', cleanupError);
-                    cleanupFailedCount = 1;
-                }
-
-                notify.close();
-
-                notify.success(
-                    isEditing
+            notify.success(
+                values.status === 'draft'
+                    ? 'Draft saved!'
+                    : isEditing
                         ? 'Product updated successfully!'
                         : 'Product created successfully!',
-                    'Your changes have been saved'
-                );
-
-                if (cleanupFailedCount > 0) {
-                    notify.warning(
-                        'Product saved, but some old media could not be deleted from Cloudinary.',
-                        'They are saved for retry.',
-                        5000
-                    );
-                }
-            } catch (error) {
-                notify.close();
-
-                notify.error(
-                    'Failed to save product',
-                    error.message || 'Please try again',
-                    4000
-                );
-            } finally {
-                setSubmitting(false);
-            }
-
-            // Modal বন্ধ হবে save ও cleanup শেষ হওয়ার পর।
-            if (saveSucceeded) {
-                onSaveComplete?.();
-            }
-        },
-    });
-
-    // --------------------------------------
-    // MEDIA HANDLERS
-    // --------------------------------------
-
-    const handleImagesChange = (images) => formik.setFieldValue('images', images);
-    const handleVideosChange = (videos) => formik.setFieldValue('videos', videos);
-
-    const handleRetryFailed = async () => {
-        const result = await media.retryFailed();
-
-        if (result.failed.length === 0) {
-            notify.success(
-                `${result.deleted.length} file(s) deleted from Cloudinary.`
+                'Your changes have been saved'
             );
-        } else {
+
+            if (cleanupFailedCount > 0) {
+                notify.warning(
+                    'Product saved, but some old media could not be deleted from Cloudinary.',
+                    'They are saved for retry.',
+                    5000
+                );
+            }
+        } catch (error) {
+            notify.close();
+            notify.error('Failed to save product', error.message || 'Please try again', 4000);
+        } finally {
+            formik.setSubmitting(false);
+            intendedStatusRef.current = null;
+        }
+
+        if (saveSucceeded) {
+            onSaveComplete?.();
+        }
+    };
+
+    // target: 'draft' | 'active'
+    //   Save as Draft -> সবসময় draft
+    //   Save Product  -> active (archived product archived-ই থাকে)
+    const handleSave = async (target) => {
+        if (isBusy) return;
+
+        const nextStatus =
+            target === 'draft'
+                ? 'draft'
+                : formik.values.status === 'draft'
+                    ? 'active'
+                    : formik.values.status;
+
+        const values = { ...formik.values, status: nextStatus };
+
+        intendedStatusRef.current = nextStatus;
+        formik.setFieldValue('status', nextStatus, false);
+
+        const errors = await formik.validateForm(values);
+
+        if (Object.keys(errors).length > 0) {
+            intendedStatusRef.current = null;
+            formik.setTouched(ALL_TOUCHED, false);
+
+            const first = Object.values(errors).find((e) => typeof e === 'string');
             notify.warning(
-                `${result.failed.length} file(s) still could not be deleted.`,
-                'Please try again later.',
-                4000
+                'Please fix the highlighted fields',
+                first || 'Some required fields are missing.',
+                3500
             );
+            return;
         }
+
+        await save(values);
     };
 
     // --------------------------------------
-    // LIST HANDLERS
+    // RESET / RETRY
     // --------------------------------------
-
-    const handleAddSize = () => {
-        if (sizeInput.trim() && !formik.values.sizes.includes(sizeInput.trim())) {
-            formik.setFieldValue('sizes', [...formik.values.sizes, sizeInput.trim()]);
-            setSizeInput('');
-            notify.success('Size added!', '', 1000);
-        } else if (formik.values.sizes.includes(sizeInput.trim())) {
-            notify.warning('Size already exists', '', 1500);
-        }
-    };
-
-    const handleRemoveSize = (size) => {
-        formik.setFieldValue('sizes', formik.values.sizes.filter(s => s !== size));
-        notify.info('Size removed', '', 1000);
-    };
-
-    const handleAddColor = () => {
-        if (colorInput.trim() && !formik.values.colors.includes(colorInput.trim())) {
-            formik.setFieldValue('colors', [...formik.values.colors, colorInput.trim()]);
-            setColorInput('');
-            notify.success('Color added!', '', 1000);
-        } else if (formik.values.colors.includes(colorInput.trim())) {
-            notify.warning('Color already exists', '', 1500);
-        }
-    };
-
-    const handleRemoveColor = (color) => {
-        formik.setFieldValue('colors', formik.values.colors.filter(c => c !== color));
-        notify.info('Color removed', '', 1000);
-    };
-
-    const handleAddCategory = () => {
-        if (categoryInput.trim() && !formik.values.categories.includes(categoryInput.trim())) {
-            formik.setFieldValue('categories', [...formik.values.categories, categoryInput.trim()]);
-            setCategoryInput('');
-            notify.success('Category added!', '', 1000);
-        } else if (formik.values.categories.includes(categoryInput.trim())) {
-            notify.warning('Category already exists', '', 1500);
-        }
-    };
-
-    const handleRemoveCategory = (category) => {
-        formik.setFieldValue('categories', formik.values.categories.filter(c => c !== category));
-        notify.info('Category removed', '', 1000);
-    };
-
-    const handleAddTag = () => {
-        if (tagInput.trim() && !formik.values.tags.includes(tagInput.trim())) {
-            formik.setFieldValue('tags', [...formik.values.tags, tagInput.trim()]);
-            setTagInput('');
-            notify.success('Tag added!', '', 1000);
-        } else if (formik.values.tags.includes(tagInput.trim())) {
-            notify.warning('Tag already exists', '', 1500);
-        }
-    };
-
-    const handleRemoveTag = (tag) => {
-        formik.setFieldValue('tags', formik.values.tags.filter(t => t !== tag));
-        notify.info('Tag removed', '', 1000);
-    };
-
-    // --------------------------------------
-    // RESET
-    // --------------------------------------
-    // এই session-এর unsaved upload Cloudinary থেকে মোছে, তারপর form
-    // original মানে ফেরে। Original (আগে saved) media কখনো ছোঁয়া হয় না।
 
     const handleReset = async () => {
         const confirmed = await notify.confirm(
@@ -302,7 +426,6 @@ const ProductForm = forwardRef(function ProductForm(
         }
 
         notify.close();
-
         formik.resetForm();
 
         if (failedCount > 0) {
@@ -316,17 +439,45 @@ const ProductForm = forwardRef(function ProductForm(
         }
     };
 
-    const isBusy = formik.isSubmitting || isParentSubmitting || media.isDeleting;
+    const handleRetryFailed = async () => {
+        const result = await media.retryFailed();
+
+        if (result.failed.length === 0) {
+            notify.success(`${result.deleted.length} file(s) deleted from Cloudinary.`);
+        } else {
+            notify.warning(
+                `${result.failed.length} file(s) still could not be deleted.`,
+                'Please try again later.',
+                4000
+            );
+        }
+    };
+
+    // --------------------------------------
+    // HELPERS
+    // --------------------------------------
+
+    const { values, touched, errors } = formik;
+    const fieldError = (name) => (touched[name] && errors[name]) || '';
+    const inventoryError =
+        touched.inventory && typeof errors.inventory === 'string' ? errors.inventory : '';
+    const totalStock = calculateTotalStock(values.inventory);
+
+    const setInfo = (key, value) =>
+        formik.setFieldValue('additionalInfo', { ...values.additionalInfo, [key]: value });
 
     return (
-        <form onSubmit={formik.handleSubmit} className="max-w-5xl mx-auto p-6 space-y-8">
+        <form
+            onSubmit={(e) => e.preventDefault()}
+            className="max-w-5xl mx-auto p-4 md:p-6 space-y-6 bg-[#F7F5EF]"
+        >
             {/* Header */}
-            <div className="border-b pb-4">
-                <h1 className="text-3xl font-bold text-gray-900">
+            <div className="border-b border-gray-200 pb-4">
+                <h1 className="text-2xl md:text-3xl font-bold text-[#1A1A1A]">
                     {isEditing ? 'Edit Product' : 'Add New Product'}
                 </h1>
-                <p className="text-gray-600 mt-1">
-                    Fill in the details below to {isEditing ? 'update' : 'create'} a product
+                <p className="text-gray-600 mt-1 text-sm">
+                    Active products need an image, stock and a description. Drafts can be incomplete.
                 </p>
             </div>
 
@@ -334,8 +485,8 @@ const ProductForm = forwardRef(function ProductForm(
             {media.failedAssets.length > 0 && (
                 <div className="rounded-lg border border-yellow-300 bg-yellow-50 p-4 flex items-center justify-between gap-4">
                     <p className="text-sm text-yellow-800">
-                        {media.failedAssets.length} file(s) could not be deleted from
-                        Cloudinary and are waiting for retry.
+                        {media.failedAssets.length} file(s) could not be deleted from Cloudinary
+                        and are waiting for retry.
                     </p>
                     <button
                         type="button"
@@ -348,457 +499,275 @@ const ProductForm = forwardRef(function ProductForm(
                 </div>
             )}
 
-            {/* Basic Info Section */}
-            <div className="bg-white rounded-lg border p-6 space-y-4">
-                <h2 className="text-xl font-semibold text-gray-800 border-b pb-2">
-                    Basic Information
-                </h2>
-
+            {/* 1. Basic Information */}
+            <Section number={1} title="Basic Information">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* SKU */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            SKU <span className="text-red-500">*</span>
-                        </label>
+                    <Field label="SKU" required error={fieldError('sku')}>
                         <input
                             type="text"
                             name="sku"
-                            value={formik.values.sku}
+                            value={values.sku}
                             onChange={formik.handleChange}
                             onBlur={formik.handleBlur}
-                            placeholder="ABY-2025-001"
-                            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            disabled={isBusy}
+                            placeholder="ABY-2026-001"
+                            className={inputClass}
                         />
-                        {formik.touched.sku && formik.errors.sku && (
-                            <p className="mt-1 text-sm text-red-600">{formik.errors.sku}</p>
-                        )}
-                    </div>
+                    </Field>
 
-                    {/* Main Category */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Main Category <span className="text-red-500">*</span>
-                        </label>
+                    <Field label="Main Category" required error={fieldError('mainCategory')}>
                         <select
                             name="mainCategory"
-                            value={formik.values.mainCategory}
+                            value={values.mainCategory}
                             onChange={formik.handleChange}
-                            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                            disabled={isBusy}
+                            className={inputClass}
                         >
                             <option value="abaya">Abaya</option>
                             <option value="hijab">Hijab</option>
-                            <option value="borka">Borka</option>
-                            <option value="khimar">Khimar</option>
-                            <option value="accessories">Accessories</option>
                         </select>
-                    </div>
+                    </Field>
 
-                    {/* Product Name */}
                     <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Product Name <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                            type="text"
-                            name="productName"
-                            value={formik.values.productName}
-                            onChange={formik.handleChange}
-                            onBlur={formik.handleBlur}
-                            placeholder="Mahnoor Crepe Ari Borka"
-                            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                        />
-                        {formik.touched.productName && formik.errors.productName && (
-                            <p className="mt-1 text-sm text-red-600">{formik.errors.productName}</p>
-                        )}
+                        <Field label="Product Name" required error={fieldError('productName')}>
+                            <input
+                                type="text"
+                                name="productName"
+                                value={values.productName}
+                                onChange={formik.handleChange}
+                                onBlur={formik.handleBlur}
+                                disabled={isBusy}
+                                placeholder="Mahnoor Crepe Ari Abaya"
+                                className={inputClass}
+                            />
+                        </Field>
                     </div>
+
+                    <Field
+                        label="Product Status"
+                        hint="Draft products are hidden from the storefront."
+                    >
+                        <select
+                            name="status"
+                            value={values.status}
+                            onChange={formik.handleChange}
+                            disabled={isBusy}
+                            className={inputClass}
+                        >
+                            <option value="active">Active</option>
+                            <option value="draft">Draft</option>
+                            {baseValues.status === 'archived' && (
+                                <option value="archived">Archived</option>
+                            )}
+                        </select>
+                    </Field>
                 </div>
-            </div>
+            </Section>
 
-            {/* Pricing & Stock Section */}
-            <div className="bg-white rounded-lg border p-6 space-y-4">
-                <h2 className="text-xl font-semibold text-gray-800 border-b pb-2">
-                    Pricing & Stock
-                </h2>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            New Price ($) <span className="text-red-500">*</span>
-                        </label>
+            {/* 2. Pricing */}
+            <Section
+                number={2}
+                title="Pricing"
+                hint="Enter prices in AED. Delivery charges are not included in the product price."
+            >
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Field label="Wholesale Price (AED)" required error={fieldError('newPrice')}>
                         <input
                             type="number"
                             name="newPrice"
-                            value={formik.values.newPrice}
+                            min="0"
+                            step="0.01"
+                            value={values.newPrice}
                             onChange={formik.handleChange}
                             onBlur={formik.handleBlur}
-                            className="w-full px-3 py-2 border rounded-lg"
+                            disabled={isBusy}
+                            className={inputClass}
                         />
-                        {formik.touched.newPrice && formik.errors.newPrice && (
-                            <p className="mt-1 text-sm text-red-600">{formik.errors.newPrice}</p>
-                        )}
-                    </div>
+                    </Field>
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Old Price ($)
-                        </label>
+                    <Field label="Compare-at Price (AED)" error={fieldError('oldPrice')}>
                         <input
                             type="number"
                             name="oldPrice"
-                            value={formik.values.oldPrice}
+                            min="0"
+                            step="0.01"
+                            value={values.oldPrice}
                             onChange={formik.handleChange}
-                            className="w-full px-3 py-2 border rounded-lg"
+                            onBlur={formik.handleBlur}
+                            disabled={isBusy}
+                            className={inputClass}
                         />
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Stock <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                            type="number"
-                            name="stock"
-                            value={formik.values.stock}
-                            onChange={formik.handleChange}
-                            className="w-full px-3 py-2 border rounded-lg"
-                        />
-                    </div>
+                    </Field>
                 </div>
-            </div>
+            </Section>
 
-            {/* Sizes Section */}
-            <div className="bg-white rounded-lg border p-6 space-y-4">
-                <h2 className="text-xl font-semibold text-gray-800 border-b pb-2">
-                    Available Sizes <span className="text-red-500">*</span>
-                </h2>
+            {/* 3. Inventory */}
+            <Section
+                number={3}
+                title="Inventory by Color & Size"
+                hint="Size chart: S=52, M=54, L=56, XL=58, XXL=60, 3XL=62. Total stock is calculated automatically."
+            >
+                <InventoryMatrix
+                    value={values.inventory}
+                    onChange={(inventory) => formik.setFieldValue('inventory', inventory)}
+                    error={inventoryError}
+                    disabled={isBusy}
+                />
+                <p className="text-xs text-gray-500">Current total: {totalStock} pcs</p>
+            </Section>
 
-                <div className="flex gap-2">
-                    <input
-                        type="text"
-                        value={sizeInput}
-                        onChange={(e) => setSizeInput(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddSize())}
-                        placeholder="Enter size (e.g., 52, M, L)"
-                        className="flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
-                    <button
-                        type="button"
-                        onClick={handleAddSize}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                    >
-                        Add Size
-                    </button>
-                </div>
+            {/* 4. Categories & Tags */}
+            <Section number={4} title="Categories & Tags">
+                <ChipInput
+                    label="Categories"
+                    required={values.status === 'active'}
+                    placeholder="e.g., Embroidered Abaya"
+                    items={values.categories}
+                    onChange={(items) => formik.setFieldValue('categories', items)}
+                    error={fieldError('categories')}
+                    disabled={isBusy}
+                />
+                <ChipInput
+                    label="Tags"
+                    placeholder="e.g., Eid 2026, Best Seller"
+                    items={values.tags}
+                    onChange={(items) => formik.setFieldValue('tags', items)}
+                    disabled={isBusy}
+                />
+            </Section>
 
-                {formik.touched.sizes && formik.errors.sizes && (
-                    <p className="text-sm text-red-600">{formik.errors.sizes}</p>
-                )}
-
-                {formik.values.sizes.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                        {formik.values.sizes.map((size, index) => (
-                            <span
-                                key={index}
-                                className="inline-flex items-center gap-2 px-3 py-1 bg-blue-100 text-blue-700 rounded-full"
-                            >
-                                {size}
-                                <button
-                                    type="button"
-                                    onClick={() => handleRemoveSize(size)}
-                                    className="hover:text-red-600"
-                                >
-                                    ×
-                                </button>
-                            </span>
-                        ))}
-                    </div>
-                )}
-            </div>
-
-            {/* Colors Section */}
-            <div className="bg-white rounded-lg border p-6 space-y-4">
-                <h2 className="text-xl font-semibold text-gray-800 border-b pb-2">
-                    Available Colors <span className="text-red-500">*</span>
-                </h2>
-
-                <div className="flex gap-2">
-                    <input
-                        type="text"
-                        value={colorInput}
-                        onChange={(e) => setColorInput(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddColor())}
-                        placeholder="Enter color (e.g., Black, Navy Blue)"
-                        className="flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
-                    <button
-                        type="button"
-                        onClick={handleAddColor}
-                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                    >
-                        Add Color
-                    </button>
-                </div>
-
-                {formik.touched.colors && formik.errors.colors && (
-                    <p className="text-sm text-red-600">{formik.errors.colors}</p>
-                )}
-
-                {formik.values.colors.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                        {formik.values.colors.map((color, index) => (
-                            <span
-                                key={index}
-                                className="inline-flex items-center gap-2 px-3 py-1 bg-green-100 text-green-700 rounded-full"
-                            >
-                                {color}
-                                <button
-                                    type="button"
-                                    onClick={() => handleRemoveColor(color)}
-                                    className="hover:text-red-600"
-                                >
-                                    ×
-                                </button>
-                            </span>
-                        ))}
-                    </div>
-                )}
-            </div>
-
-            {/* Categories Section */}
-            <div className="bg-white rounded-lg border p-6 space-y-4">
-                <h2 className="text-xl font-semibold text-gray-800 border-b pb-2">
-                    Categories <span className="text-red-500">*</span>
-                </h2>
-
-                <div className="flex gap-2">
-                    <input
-                        type="text"
-                        value={categoryInput}
-                        onChange={(e) => setCategoryInput(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddCategory())}
-                        placeholder="Enter category (e.g., Embroidered Abaya)"
-                        className="flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
-                    <button
-                        type="button"
-                        onClick={handleAddCategory}
-                        className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-                    >
-                        Add Category
-                    </button>
-                </div>
-
-                {formik.touched.categories && formik.errors.categories && (
-                    <p className="text-sm text-red-600">{formik.errors.categories}</p>
-                )}
-
-                {formik.values.categories.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                        {formik.values.categories.map((category, index) => (
-                            <span
-                                key={index}
-                                className="inline-flex items-center gap-2 px-3 py-1 bg-purple-100 text-purple-700 rounded-full"
-                            >
-                                {category}
-                                <button
-                                    type="button"
-                                    onClick={() => handleRemoveCategory(category)}
-                                    className="hover:text-red-600"
-                                >
-                                    ×
-                                </button>
-                            </span>
-                        ))}
-                    </div>
-                )}
-            </div>
-
-            {/* Tags Section */}
-            <div className="bg-white rounded-lg border p-6 space-y-4">
-                <h2 className="text-xl font-semibold text-gray-800 border-b pb-2">
-                    Tags <span className="text-gray-500 text-sm">(Optional)</span>
-                </h2>
-
-                <div className="flex gap-2">
-                    <input
-                        type="text"
-                        value={tagInput}
-                        onChange={(e) => setTagInput(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
-                        placeholder="Enter tag (e.g., Eid 2025, Best Seller)"
-                        className="flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
-                    <button
-                        type="button"
-                        onClick={handleAddTag}
-                        className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
-                    >
-                        Add Tag
-                    </button>
-                </div>
-
-                {formik.values.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                        {formik.values.tags.map((tag, index) => (
-                            <span
-                                key={index}
-                                className="inline-flex items-center gap-2 px-3 py-1 bg-gray-100 text-gray-700 rounded-full"
-                            >
-                                {tag}
-                                <button
-                                    type="button"
-                                    onClick={() => handleRemoveTag(tag)}
-                                    className="hover:text-red-600"
-                                >
-                                    ×
-                                </button>
-                            </span>
-                        ))}
-                    </div>
-                )}
-            </div>
-
-            {/* Additional Info Section */}
-            <div className="bg-white rounded-lg border p-6 space-y-4">
-                <h2 className="text-xl font-semibold text-gray-800 border-b pb-2">
-                    Additional Information
-                </h2>
-
+            {/* 5. Additional Information */}
+            <Section number={5} title="Additional Information">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Fabric Type
-                        </label>
+                    <Field label="Fabric Type">
                         <input
                             type="text"
-                            name="additionalInfo.fabric"
-                            value={formik.values.additionalInfo.fabric}
-                            onChange={formik.handleChange}
+                            value={values.additionalInfo.fabric}
+                            onChange={(e) => setInfo('fabric', e.target.value)}
+                            disabled={isBusy}
                             placeholder="e.g., Cey Crepe Imported"
-                            className="w-full px-3 py-2 border rounded-lg"
+                            className={inputClass}
                         />
-                    </div>
+                    </Field>
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Work Type
-                        </label>
+                    <Field label="Work Type">
                         <input
                             type="text"
-                            name="additionalInfo.workType"
-                            value={formik.values.additionalInfo.workType}
-                            onChange={formik.handleChange}
+                            value={values.additionalInfo.workType}
+                            onChange={(e) => setInfo('workType', e.target.value)}
+                            disabled={isBusy}
                             placeholder="e.g., Ari Embroidery"
-                            className="w-full px-3 py-2 border rounded-lg"
+                            className={inputClass}
                         />
-                    </div>
+                    </Field>
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Wash Care
-                        </label>
+                    <Field label="Country of Origin">
                         <input
                             type="text"
-                            name="additionalInfo.washCare"
-                            value={formik.values.additionalInfo.washCare}
-                            onChange={formik.handleChange}
-                            placeholder="e.g., Dry Wash Recommended"
-                            className="w-full px-3 py-2 border rounded-lg"
+                            value={values.additionalInfo.countryOfOrigin}
+                            onChange={(e) => setInfo('countryOfOrigin', e.target.value)}
+                            disabled={isBusy}
+                            placeholder="UAE"
+                            className={inputClass}
                         />
-                    </div>
+                    </Field>
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Country of Origin
-                        </label>
-                        <input
-                            type="text"
-                            name="additionalInfo.countryOfOrigin"
-                            value={formik.values.additionalInfo.countryOfOrigin}
-                            onChange={formik.handleChange}
-                            placeholder="e.g., Dubai"
-                            className="w-full px-3 py-2 border rounded-lg"
-                        />
-                    </div>
-
-                    <div className="md:col-span-2">
-                        <label className="flex items-center gap-2 cursor-pointer">
+                    <div className="flex items-end">
+                        <label className="flex items-center gap-2 cursor-pointer h-10">
                             <input
                                 type="checkbox"
-                                name="additionalInfo.hijabIncluded"
-                                checked={formik.values.additionalInfo.hijabIncluded}
-                                onChange={formik.handleChange}
-                                className="w-5 h-5 text-blue-600 rounded"
+                                checked={values.additionalInfo.hijabIncluded}
+                                onChange={(e) => setInfo('hijabIncluded', e.target.checked)}
+                                disabled={isBusy}
+                                className="w-5 h-5 accent-[#123C32]"
                             />
                             <span className="text-sm font-medium text-gray-700">
                                 Matching Hijab Included
                             </span>
                         </label>
                     </div>
-                </div>
-            </div>
 
-            {/* Images Section */}
-            <div className="bg-white rounded-lg border p-6">
-                <h2 className="text-xl font-semibold text-gray-800 border-b pb-2 mb-4">
-                    Product Images
-                </h2>
+                    <div className="md:col-span-2">
+                        <Field label="Wash & Care">
+                            <textarea
+                                rows={3}
+                                value={values.additionalInfo.washCare}
+                                onChange={(e) => setInfo('washCare', e.target.value)}
+                                disabled={isBusy}
+                                maxLength={1000}
+                                placeholder="e.g., Dry wash recommended. Do not bleach."
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#123C32] disabled:bg-gray-100"
+                            />
+                        </Field>
+                    </div>
+                </div>
+            </Section>
+
+            {/* 6. Images */}
+            <Section number={6} title="Product Images" hint="Up to 10 images. Choose one Main image.">
                 <ImageUploadSection
-                    images={formik.values.images}
-                    onChange={handleImagesChange}
-                    error={formik.touched.images && formik.errors.images}
+                    images={values.images}
+                    onChange={(images) => formik.setFieldValue('images', images)}
+                    error={fieldError('images')}
                     onAssetsUploaded={media.registerUploads}
                     onAssetsOrphaned={media.trackOrphanedAssets}
                     onRemoveAsset={media.removeAsset}
                 />
-            </div>
+            </Section>
 
-            {/* Video Section */}
-            <div className="bg-white rounded-lg border p-6">
-                <h2 className="text-xl font-semibold text-gray-800 border-b pb-2 mb-4">
-                    Product Videos
-                </h2>
+            {/* 7. Videos */}
+            <Section number={7} title="Product Videos" hint="Up to 3 videos (optional).">
                 <VideoUploadSection
-                    videos={formik.values.videos}
-                    onChange={handleVideosChange}
-                    error={formik.touched.videos && formik.errors.videos}
+                    videos={values.videos}
+                    onChange={(videos) => formik.setFieldValue('videos', videos)}
+                    error={fieldError('videos')}
                     onAssetsUploaded={media.registerUploads}
                     onRemoveAsset={media.removeAsset}
                 />
-            </div>
+            </Section>
 
-            {/* Description Section */}
-            <div className="bg-white rounded-lg border p-6">
-                <h2 className="text-xl font-semibold text-gray-800 border-b pb-2 mb-4">
-                    Product Description
-                </h2>
+            {/* 8. Description */}
+            <Section number={8} title="Product Description">
                 <DescriptionEditor
-                    value={formik.values.descriptionHtml}
+                    value={values.descriptionHtml}
                     onChange={(value) => formik.setFieldValue('descriptionHtml', value)}
-                    error={formik.touched.descriptionHtml && formik.errors.descriptionHtml}
+                    error={fieldError('descriptionHtml')}
                 />
-            </div>
+            </Section>
 
-            {/* Submit Buttons */}
-            <div className="flex justify-end gap-4 pt-6 border-t">
+            {/* Actions */}
+            <div className="sticky bottom-0 -mx-4 md:-mx-6 px-4 md:px-6 py-3 bg-white/95 backdrop-blur border-t border-gray-200 flex flex-wrap justify-end gap-3">
                 <button
                     type="button"
-                    className="px-6 py-2 border rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                    onClick={() => onCancel?.()}
+                    disabled={isBusy}
+                    className="px-5 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                >
+                    Cancel
+                </button>
+                <button
+                    type="button"
                     onClick={handleReset}
                     disabled={isBusy}
+                    className="px-5 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50"
                 >
                     Reset
                 </button>
                 <button
-                    type="submit"
-                    disabled={isBusy || !formik.isValid}
-                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    type="button"
+                    onClick={() => handleSave('draft')}
+                    disabled={isBusy}
+                    className="px-5 py-2 border border-[#123C32] text-[#123C32] rounded-lg hover:bg-[#123C32]/5 disabled:opacity-50"
                 >
-                    {formik.isSubmitting
-                        ? 'Saving...'
-                        : isEditing
-                            ? 'Update Product'
-                            : 'Create Product'}
+                    Save as Draft
+                </button>
+                <button
+                    type="button"
+                    onClick={() => handleSave('active')}
+                    disabled={isBusy}
+                    className="px-6 py-2 bg-[#123C32] text-white rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    {formik.isSubmitting ? 'Saving...' : 'Save Product'}
                 </button>
             </div>
         </form>

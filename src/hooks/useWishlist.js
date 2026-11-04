@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../utils/axios';
 import useAuth from './useAuth';
 
-const API_URL = '/api/wishlist'; // ✅ Use relative path
+const API_URL = '/wishlist'; // ✅ Use relative path
 
 const useWishlist = () => {
   const queryClient = useQueryClient();

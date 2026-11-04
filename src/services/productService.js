@@ -4,32 +4,21 @@ import axiosInstance from '../utils/axios';
 import notify from '../utils/notification';
 
 /**
- * Generate SEO-friendly slug
- */
-const generateSlug = (name) => {
-  return name
-    .toLowerCase()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .trim();
-};
-
-/**
  * Form values -> API payload
  *
- * - media.images : আগের structure
- * - media.videos : নতুন canonical (সর্বোচ্চ 3টি)
- * - media.video / video : legacy mirror (প্রথম video বা null),
- *   যাতে ProductDetails আগের মতো চলে।
- * Form-এর `images`, `videos` top-level field-ও backend-এ যায় (backend নিজে normalize করে)।
+ * Backend (buildProductDocument) নিজে যা হিসাব করে, তা পাঠানো হয় না:
+ *   stock, sizes, colors (inventory থেকে derive), slug, timestamps।
+ *
+ * - inventory      : [{ color, sizes: [{ size, stock }] }]
+ * - images/videos  : Cloudinary media
+ * - status         : 'active' | 'draft' (Form থেকে আসে)
  */
 const buildProductPayload = (productData) => {
   const images = (productData.images || []).map((img, index) => ({
     url: img.url,
     publicId: img.publicId,
     thumbnailUrl: img.thumbnailUrl || img.url,
-    isMain: img.isMain || index === 0,
+    isMain: img.isMain === true,
     order: index,
   }));
 
@@ -40,19 +29,28 @@ const buildProductPayload = (productData) => {
     duration: video.duration ?? null,
   }));
 
-  const { video: _legacyVideo, ...rest } = productData;
+  const inventory = (productData.inventory || []).map((row) => ({
+    color: row.color,
+    sizes: (row.sizes || []).map((s) => ({
+      size: s.size,
+      stock: s.stock === '' || s.stock == null ? 0 : Number(s.stock),
+    })),
+  }));
 
   return {
-    ...rest,
-    slug: generateSlug(productData.productName),
+    sku: productData.sku,
+    productName: productData.productName,
+    mainCategory: productData.mainCategory,
+    status: productData.status || 'active',
+    newPrice: productData.newPrice,
+    oldPrice: productData.oldPrice === '' ? null : productData.oldPrice,
+    inventory,
+    categories: productData.categories || [],
+    tags: productData.tags || [],
+    descriptionHtml: productData.descriptionHtml || '',
+    additionalInfo: productData.additionalInfo || {},
     images,
     videos,
-    video: videos[0] || null,
-    media: {
-      images,
-      videos,
-      video: videos[0] || null,
-    },
   };
 };
 
@@ -61,14 +59,10 @@ const buildProductPayload = (productData) => {
  */
 export const createProduct = async (productData) => {
   try {
-    const payload = {
-      ...buildProductPayload(productData),
-      status: 'active',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    const response = await axiosInstance.post('/products', payload);
+    const response = await axiosInstance.post(
+      '/products',
+      buildProductPayload(productData)
+    );
     return response.data;
   } catch (error) {
     console.error('Create product error:', error);
@@ -81,12 +75,10 @@ export const createProduct = async (productData) => {
  */
 export const updateProduct = async (productId, productData) => {
   try {
-    const payload = {
-      ...buildProductPayload(productData),
-      updatedAt: new Date().toISOString(),
-    };
-
-    const response = await axiosInstance.put(`/products/${productId}`, payload);
+    const response = await axiosInstance.put(
+      `/products/${productId}`,
+      buildProductPayload(productData)
+    );
     return response.data;
   } catch (error) {
     console.error('Update product error:', error);
@@ -95,7 +87,20 @@ export const updateProduct = async (productId, productData) => {
 };
 
 /**
- * Get product by ID
+ * Admin: সব product (draft সহ)। Backend: GET /api/admin/products
+ */
+export const getAdminProducts = async () => {
+  try {
+    const response = await axiosInstance.get('/admin/products');
+    return response.data;
+  } catch (error) {
+    console.error('Get admin products error:', error);
+    throw error.response?.data || error;
+  }
+};
+
+/**
+ * Get product by ID (public, draft বাদে)
  */
 export const getProductById = async (productId) => {
   try {
@@ -109,7 +114,7 @@ export const getProductById = async (productId) => {
 };
 
 /**
- * Get all products with pagination
+ * Get all public products
  */
 export const getProducts = async (params = {}) => {
   try {
@@ -161,6 +166,7 @@ export const updateProductStatus = async (productId, status) => {
 export default {
   createProduct,
   updateProduct,
+  getAdminProducts,
   getProductById,
   getProducts,
   deleteProduct,
