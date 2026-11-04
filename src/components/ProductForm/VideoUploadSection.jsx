@@ -2,7 +2,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { uploadVideo } from '../../services/cloudinaryService';
-import { VIDEO_UPLOAD_CONFIG } from '../../config/cloudinary';
+import { optimizedVideoUrl, VIDEO_UPLOAD_CONFIG } from '../../config/cloudinary';
 import notify from '../../utils/notification';
 
 // Props:
@@ -309,7 +309,7 @@ const VideoUploadSection = ({
                             </p>
 
                             <p className="mt-1 text-xs text-gray-500">
-                                MP4, MOV, AVI | Maximum 50MB each
+                                MP4, MOV, AVI | Maximum 80MB each
                             </p>
 
                             <p className="mt-1 text-xs text-gray-500">
@@ -339,7 +339,7 @@ const VideoUploadSection = ({
                                 }`}
                             >
                                 <video
-                                    src={video.url}
+                                    src={optimizedVideoUrl(video.url)}
                                     controls
                                     preload="metadata"
                                     className="w-full max-h-64 bg-black"

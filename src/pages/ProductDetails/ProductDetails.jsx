@@ -42,6 +42,7 @@ import ShareModal from "../../components/ShareModal/ShareModal";
 import useAddToCart from "../../hooks/useAddToCart";
 import { useAllProducts } from "../../hooks/useProducts";
 import useWishlist from "../../hooks/useWishlist";
+import { optimizedVideoUrl } from "../../config/cloudinary";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const GOLD = "#B8922A";
@@ -228,7 +229,7 @@ function ImageGallery({ images = [], videos = [], productName, tags = [], discou
     <div className="w-full lg:sticky lg:top-24">
       <div
         ref={imgRef}
-        className={`relative bg-gray-50 rounded-2xl overflow-hidden aspect-[3/4] mb-3 group ${
+        className={`relative bg-white border border-gray-100 rounded-2xl overflow-hidden aspect-[3/4] mb-3 group ${
           isVideo ? "" : "cursor-zoom-in"
         }`}
         onMouseMove={handleMouseMove}
@@ -239,20 +240,20 @@ function ImageGallery({ images = [], videos = [], productName, tags = [], discou
         {isVideo ? (
           <video
             key={current.url}
-            src={current.url}
+            src={optimizedVideoUrl(current.url)}
             poster={current.thumb}
             controls
             autoPlay
             muted
             loop
             playsInline
-            className="w-full h-full object-cover bg-black"
+            className="w-full h-full object-contain bg-black"
           />
         ) : (
           <img
             src={current.url || "https://placehold.co/600x800?text=Image"}
             alt={`${productName} view ${active + 1}`}
-            className={`w-full h-full object-cover transition-transform duration-300 ${
+            className={`w-full h-full object-contain transition-transform duration-300 ${
               zoomed ? "scale-150" : "scale-100"
             }`}
             style={zoomed ? { transformOrigin: `${mousePos.x}% ${mousePos.y}%` } : {}}
@@ -348,7 +349,7 @@ function ImageGallery({ images = [], videos = [], productName, tags = [], discou
                     <img
                       src={item.thumb}
                       alt={`${productName} video`}
-                      className="w-full h-full object-cover opacity-80"
+                      className="w-full h-full object-contain opacity-80"
                     />
                   )}
                   <span className="absolute inset-0 flex items-center justify-center">

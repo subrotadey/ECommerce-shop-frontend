@@ -1,10 +1,10 @@
-// hooks/useAddToCart.js - PRODUCTION READY
+// hooks/useAddToCart.js
 import { useState } from "react";
 import Swal from "sweetalert2";
 import useCart from "./useCart";
 
 export default function useAddToCart(product) {
-    const { addToCart, isAdding } = useCart();
+    const { addToCart, addItems, isAdding } = useCart();
 
     const [selectedSize, setSelectedSize] = useState("");
     const [selectedColor, setSelectedColor] = useState("");
@@ -36,21 +36,11 @@ export default function useAddToCart(product) {
         return true;
     };
 
-    const handleAddToCart = () => {
-        if (!validate()) return false;
-
-        // Add to cart using React Query mutation
-        addToCart(product, {
-            size: selectedSize,
-            color: selectedColor,
-            qty: Number(qty),
-        });
-
-        // Success notification
+    const toast = (title) =>
         Swal.fire({
             position: "top-end",
             icon: "success",
-            title: `"${product.productName}" added to cart!`,
+            title,
             showConfirmButton: false,
             timer: 1500,
             toast: true,
@@ -58,7 +48,31 @@ export default function useAddToCart(product) {
             color: "#155724",
         });
 
+    // পুরোনো একক-লাইন API (অন্য পেজের জন্য অক্ষত)
+    const handleAddToCart = () => {
+        if (!validate()) return false;
+
+        addToCart(product, {
+            size: selectedSize,
+            color: selectedColor,
+            qty: Number(qty),
+        });
+
+        toast(`"${product.productName}" added to cart!`);
         return true;
+    };
+
+    // নতুন: ProductDetails-এর জন্য। একটি রঙের একাধিক size একসাথে যোগ করে।
+    // await করা যায়; কোনো toast দেখায় না (ডাকা পেজ নিজে ঠিক করবে)।
+    const addColorGroup = async ({ color, sizes: lines }) => {
+        await addItems(
+            product,
+            (lines || []).map(({ size, qty: q }) => ({
+                size,
+                color,
+                qty: Number(q),
+            }))
+        );
     };
 
     const resetSelections = () => {
@@ -77,9 +91,10 @@ export default function useAddToCart(product) {
         setQty,
         error,
         handleAddToCart,
+        addColorGroup,
         resetSelections,
         isAdding,
         sizes,
-        colors
+        colors,
     };
 }

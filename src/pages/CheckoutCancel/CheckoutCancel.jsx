@@ -1,35 +1,36 @@
-// pages/CheckoutCancel.jsx
 import { useNavigate } from "react-router-dom";
-import { XCircle, ShoppingCart, ArrowLeft } from "lucide-react";
+import { XCircle, ShoppingCart, ArrowLeft, MessageCircle } from "lucide-react";
+
+// Checkout.jsx-এর নম্বরের সাথে মিল রাখুন
+const WHATSAPP_NUMBER = "971551896390";
 
 const CheckoutCancel = () => {
   const navigate = useNavigate();
 
+  const handleWhatsApp = () => {
+    const msg = encodeURIComponent("Hello, I need help with my payment.");
+    window.open(`https://wa.me/${WHATSAPP_NUMBER.replace(/\D/g, "")}?text=${msg}`, "_blank", "noopener");
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-50 flex items-center justify-center p-4">
       <div className="max-w-2xl w-full bg-white rounded-3xl shadow-2xl p-12 text-center">
-        {/* Icon */}
         <div className="w-24 h-24 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
           <XCircle className="w-16 h-16 text-red-600" />
         </div>
 
-        {/* Heading */}
-        <h1 className="text-4xl font-bold text-slate-800 mb-4">
-          Payment Cancelled
-        </h1>
+        <h1 className="text-4xl font-bold text-slate-800 mb-4">Payment Cancelled</h1>
 
-        {/* Message */}
         <p className="text-xl text-slate-600 mb-8">
-          Your payment was cancelled. No charges were made.
+          Your payment was not completed.
         </p>
 
-        {/* Additional Info */}
         <div className="bg-slate-50 rounded-xl p-6 mb-8 text-left">
           <h3 className="font-semibold text-slate-800 mb-3">What happened?</h3>
           <ul className="space-y-2 text-slate-600">
             <li className="flex items-start gap-2">
               <span className="text-slate-400 mt-1">•</span>
-              <span>You chose to cancel the payment process</span>
+              <span>The payment process was cancelled before it finished</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-slate-400 mt-1">•</span>
@@ -42,7 +43,6 @@ const CheckoutCancel = () => {
           </ul>
         </div>
 
-        {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-4">
           <button
             onClick={() => navigate("/cart")}
@@ -51,7 +51,7 @@ const CheckoutCancel = () => {
             <ShoppingCart className="w-5 h-5" />
             Return to Cart
           </button>
-          
+
           <button
             onClick={() => navigate("/")}
             className="flex-1 bg-white border-2 border-slate-300 text-slate-800 px-6 py-4 rounded-xl font-semibold hover:bg-slate-50 transition-colors flex items-center justify-center gap-2"
@@ -61,10 +61,13 @@ const CheckoutCancel = () => {
           </button>
         </div>
 
-        {/* Help Text */}
-        <p className="text-sm text-slate-500 mt-8">
-          Need help? Contact our support team at support@example.com
-        </p>
+        <button
+          onClick={handleWhatsApp}
+          className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-green-700 hover:text-green-800"
+        >
+          <MessageCircle className="w-4 h-4" />
+          Need help? Chat with us on WhatsApp
+        </button>
       </div>
     </div>
   );

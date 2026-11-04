@@ -8,6 +8,7 @@ import { useAdminProducts } from '../../../../hooks/useProducts';
 import { getProductVideos } from '../../../../hooks/useMediaLifecycle';
 import { createProduct, updateProduct, deleteProduct } from '../../../../services/productService';
 import notify from '../../../../utils/notification';
+import { optimizedVideoUrl } from '../../../../config/cloudinary';
 
 const LOW_STOCK_THRESHOLD = 10;
 
@@ -602,7 +603,7 @@ const Products = () => {
                                         {viewingVideos.map((video) => (
                                             <video
                                                 key={video.publicId}
-                                                src={video.url}
+                                                src={optimizedVideoUrl(video.url)}
                                                 poster={video.thumbnailUrl}
                                                 controls
                                                 preload="metadata"

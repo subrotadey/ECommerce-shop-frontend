@@ -73,7 +73,7 @@ export const IMAGE_UPLOAD_CONFIG = {
 export const VIDEO_UPLOAD_CONFIG = {
   folder: 'videos',
   allowedFormats: ['mp4', 'mov', 'avi'],
-  maxFileSize: 50 * 1024 * 1024, // 50 MB
+  maxFileSize: 80 * 1024 * 1024, // 80 MB
   maxFiles: 3,
 
   transformation: [
@@ -117,3 +117,12 @@ export const getVideoThumbnailUrl = (publicId) => {
 
   return `${getCloudinaryBaseUrl('video')}/so_0,w_400,h_300,c_fill,q_auto,f_jpg/${publicId}.jpg`;
 };
+
+// Delivery-time optimisation: stored URL theke chhoto version serve kore
+export const optimizedVideoUrl = (url) =>
+  typeof url === 'string' && url.includes('/video/upload/')
+    ? url.replace(
+        '/video/upload/',
+        '/video/upload/c_limit,w_1080,h_1920,q_auto,f_auto/'
+      )
+    : url;

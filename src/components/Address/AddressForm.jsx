@@ -1,7 +1,7 @@
 // src/components/Address/AddressForm.jsx
 import React, { useState, useEffect } from 'react';
 import { X, MapPin, Phone, User, Save, Loader } from 'lucide-react';
-import { validateAddress, ADDRESS_LABELS, TIME_PREFERENCES, US_STATES } from '../../utils/addressValidation';
+import { validateAddress, ADDRESS_LABELS, TIME_PREFERENCES, COUNTRIES, STATES_BY_COUNTRY, OTHER } from '../../utils/addressValidation';
 
 const EMPTY_FORM = {
   fullName:        '',
@@ -42,10 +42,21 @@ const InputField = ({ label, name, value, onChange, error, required, type = 'tex
 const AddressForm = ({ initialData = null, onSave, onCancel, submitting = false, currentUser = null }) => {
   const [form, setForm]     = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
+    const [countryOther, setCountryOther] = useState(false);
+  const [stateCustom, setStateCustom] = useState(false);
+
+  const fieldCls = (err) =>
+    `w-full px-4 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white transition-all ${
+      err ? 'border-red-400 bg-red-50' : 'border-gray-300'
+    }`;
 
   useEffect(() => {
     if (initialData) {
-      setForm({ ...EMPTY_FORM, ...initialData });
+      const data = { ...EMPTY_FORM, ...initialData };
+      setForm(data);
+      setCountryOther(!COUNTRIES.includes(data.country));
+      const list = STATES_BY_COUNTRY[data.country];
+      setStateCustom(Boolean(list) && Boolean(data.state) && !list.includes(data.state));
     } else if (currentUser) {
       setForm((prev) => ({
         ...prev,
@@ -60,6 +71,23 @@ const AddressForm = ({ initialData = null, onSave, onCancel, submitting = false,
     setForm((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }));
   };
+
+    const handleCountrySelect = (e) => {
+    const v = e.target.value;
+    setStateCustom(false);
+    setCountryOther(v === OTHER);
+    setForm((p) => ({ ...p, country: v === OTHER ? '' : v, state: '' }));
+    setErrors((p) => ({ ...p, country: '', state: '' }));
+  };
+
+  const handleStateSelect = (e) => {
+    const v = e.target.value;
+    if (v === OTHER) setStateCustom(true);
+    setForm((p) => ({ ...p, state: v === OTHER ? '' : v }));
+    setErrors((p) => ({ ...p, state: '' }));
+  };
+
+  const stateList = STATES_BY_COUNTRY[form.country];
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -166,43 +194,70 @@ const AddressForm = ({ initialData = null, onSave, onCancel, submitting = false,
                   required placeholder="123 Main Street"
                 />
               </div>
-              <InputField
-                label="Apt / Suite / Unit" name="aptNumber" value={form.aptNumber}
-                onChange={handleChange} placeholder="Apt 4B"
+                            <InputField
+                label="Apt / Office / Shop No." name="aptNumber" value={form.aptNumber}
+                onChange={handleChange} placeholder="Office 204"
               />
               <InputField
                 label="City" name="city" value={form.city}
                 onChange={handleChange} error={errors.city}
-                required placeholder="New York"
+                required placeholder="Dubai"
               />
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  State <span className="text-red-500">*</span>
+                  Country <span className="text-red-500">*</span>
                 </label>
                 <select
-                  name="state"
-                  value={form.state}
-                  onChange={handleChange}
-                  className={`w-full px-4 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white transition-all ${
-                    errors.state ? 'border-red-400 bg-red-50' : 'border-gray-300'
-                  }`}
+                  value={countryOther ? OTHER : form.country}
+                  onChange={handleCountrySelect}
+                  className={fieldCls(errors.country)}
                 >
-                  <option value="">Select state</option>
-                  {US_STATES.map((s) => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
+                  {COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                  <option value={OTHER}>Other (type manually)</option>
                 </select>
+                {countryOther && (
+                  <input
+                    name="country" value={form.country} onChange={handleChange}
+                    placeholder="Country name" className={`${fieldCls(errors.country)} mt-2`}
+                  />
+                )}
+                {errors.country && <p className="mt-1 text-xs text-red-600">{errors.country}</p>}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  State / Emirate / Region <span className="text-red-500">*</span>
+                </label>
+                {stateList && !stateCustom ? (
+                  <select value={form.state} onChange={handleStateSelect} className={fieldCls(errors.state)}>
+                    <option value="">Select</option>
+                    {stateList.map((s) => <option key={s} value={s}>{s}</option>)}
+                    <option value={OTHER}>Other (type manually)</option>
+                  </select>
+                ) : (
+                  <>
+                    <input
+                      name="state" value={form.state} onChange={handleChange}
+                      placeholder="State / Region" className={fieldCls(errors.state)}
+                    />
+                    {stateList && (
+                      <button
+                        type="button"
+                        onClick={() => { setStateCustom(false); setForm((p) => ({ ...p, state: '' })); }}
+                        className="mt-1 text-xs text-blue-600 underline"
+                      >
+                        Choose from list
+                      </button>
+                    )}
+                  </>
+                )}
                 {errors.state && <p className="mt-1 text-xs text-red-600">{errors.state}</p>}
               </div>
+
               <InputField
-                label="ZIP Code" name="zipCode" value={form.zipCode}
-                onChange={handleChange} error={errors.zipCode}
-                required placeholder="10001"
-              />
-              <InputField
-                label="Country" name="country" value={form.country}
-                onChange={handleChange} error={errors.country}
-                required placeholder="United States"
+                label="P.O. Box / Postal Code (optional)" name="zipCode" value={form.zipCode}
+                onChange={handleChange} error={errors.zipCode} placeholder="Optional"
               />
             </div>
           </div>

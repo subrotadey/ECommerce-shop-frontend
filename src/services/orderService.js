@@ -2,7 +2,7 @@
 
 import axiosInstance from "../utils/axios";
 
-const API_BASE_URL = '/api/orders';
+const API_BASE_URL = '/orders';
 
 /**
  * Get all orders with pagination and filters (Admin/Staff)

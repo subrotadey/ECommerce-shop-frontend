@@ -1,20 +1,51 @@
 // pages/Checkout/Checkout.jsx
 import {
-  ArrowRight, CreditCard, Loader2, Mail, Package,
-  Shield, ShoppingBag, Trash2, Truck, Tag, X, Check,
-  Banknote, MapPin, Phone, User, Edit2, ChevronRight,
-  Plus, Star, CheckCircle, Home, Briefcase, Warehouse
+    AlertTriangle,
+    ArrowRight,
+    Banknote,
+    Briefcase,
+    Check,
+    CheckCircle,
+    ChevronRight,
+    CreditCard,
+    Home,
+    Landmark,
+    Loader2, Mail,
+    MapPin,
+    MessageCircle,
+    Plus,
+    ShoppingBag,
+    Star,
+    Tag,
+    Trash2, Truck,
+    Warehouse,
+    X
 } from "lucide-react";
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
+import AddressForm from "../../components/Address/AddressForm";
+import Loading from "../../components/Shared/Loading/Loading";
 import useAuth from "../../hooks/useAuth";
 import useCart from "../../hooks/useCart";
-import { authenticatedFetch } from "../../utils/tokenHelper";
 import axiosInstance from "../../utils/axios";
-import AddressForm from "../../components/Address/AddressForm";
+import { authenticatedFetch } from "../../utils/tokenHelper";
+import {
+    BULK_DISCOUNT_PERCENT, BULK_DISCOUNT_THRESHOLD, DELIVERY_NOTICE,
+    MOQ_PER_COLOR, formatMoney, round2, summarizeCart,
+} from "../../utils/wholesale";
+
+// ── Config ──
+const ENABLE_STRIPE = false; // কোড অক্ষত, UI-তে লুকানো
+const ENABLE_COD = false;    // কোড অক্ষত, UI-তে লুকানো
+const WHATSAPP_NUMBER = "+8801516358828"; // যাচাই করুন = 971551896390
 
 // ─── helpers ────────────────────────────────────────────────────────────────
+
+const PAY_STYLE = {
+  green: "border-green-500 bg-green-50",
+  blue:  "border-blue-500 bg-blue-50",
+};
 
 const LABEL_ICON = {
   home:      { icon: Home,      color: "text-blue-600",   bg: "bg-blue-50",   border: "border-blue-200"   },
@@ -37,9 +68,42 @@ const extractImageUrl = (image) => {
   return "";
 };
 
+const buildWhatsAppMessage = ({ orderId, total, items }) => {
+  const groups = new Map();
+  (items || []).forEach((i) => {
+    const key = `${i.productId}__${i.color || ""}`;
+    if (!groups.has(key)) groups.set(key, { name: i.name, color: i.color, sizes: [], qty: 0 });
+    const g = groups.get(key);
+    g.sizes.push(`${i.size && i.size !== "NOSIZE" ? i.size : "-"}×${i.qty}`);
+    g.qty += Number(i.qty) || 0;
+  });
+
+  const pieces = [...groups.values()].reduce((s, g) => s + g.qty, 0);
+  const lines = [...groups.values()].map((g) => {
+    const name = (g.name || "").length > 45 ? `${g.name.slice(0, 45)}…` : g.name;
+    const color = g.color && g.color !== "NOCOLOR" ? ` (${g.color})` : "";
+    return `• ${name}${color}: ${g.sizes.join(", ")} = ${g.qty} pcs`;
+  });
+
+  return [
+    "Hello Anis Abaya",
+    "I have placed a wholesale order.",
+    "",
+    `*Order ID:* ${orderId}`,
+    `*Total:* ${formatMoney(total)}`,
+    `*Total pieces:* ${pieces}`,
+    "",
+    "*Items*",
+    ...lines,
+    "",
+    "Please share the bank details. I will send the transfer receipt here.",
+    "Thank you!",
+  ].join("\n");
+};
+
 // ─── AddressSelector ─────────────────────────────────────────────────────────
 
-const AddressSelector = ({ selectedId, onSelect, onAddNew }) => {
+const AddressSelector = ({ selectedId, onSelect, onAddNew, onEdit }) => {
   const [addresses, setAddresses] = useState([]);
   const [loading, setLoading]     = useState(true);
 
@@ -49,11 +113,8 @@ const AddressSelector = ({ selectedId, onSelect, onAddNew }) => {
         if (res.data.success) {
           const list = res.data.addresses || [];
           setAddresses(list);
-
-          // Auto-select default or first
           if (!selectedId && list.length > 0) {
-            const def = list.find(a => a.isDefault) || list[0];
-            onSelect(def);
+            onSelect(list.find(a => a.isDefault) || list[0]);
           }
         }
       })
@@ -61,18 +122,17 @@ const AddressSelector = ({ selectedId, onSelect, onAddNew }) => {
       .finally(() => setLoading(false));
   }, []);
 
-  // Re-select after adding a new address
-  const refresh = () => {
+  // keepId থাকলে (Edit-এর পর) সেই ঠিকানাই নির্বাচিত থাকে
+  const refresh = (keepId) => {
     setLoading(true);
     axiosInstance.get("/addresses")
       .then(res => {
         if (res.data.success) {
           const list = res.data.addresses || [];
           setAddresses(list);
-          // Select newly added address (last one) or keep current
           if (list.length > 0) {
-            const def = list.find(a => a.isDefault) || list[list.length - 1];
-            onSelect(def);
+            const keep = typeof keepId === "string" && list.find(a => (a.id || a._id) === keepId);
+            onSelect(keep || list.find(a => a.isDefault) || list[list.length - 1]);
           }
         }
       })
@@ -105,43 +165,51 @@ const AddressSelector = ({ selectedId, onSelect, onAddNew }) => {
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {addresses.map(addr => {
-              const meta   = LABEL_ICON[addr.label] || LABEL_ICON.other;
-              const Icon   = meta.icon;
-              const isSelected = selectedId === (addr.id || addr._id);
+              const meta = LABEL_ICON[addr.label] || LABEL_ICON.other;
+              const Icon = meta.icon;
+              const addrId = addr.id || addr._id;
+              const isSelected = selectedId === addrId;
 
               return (
-                <button
-                  key={addr.id || addr._id}
+                <div
+                  key={addrId}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => onSelect(addr)}
-                  className={`text-left p-4 rounded-xl border-2 transition-all ${
+                  onKeyDown={e => (e.key === "Enter" || e.key === " ") && onSelect(addr)}
+                  className={`text-left p-4 rounded-xl border-2 transition-all cursor-pointer ${
                     isSelected
                       ? "border-blue-500 bg-blue-50 shadow-sm shadow-blue-100"
                       : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
                   }`}
                 >
-                  {/* Label row */}
                   <div className="flex items-center justify-between mb-2">
                     <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${meta.bg} ${meta.color} ${meta.border}`}>
                       <Icon size={11} />
                       <span className="capitalize">{addr.label}</span>
                     </div>
                     <div className="flex items-center gap-1.5">
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        onClick={e => { e.stopPropagation(); onEdit(addr, refresh); }}
+                        onKeyDown={e => { if (e.key === "Enter") { e.stopPropagation(); onEdit(addr, refresh); } }}
+                        className="px-2 py-0.5 text-[11px] font-semibold text-blue-600 border border-blue-200 rounded-full hover:bg-blue-100"
+                      >
+                        Edit
+                      </span>
                       {addr.isDefault && (
                         <span className="flex items-center gap-1 px-1.5 py-0.5 bg-green-50 text-green-700 border border-green-200 rounded-full text-[10px] font-medium">
                           <Star size={9} fill="currentColor" /> Default
                         </span>
                       )}
-                      {isSelected && (
-                        <CheckCircle className="w-4 h-4 text-blue-600" />
-                      )}
+                      {isSelected && <CheckCircle className="w-4 h-4 text-blue-600" />}
                     </div>
                   </div>
 
-                  {/* Name & phone */}
                   <p className="font-semibold text-gray-900 text-sm">{addr.fullName}</p>
                   <p className="text-xs text-gray-500 mt-0.5">{addr.phone}</p>
 
-                  {/* Street */}
                   <div className="flex items-start gap-1.5 mt-2">
                     <MapPin size={12} className="mt-0.5 flex-shrink-0 text-gray-400" />
                     <p className="text-xs text-gray-600 leading-relaxed">
@@ -158,12 +226,11 @@ const AddressSelector = ({ selectedId, onSelect, onAddNew }) => {
                       📝 {addr.deliveryNote}
                     </p>
                   )}
-                </button>
+                </div>
               );
             })}
           </div>
 
-          {/* Add new */}
           <button
             onClick={() => onAddNew(refresh)}
             className="flex items-center gap-2 px-4 py-2.5 border-2 border-dashed border-gray-300 rounded-xl text-sm font-medium text-gray-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-all w-full justify-center"
@@ -180,136 +247,156 @@ const AddressSelector = ({ selectedId, onSelect, onAddNew }) => {
 
 const Checkout = () => {
   const navigate = useNavigate();
-  const { items, updateQty, removeItem, clearCart } = useCart();
+  const { items, updateQty, removeItem, clearCart, isLoading } = useCart();
   const { currentUser } = useAuth();
 
-  const [processing,     setProcessing]     = useState(false);
-  const [paymentMethod,  setPaymentMethod]  = useState("online");
+  const [processing, setProcessing] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState("bank");
   const [selectedAddress, setSelectedAddress] = useState(null);
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [afterAddCallback, setAfterAddCallback] = useState(null);
+  const [editingAddress, setEditingAddress] = useState(null);
+  const [savingAddress, setSavingAddress] = useState(false);
 
-  // Coupon
-  const [couponCode,       setCouponCode]       = useState("");
-  const [appliedCoupon,    setAppliedCoupon]    = useState(null);
-  const [couponError,      setCouponError]      = useState("");
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [couponError, setCouponError] = useState("");
   const [validatingCoupon, setValidatingCoupon] = useState(false);
 
-  // Pricing
-  const subtotal = items.reduce((sum, item) => sum + item.price * item.qty, 0);
-  let discount = 0;
-  if (appliedCoupon) {
-    if (appliedCoupon.type === "percentage") discount = appliedCoupon.discount || 0;
-    else if (appliedCoupon.type === "fixed") {
-      discount = appliedCoupon.value;
-      if (discount > subtotal) discount = subtotal;
-    }
-  }
-  const tax      = (subtotal - discount) * 0.05;
-  const shipping = appliedCoupon?.type === "free_shipping" || subtotal > 1000 ? 0 : 100;
-  const total    = subtotal - discount + tax + shipping;
+  // ── Pricing (শুধু preview; আসল হিসাব backend-এ) ──
+  const summary = summarizeCart(items);
+  const couponDiscount = appliedCoupon
+    ? Math.min(round2(appliedCoupon.discount || 0), summary.afterBulk)
+    : 0;
+  const total = round2(summary.afterBulk - couponDiscount);
 
-  // Build the address object that goes into the order
+  // cart বদলালে coupon-এর হিসাব পুরোনো হয়ে যায়, তাই সরিয়ে দিই
+  useEffect(() => {
+    if (appliedCoupon) {
+      setAppliedCoupon(null);
+      setCouponCode("");
+      setCouponError("Cart changed. Please apply the coupon again.");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [summary.afterBulk]);
+
   const buildOrderAddress = (addr) => {
     if (!addr) return {};
     return {
-      fullName:  addr.fullName,
-      phone:     addr.phone,
-      altPhone:  addr.altPhone  || "",
-      street:    addr.street,
-      aptNumber: addr.aptNumber || "",
-      city:      addr.city,
-      state:     addr.state,
-      zipCode:   addr.zipCode,
-      country:   addr.country,
-      label:     addr.label,
-      landmark:  addr.landmark  || "",
-      deliveryNote: addr.deliveryNote || "",
-      timePreference: addr.timePreference || "",
+      fullName: addr.fullName, phone: addr.phone, altPhone: addr.altPhone || "",
+      street: addr.street, aptNumber: addr.aptNumber || "", city: addr.city,
+      state: addr.state, zipCode: addr.zipCode, country: addr.country,
+      label: addr.label, landmark: addr.landmark || "",
+      deliveryNote: addr.deliveryNote || "", timePreference: addr.timePreference || "",
     };
   };
 
-  // ── Coupon ──────────────────────────────────────────────────────────────────
+  const errMsg = (err, fallback) =>
+    err?.response?.data?.message || err?.message || fallback;
+
+  // ── Coupon ──
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) { setCouponError("Please enter a coupon code"); return; }
     setValidatingCoupon(true);
     setCouponError("");
     try {
-      const res = await axiosInstance.post("/api/coupons/validate", {
+      // bulk discount-এর পরের টাকার ওপর (backend-এর ক্রম অনুযায়ী)
+      const res = await axiosInstance.post("/coupons/validate", {
         code: couponCode.toUpperCase(),
-        cartTotal: subtotal,
+        cartTotal: summary.afterBulk,
       });
       if (res.data.success) {
         setAppliedCoupon(res.data.coupon);
-        Swal.fire({ position: "top-end", icon: "success", title: "Coupon applied!", showConfirmButton: false, timer: 2000, toast: true });
+        Swal.fire({ position: "top-end", icon: "success", title: "Coupon applied!", showConfirmButton: false, timer: 1500, toast: true });
       }
     } catch (err) {
-      setCouponError(err.response?.data?.message || "Invalid or expired coupon");
+      setCouponError(errMsg(err, "Invalid or expired coupon"));
       setAppliedCoupon(null);
     } finally { setValidatingCoupon(false); }
   };
 
   const handleRemoveCoupon = () => { setAppliedCoupon(null); setCouponCode(""); setCouponError(""); };
 
-  // ── Save new address (called from AddressForm) ───────────────────────────
-  const handleSaveNewAddress = async (formData) => {
+  // ── Address save ──
+    const handleSaveAddress = async (formData) => {
+    if (savingAddress) return;
+    const isEdit = Boolean(editingAddress);
+    const id = editingAddress?.id || editingAddress?._id;
+    setSavingAddress(true);
     try {
-      const res = await axiosInstance.post("/addresses", formData);
+      const res = isEdit
+        ? await axiosInstance.put(`/addresses/${id}`, formData)
+        : await axiosInstance.post("/addresses", formData);
       if (res.data.success) {
         setShowAddressForm(false);
-        Swal.fire({ position: "top-end", icon: "success", title: "Address saved!", showConfirmButton: false, timer: 1500, toast: true });
-        if (afterAddCallback) afterAddCallback(); // refresh address list
+        setEditingAddress(null);
+        Swal.fire({ position: "top-end", icon: "success", title: isEdit ? "Address updated!" : "Address saved!", showConfirmButton: false, timer: 1500, toast: true });
+        if (afterAddCallback) afterAddCallback(isEdit ? id : undefined);
       }
     } catch (err) {
-      console.error("Save address error:", err);
-      Swal.fire({ icon: "error", title: "Failed", text: err.response?.data?.message || "Could not save address." });
-    }
+      Swal.fire({ icon: "error", title: "Failed", text: errMsg(err, "Could not save address.") });
+    } finally { setSavingAddress(false); }
   };
 
-  // ── COD ─────────────────────────────────────────────────────────────────────
-  const handleCODCheckout = async () => {
-    if (!selectedAddress) {
-      Swal.fire({ icon: "warning", title: "Address Required", text: "Please select a delivery address." });
-      return;
-    }
+  const orderPayload = () => ({
+    items,
+    shippingAddress: buildOrderAddress(selectedAddress),
+    coupon: appliedCoupon ? { code: appliedCoupon.code } : null,
+  });
+
+  // ── Bank transfer (প্রধান পদ্ধতি) ──
+  const handleBankCheckout = async () => {
     setProcessing(true);
     try {
-      const res = await axiosInstance.post("/orders/cod", {
-        items,
-        userId: currentUser.email,
-        customerEmail: currentUser.email,
-        shippingAddress: buildOrderAddress(selectedAddress),
-        coupon: appliedCoupon
-          ? { code: appliedCoupon.code, type: appliedCoupon.type, value: appliedCoupon.value || 0, discount }
-          : null,
-      });
+      const res = await axiosInstance.post("/orders/bank-deposit", orderPayload());
       if (res.data.success) {
+        const orderId = res.data.orderId;
+        const paid = res.data.order?.pricing?.total ?? total;
         clearCart();
-        Swal.fire({
+        const msg = encodeURIComponent(
+          buildWhatsAppMessage({ orderId, total: paid, items })
+        );
+        const r = await Swal.fire({
           icon: "success",
-          title: "Order Placed!",
-          text: `Order ${res.data.orderId} confirmed. Pay on delivery.`,
-          confirmButtonColor: "#3B82F6",
-        }).then(() => navigate("/orders"));
+          title: "Order placed!",
+          html: `<p>Order <b>${orderId}</b></p><p>Total: <b>${formatMoney(paid)}</b></p>
+                 <p style="margin-top:8px">Please pay by bank transfer and send the receipt on WhatsApp. Your order is confirmed after payment is verified.</p>`,
+          confirmButtonText: "Send receipt on WhatsApp",
+          confirmButtonColor: "#16a34a",
+          showCancelButton: true,
+          cancelButtonText: "View my orders",
+          allowOutsideClick: false,
+        });
+        if (r.isConfirmed) {
+          window.open(`https://wa.me/${WHATSAPP_NUMBER.replace(/\D/g, "")}?text=${msg}`, "_blank", "noopener");
+        }
+        navigate("/orders");
       }
     } catch (err) {
-      Swal.fire({ icon: "error", title: "Failed", text: err.message });
+      Swal.fire({ icon: "error", title: "Order failed", text: errMsg(err, "Failed to place order") });
     } finally { setProcessing(false); }
   };
 
-  // ── Stripe ──────────────────────────────────────────────────────────────────
-  const handleStripeCheckout = async () => {
-    if (!selectedAddress) {
-      Swal.fire({ icon: "warning", title: "Address Required", text: "Please select a delivery address." });
-      return;
-    }
+  // ── COD (flag বন্ধ; কোড অক্ষত) ──
+  const handleCODCheckout = async () => {
     setProcessing(true);
     try {
-      const sanitizedItems = items.map(item => ({
-        ...item,
-        image: extractImageUrl(item.image),
-      }));
+      const res = await axiosInstance.post("/orders/cod", orderPayload());
+      if (res.data.success) {
+        clearCart();
+        Swal.fire({ icon: "success", title: "Order Placed!", text: `Order ${res.data.orderId} confirmed. Pay on delivery.`, confirmButtonColor: "#3B82F6" })
+          .then(() => navigate("/orders"));
+      }
+    } catch (err) {
+      Swal.fire({ icon: "error", title: "Failed", text: errMsg(err, "Failed to place order") });
+    } finally { setProcessing(false); }
+  };
 
+  // ── Stripe (flag বন্ধ; কোড অক্ষত) ──
+  const handleStripeCheckout = async () => {
+    setProcessing(true);
+    try {
+      const sanitizedItems = items.map(item => ({ ...item, image: extractImageUrl(item.image) }));
       const res = await authenticatedFetch(
         `${import.meta.env.VITE_API_URL}/create-checkout-session`,
         {
@@ -319,37 +406,39 @@ const Checkout = () => {
             userId: currentUser.email,
             customerEmail: currentUser.email,
             shippingAddress: buildOrderAddress(selectedAddress),
-            coupon: appliedCoupon
-              ? { code: appliedCoupon.code, type: appliedCoupon.type, discount }
-              : null,
+            coupon: appliedCoupon ? { code: appliedCoupon.code, type: appliedCoupon.type, discount: couponDiscount } : null,
           }),
         }
       );
-
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.message || "Failed to create checkout session");
       }
-
       const data = await res.json();
       if (data.success && data.url) {
-        if (appliedCoupon) {
-          try { await axiosInstance.post(`/api/coupons/use/${appliedCoupon.code}`); } catch {}
-        }
         window.location.href = data.url;
       } else {
         throw new Error(data.message || "Failed to create checkout session");
       }
     } catch (err) {
       setProcessing(false);
-      Swal.fire({ icon: "error", title: "Checkout Failed", html: `<p>${err.message}</p>`, confirmButtonColor: "#3B82F6" });
+      Swal.fire({ icon: "error", title: "Checkout Failed", text: err.message, confirmButtonColor: "#3B82F6" });
     }
   };
 
   const handleCheckout = () => {
     if (!currentUser?.email) { navigate("/login"); return; }
-    if (paymentMethod === "cod") handleCODCheckout();
-    else handleStripeCheckout();
+    if (!selectedAddress) {
+      Swal.fire({ icon: "warning", title: "Address Required", text: "Please select a delivery address." });
+      return;
+    }
+    if (!summary.moqOk) {
+      Swal.fire({ icon: "warning", title: `Minimum ${MOQ_PER_COLOR} pieces per color`, text: "Please complete the highlighted color groups in your cart." });
+      return;
+    }
+    if (paymentMethod === "cod" && ENABLE_COD) handleCODCheckout();
+    else if (paymentMethod === "online" && ENABLE_STRIPE) handleStripeCheckout();
+    else handleBankCheckout();
   };
 
   const handleUpdateQuantity = (key, qty) => { if (qty < 1) return; updateQty(key, qty); };
@@ -360,7 +449,8 @@ const Checkout = () => {
     }).then(r => { if (r.isConfirmed) removeItem(key); });
   };
 
-  // ── Empty cart ──────────────────────────────────────────────────────────────
+  if (isLoading) return <Loading />;
+
   if (!items || items.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -379,32 +469,45 @@ const Checkout = () => {
     );
   }
 
-  // ── Render ──────────────────────────────────────────────────────────────────
+  const stepBadge = (n) => (
+    <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-bold">{n}</div>
+  );
+
+  const payOption = (value, color, Icon, title, desc) => (
+    <label className={`flex items-center gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all ${paymentMethod === value ? PAY_STYLE[color] : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"}`}>
+      <input type="radio" name="payment" value={value} checked={paymentMethod === value} onChange={() => setPaymentMethod(value)} className="w-4 h-4" />
+      <div className="w-10 h-10 bg-white border border-gray-200 rounded-xl flex items-center justify-center flex-shrink-0">
+        <Icon className="w-5 h-5 text-slate-700" />
+      </div>
+      <div className="flex-1">
+        <p className="font-semibold text-slate-800">{title}</p>
+        <p className="text-xs text-slate-500 mt-0.5">{desc}</p>
+      </div>
+    </label>
+  );
+
+  const buttonDisabled = processing || !selectedAddress || !summary.moqOk;
+
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-7xl mx-auto">
 
-        {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-slate-800">Checkout</h1>
           <div className="flex items-center gap-2 mt-2 text-sm text-slate-500">
             <span className="text-blue-600 font-medium cursor-pointer" onClick={() => navigate("/cart")}>Cart</span>
             <ChevronRight className="w-4 h-4" />
             <span className="font-medium text-slate-800">Checkout</span>
-            <ChevronRight className="w-4 h-4" />
-            <span>Confirmation</span>
           </div>
         </div>
 
         <div className="grid lg:grid-cols-3 gap-6">
-
-          {/* ═══ LEFT COLUMN ═══════════════════════════════════════════════ */}
           <div className="lg:col-span-2 space-y-4">
 
-            {/* STEP 1 — Delivery Address */}
+            {/* STEP 1 — Address */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
               <div className="flex items-center gap-2 px-6 py-4 border-b border-gray-100">
-                <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-bold">1</div>
+                {stepBadge(1)}
                 <h2 className="text-lg font-bold text-slate-800">Delivery Address</h2>
                 {selectedAddress && (
                   <span className="ml-auto flex items-center gap-1 text-xs text-green-600 font-medium">
@@ -412,166 +515,114 @@ const Checkout = () => {
                   </span>
                 )}
               </div>
-
               <div className="px-6 py-5">
                 <AddressSelector
                   selectedId={selectedAddress?.id || selectedAddress?._id}
                   onSelect={setSelectedAddress}
-                  onAddNew={(refreshFn) => {
+                                    onAddNew={(refreshFn) => {
+                    setEditingAddress(null);
+                    setAfterAddCallback(() => refreshFn);
+                    setShowAddressForm(true);
+                  }}
+                  onEdit={(addr, refreshFn) => {
+                    setEditingAddress(addr);
                     setAfterAddCallback(() => refreshFn);
                     setShowAddressForm(true);
                   }}
                 />
-
-                {/* Selected address summary */}
-                {selectedAddress && (
-                  <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-xl">
-                    <p className="text-xs font-bold text-blue-700 uppercase tracking-wide mb-2">Delivering to</p>
-                    <div className="flex items-start gap-3">
-                      <MapPin className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                      <div className="text-sm text-slate-700">
-                        <p className="font-semibold">{selectedAddress.fullName}</p>
-                        <p className="text-slate-500">{selectedAddress.phone}</p>
-                        <p className="mt-0.5">
-                          {selectedAddress.street}
-                          {selectedAddress.aptNumber ? `, ${selectedAddress.aptNumber}` : ""}
-                          {", "}{selectedAddress.city}, {selectedAddress.state} {selectedAddress.zipCode}, {selectedAddress.country}
-                        </p>
-                        {selectedAddress.deliveryNote && (
-                          <p className="mt-1 italic text-slate-400 text-xs">📝 {selectedAddress.deliveryNote}</p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
 
-            {/* STEP 2 — Order Items */}
+            {/* STEP 2 — Items (Product + Color গ্রুপ) */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
               <div className="flex items-center gap-2 px-6 py-4 border-b border-gray-100">
-                <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-bold">2</div>
+                {stepBadge(2)}
                 <h2 className="text-lg font-bold text-slate-800">Order Items</h2>
-                <span className="ml-auto text-sm text-slate-500">{items.length} item{items.length > 1 ? "s" : ""}</span>
+                <span className="ml-auto text-sm text-slate-500">{summary.totalQuantity} pieces</span>
               </div>
 
-              <div className="divide-y divide-gray-50">
-                {items.map(item => (
-                  <div key={item.key} className="flex gap-4 px-6 py-4 hover:bg-gray-50 transition-colors">
-                    <div className="w-20 h-20 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0 border border-gray-100">
-                      <img
-                        src={extractImageUrl(item.image) || "/placeholder.jpg"}
-                        alt={item.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
+              {summary.groups.map(group => (
+                <div key={group.key} className="border-b border-gray-100 last:border-0">
+                  <div className="flex gap-4 px-6 pt-4">
+                    <img
+                      src={extractImageUrl(group.image) || "/placeholder.jpg"}
+                      alt={group.name}
+                      className="w-16 h-20 rounded-lg object-cover bg-gray-100 border border-gray-100 flex-shrink-0"
+                    />
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-slate-800 text-sm mb-1 line-clamp-2">{item.name}</h3>
-                      <div className="flex flex-wrap gap-2 mb-2">
-                        {item.size && item.size !== "NOSIZE" && (
-                          <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-md">Size: {item.size}</span>
-                        )}
-                        {item.color && item.color !== "NOCOLOR" && (
-                          <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-md">Color: {item.color}</span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleUpdateQuantity(item.key, item.qty - 1)}
-                          disabled={item.qty <= 1}
-                          className="w-7 h-7 rounded-lg border border-gray-200 hover:bg-gray-100 flex items-center justify-center disabled:opacity-40 text-lg font-medium"
-                        >−</button>
-                        <span className="w-8 text-center text-sm font-semibold">{item.qty}</span>
-                        <button
-                          onClick={() => handleUpdateQuantity(item.key, item.qty + 1)}
-                          className="w-7 h-7 rounded-lg border border-gray-200 hover:bg-gray-100 flex items-center justify-center text-lg font-medium"
-                        >+</button>
-                      </div>
-                    </div>
-                    <div className="text-right flex flex-col justify-between items-end flex-shrink-0">
-                      <div>
-                        {item.oldPrice && <p className="text-xs text-slate-400 line-through">${item.oldPrice}</p>}
-                        <p className="font-bold text-slate-800">${(item.price * item.qty).toFixed(2)}</p>
-                        <p className="text-xs text-slate-400">${item.price} each</p>
-                      </div>
-                      <button
-                        onClick={() => handleRemoveItem(item.key, item.name)}
-                        className="text-red-400 hover:text-red-600 p-1 hover:bg-red-50 rounded-lg transition-colors mt-2"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <h3 className="font-semibold text-slate-800 text-sm line-clamp-2">{group.name}</h3>
+                      {group.color && <p className="text-xs text-slate-500 mt-0.5">Color: {group.color}</p>}
+                      <p className={`text-xs mt-1 font-medium ${group.moqMet ? "text-green-700" : "text-amber-700"}`}>
+                        {group.moqMet
+                          ? `${group.qty} pcs (minimum met)`
+                          : `${group.qty}/${MOQ_PER_COLOR} pcs, add ${group.moqShort} more`}
+                      </p>
                     </div>
                   </div>
-                ))}
-              </div>
 
-              <div className="px-6 py-4 bg-green-50 border-t border-green-100 flex items-center gap-3">
-                <Truck className="w-5 h-5 text-green-600 flex-shrink-0" />
-                <div>
-                  <p className="text-sm font-semibold text-green-800">Standard Delivery</p>
-                  <p className="text-xs text-green-600">Estimated delivery: 3–5 business days</p>
+                  <div className="divide-y divide-gray-50 mt-2">
+                    {group.items.map(item => (
+                      <div key={item.key} className="flex items-center gap-3 px-6 py-3">
+                        <span className="w-12 text-sm font-semibold text-slate-700">
+                          {item.size && item.size !== "NOSIZE" ? item.size : "-"}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleUpdateQuantity(item.key, item.qty - 1)}
+                            disabled={item.qty <= 1}
+                            className="w-7 h-7 rounded-lg border border-gray-200 hover:bg-gray-100 disabled:opacity-40"
+                          >−</button>
+                          <span className="w-8 text-center text-sm font-semibold">{item.qty}</span>
+                          <button
+                            onClick={() => handleUpdateQuantity(item.key, item.qty + 1)}
+                            className="w-7 h-7 rounded-lg border border-gray-200 hover:bg-gray-100"
+                          >+</button>
+                        </div>
+                        <span className="ml-auto text-sm font-bold text-slate-800">{formatMoney(item.price * item.qty)}</span>
+                        <button
+                          onClick={() => handleRemoveItem(item.key, item.name)}
+                          className="text-red-400 hover:text-red-600 p-1 hover:bg-red-50 rounded-lg"
+                          aria-label="Remove"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="ml-auto text-sm font-semibold text-green-700">
-                  {shipping === 0 ? "FREE" : `$${shipping.toFixed(2)}`}
-                </div>
+              ))}
+
+              <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-start gap-3">
+                <Truck className="w-5 h-5 text-slate-500 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-slate-600">{DELIVERY_NOTICE}</p>
               </div>
             </div>
 
             {/* STEP 3 — Payment */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
               <div className="flex items-center gap-2 px-6 py-4 border-b border-gray-100">
-                <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-bold">3</div>
+                {stepBadge(3)}
                 <h2 className="text-lg font-bold text-slate-800">Payment Method</h2>
               </div>
               <div className="px-6 py-5 space-y-3">
-                <label className={`flex items-center gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all ${paymentMethod === "online" ? "border-blue-500 bg-blue-50" : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"}`}>
-                  <input type="radio" name="payment" value="online" checked={paymentMethod === "online"} onChange={() => setPaymentMethod("online")} className="w-4 h-4 accent-blue-600" />
-                  <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <CreditCard className="w-5 h-5 text-blue-600" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-semibold text-slate-800">Online Payment</p>
-                    <p className="text-xs text-slate-500 mt-0.5">Pay securely with Credit/Debit Card via Stripe</p>
-                  </div>
-                  <div className="flex gap-1">
-                    {["VISA", "MC", "AMEX"].map(c => (
-                      <span key={c} className="px-1.5 py-0.5 bg-white border border-gray-200 rounded text-[10px] font-bold text-slate-600">{c}</span>
-                    ))}
-                  </div>
-                </label>
+                {payOption("bank", "green", Landmark, "Bank Transfer + WhatsApp",
+                  "Place the order, pay by bank transfer, then send the receipt on WhatsApp.")}
+                {ENABLE_STRIPE && payOption("online", "blue", CreditCard, "Online Payment",
+                  "Pay securely with Credit/Debit Card via Stripe")}
+                {ENABLE_COD && payOption("cod", "green", Banknote, "Cash on Delivery",
+                  "Pay in cash when your order arrives")}
 
-                <label className={`flex items-center gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all ${paymentMethod === "cod" ? "border-green-500 bg-green-50" : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"}`}>
-                  <input type="radio" name="payment" value="cod" checked={paymentMethod === "cod"} onChange={() => setPaymentMethod("cod")} className="w-4 h-4 accent-green-600" />
-                  <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <Banknote className="w-5 h-5 text-green-600" />
+                {paymentMethod === "bank" && (
+                  <div className="flex gap-2 text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-lg p-3">
+                    <MessageCircle size={14} className="shrink-0 mt-0.5" />
+                    <span>Bank details are shared on WhatsApp after you place the order. The order is confirmed once our team verifies your payment.</span>
                   </div>
-                  <div className="flex-1">
-                    <p className="font-semibold text-slate-800">Cash on Delivery</p>
-                    <p className="text-xs text-slate-500 mt-0.5">Pay in cash when your order arrives</p>
-                  </div>
-                  <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-semibold rounded-full">Available</span>
-                </label>
-              </div>
-            </div>
-
-            {/* Trust badges */}
-            <div className="grid grid-cols-3 gap-3">
-              <div className="bg-white rounded-xl p-4 text-center shadow-sm border border-gray-100">
-                <Shield className="w-7 h-7 mx-auto text-green-600 mb-2" />
-                <p className="text-xs font-semibold text-slate-700">Secure Payment</p>
-              </div>
-              <div className="bg-white rounded-xl p-4 text-center shadow-sm border border-gray-100">
-                <Truck className="w-7 h-7 mx-auto text-blue-600 mb-2" />
-                <p className="text-xs font-semibold text-slate-700">Fast Delivery</p>
-              </div>
-              <div className="bg-white rounded-xl p-4 text-center shadow-sm border border-gray-100">
-                <Package className="w-7 h-7 mx-auto text-purple-600 mb-2" />
-                <p className="text-xs font-semibold text-slate-700">Easy Returns</p>
+                )}
               </div>
             </div>
           </div>
 
-          {/* ═══ RIGHT COLUMN — Order Summary ══════════════════════════════ */}
+          {/* ═══ Summary ═══ */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sticky top-24">
               <h2 className="text-lg font-bold text-slate-800 mb-5">Order Summary</h2>
@@ -593,13 +644,13 @@ const Checkout = () => {
                       value={couponCode}
                       onChange={e => setCouponCode(e.target.value.toUpperCase())}
                       placeholder="Enter code"
-                      className="flex-1 px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm uppercase"
+                      className="flex-1 min-w-0 px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm uppercase"
                       disabled={validatingCoupon}
                     />
                     <button
                       onClick={handleApplyCoupon}
                       disabled={validatingCoupon || !couponCode.trim()}
-                      className="px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1.5 text-sm font-semibold transition-colors"
+                      className="px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1.5 text-sm font-semibold"
                     >
                       {validatingCoupon ? <Loader2 className="w-4 h-4 animate-spin" /> : <Tag className="w-4 h-4" />}
                       Apply
@@ -613,102 +664,89 @@ const Checkout = () => {
                         <p className="text-sm font-bold text-green-800">{appliedCoupon.code}</p>
                         <p className="text-xs text-green-600">
                           {appliedCoupon.type === "percentage" && `${appliedCoupon.value}% OFF`}
-                          {appliedCoupon.type === "fixed" && `$${appliedCoupon.value} OFF`}
-                          {appliedCoupon.type === "free_shipping" && "Free Shipping"}
+                          {appliedCoupon.type === "fixed" && `${formatMoney(appliedCoupon.value)} OFF`}
+                          {appliedCoupon.type === "free_shipping" && "No discount (shipping is not charged by us)"}
                         </p>
                       </div>
                     </div>
-                    <button onClick={handleRemoveCoupon} className="text-red-400 hover:text-red-600 p-1">
-                      <X className="w-4 h-4" />
-                    </button>
+                    <button onClick={handleRemoveCoupon} className="text-red-400 hover:text-red-600 p-1"><X className="w-4 h-4" /></button>
                   </div>
                 )}
                 {couponError && <p className="text-xs text-red-500 mt-1.5">{couponError}</p>}
               </div>
 
-              {/* Price breakdown */}
+              {/* Breakdown */}
               <div className="space-y-3 mb-5">
                 <div className="flex justify-between text-sm text-slate-600">
-                  <span>Items Total ({items.length} item{items.length > 1 ? "s" : ""})</span>
-                  <span className="font-medium">${subtotal.toFixed(2)}</span>
+                  <span>Subtotal ({summary.totalQuantity} pcs)</span>
+                  <span className="font-medium">{formatMoney(summary.subtotal)}</span>
                 </div>
-                {discount > 0 && (
+                {summary.bulkDiscountPercent > 0 && (
                   <div className="flex justify-between text-sm text-green-600">
-                    <span>Discount ({appliedCoupon?.code})</span>
-                    <span className="font-medium">−${discount.toFixed(2)}</span>
+                    <span>Bulk discount ({summary.bulkDiscountPercent}%)</span>
+                    <span className="font-medium">−{formatMoney(summary.bulkDiscount)}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-sm text-slate-600">
-                  <span>Delivery Fee</span>
-                  <span className="font-medium">
-                    {shipping === 0
-                      ? <span className="text-green-600 font-semibold">FREE</span>
-                      : `$${shipping.toFixed(2)}`}
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm text-slate-600">
-                  <span>Tax (VAT 5%)</span>
-                  <span className="font-medium">${tax.toFixed(2)}</span>
-                </div>
+                {couponDiscount > 0 && (
+                  <div className="flex justify-between text-sm text-green-600">
+                    <span>Coupon ({appliedCoupon.code})</span>
+                    <span className="font-medium">−{formatMoney(couponDiscount)}</span>
+                  </div>
+                )}
 
-                {subtotal < 1000 && shipping > 0 && (
+                {summary.bulkDiscountPercent === 0 && (
                   <div className="py-2 px-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
-                    💡 Add ${(1000 - subtotal).toFixed(2)} more for <strong>free delivery!</strong>
+                    Add {summary.piecesToBulk} more pieces for {BULK_DISCOUNT_PERCENT}% off ({BULK_DISCOUNT_THRESHOLD}+ pieces).
                   </div>
                 )}
 
                 <div className="border-t border-gray-100 pt-3 flex justify-between items-center">
-                  <span className="font-bold text-slate-800">Total:</span>
-                  <div className="text-right">
-                    <span className="text-2xl font-bold text-slate-800">${total.toFixed(2)}</span>
-                    <p className="text-xs text-slate-400">VAT included</p>
-                  </div>
+                  <span className="font-bold text-slate-800">Total</span>
+                  <span className="text-2xl font-bold text-slate-800">{formatMoney(total)}</span>
                 </div>
-
-                {discount > 0 && (
-                  <p className="text-center text-xs text-green-600 font-semibold bg-green-50 py-2 rounded-lg">
-                    🎉 You're saving ${discount.toFixed(2)} on this order!
-                  </p>
-                )}
+                <p className="text-xs text-slate-500">{DELIVERY_NOTICE}</p>
+                <p className="text-xs text-slate-400">Final amount is confirmed by the server when you place the order.</p>
               </div>
 
-              {/* Checkout button */}
+              {!summary.moqOk && (
+                <div className="mb-4 flex gap-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                  <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+                  <span>
+                    Minimum {MOQ_PER_COLOR} pieces per color is required.{" "}
+                    <Link to="/cart" className="underline font-medium">Back to cart</Link>
+                  </span>
+                </div>
+              )}
+
               <button
                 onClick={handleCheckout}
-                disabled={processing || !selectedAddress}
-                className={`w-full py-4 rounded-xl font-bold text-base transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${
-                  paymentMethod === "cod"
-                    ? "bg-green-600 hover:bg-green-700 text-white"
-                    : "bg-blue-600 hover:bg-blue-700 text-white"
-                }`}
+                disabled={buttonDisabled}
+                className="w-full py-4 rounded-xl font-bold text-base shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white"
               >
                 {processing ? (
                   <><Loader2 className="w-5 h-5 animate-spin" /> Processing...</>
                 ) : !selectedAddress ? (
                   <><MapPin className="w-5 h-5" /> Select Delivery Address</>
+                ) : paymentMethod === "online" ? (
+                  <><CreditCard className="w-5 h-5" /> Proceed to Pay</>
                 ) : paymentMethod === "cod" ? (
                   <><Banknote className="w-5 h-5" /> Place Order (Pay on Delivery)</>
                 ) : (
-                  <><CreditCard className="w-5 h-5" /> Proceed to Pay</>
+                  <><MessageCircle className="w-5 h-5" /> Place Order</>
                 )}
               </button>
-
-              <p className="text-xs text-slate-400 text-center mt-3">
-                {paymentMethod === "cod"
-                  ? "🔒 Your order is secure. Pay cash on delivery."
-                  : "🔒 256-bit SSL encrypted. Powered by Stripe."}
-              </p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Address Form Modal */}
       {showAddressForm && (
         <AddressForm
-          initialData={null}
-          onSave={handleSaveNewAddress}
-          onCancel={() => setShowAddressForm(false)}
+          initialData={editingAddress}
+          currentUser={currentUser}
+          submitting={savingAddress}
+          onSave={handleSaveAddress}
+          onCancel={() => { setShowAddressForm(false); setEditingAddress(null); }}
         />
       )}
     </div>
