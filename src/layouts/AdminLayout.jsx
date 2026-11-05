@@ -6,7 +6,7 @@ import Topbar from "../components/Admin/Topbar";
 import useAuth from "../hooks/useAuth";
 import useRole from "../hooks/useRole";
 import Loading from "../components/Shared/Loading/Loading";
-import TokenDebugger from "../components/Debug/TokenDebugger";
+// import TokenDebugger from "../components/Debug/TokenDebugger";
 
 const AdminLayout = () => {
   const { collapsed, toggleCollapse, mobileOpen, openMobile, closeMobile } = useSidebar();
@@ -43,7 +43,7 @@ const AdminLayout = () => {
         {/* Content — below topbar */}
         <main className="flex-1 pt-14 p-6 overflow-y-auto">
           <Outlet />
-          <TokenDebugger />
+          {/* <TokenDebugger /> */}
         </main>
       </div>
     </div>

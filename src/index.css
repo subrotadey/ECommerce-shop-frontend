@@ -178,3 +178,8 @@ code {
     scroll-behavior: auto !important;
   }
 }
+
+/* SweetAlert2 popup সবসময় Modal-এর উপরে থাকবে */
+.swal2-container {
+  z-index: 2147483647 !important;
+}

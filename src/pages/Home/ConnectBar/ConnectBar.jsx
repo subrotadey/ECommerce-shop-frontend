@@ -6,6 +6,7 @@ import {
   MessageCircle,
   Phone,
 } from "lucide-react";
+import { WHATSAPP_NUMBER } from "../../../utils/wholesale";
 
 const TikTokIcon = ({ size = 18, color = "currentColor" }) => (
   <svg
@@ -22,31 +23,31 @@ const TikTokIcon = ({ size = 18, color = "currentColor" }) => (
 const LINKS = [
   {
     name: "WhatsApp",
-    href: "https://wa.me/message/YSYQT53EKGLZN1",
+    href: `https://wa.me/${WHATSAPP_NUMBER}`,
     icon: MessageCircle,
     color: "#25D366",
   },
   {
     name: "Call",
-    href: "tel:+971551896390",
+    href: `tel:${WHATSAPP_NUMBER}`,
     icon: Phone,
     color: "#D4AF37",
   },
   {
     name: "Email",
-    href: "mailto:anisabaya290@gmail.com",
+    href: `mailto:anisabaya290@gmail.com`,
     icon: Mail,
     color: "#D4AF37",
   },
   {
     name: "TikTok",
-    href: "https://www.tiktok.com/@anis_abaya_uae?_r=1&_t=ZS-9B1QRfJvLi4",
+    href: `https://www.tiktok.com/@anis_abaya_uae?_r=1&_t=ZS-9B1QRfJvLi4`,
     icon: TikTokIcon,
     color: "#FFFFFF",
   },
   {
     name: "Facebook",
-    href: "https://www.facebook.com/share/1CVo1eMHCa/",
+    href: `https://www.facebook.com/share/1CVo1eMHCa/`,
     icon: Facebook,
     color: "#1877F2",
   },

@@ -9,6 +9,12 @@ export const BULK_DISCOUNT_PERCENT = 5;
 export const DELIVERY_NOTICE =
   "Delivery charges are not included. Shipping costs are payable by the customer.";
 
+// দোকানের একটিই WhatsApp নম্বর। সব পেজ এখান থেকে নেবে।
+export const WHATSAPP_NUMBER = "971551896390"; // শুধু অঙ্ক (wa.me-র জন্য)
+export const WHATSAPP_DISPLAY = "+971 55 189 6390";
+export const whatsappLink = (text = "") =>
+  `https://wa.me/${WHATSAPP_NUMBER}${text ? `?text=${encodeURIComponent(text)}` : ""}`;
+
 export const round2 = (n) =>
   Math.round((Number(n || 0) + Number.EPSILON) * 100) / 100;
 

@@ -32,13 +32,12 @@ import axiosInstance from "../../utils/axios";
 import { authenticatedFetch } from "../../utils/tokenHelper";
 import {
     BULK_DISCOUNT_PERCENT, BULK_DISCOUNT_THRESHOLD, DELIVERY_NOTICE,
-    MOQ_PER_COLOR, formatMoney, round2, summarizeCart,
+    MOQ_PER_COLOR, formatMoney, round2, summarizeCart, WHATSAPP_NUMBER
 } from "../../utils/wholesale";
 
 // ── Config ──
 const ENABLE_STRIPE = false; // কোড অক্ষত, UI-তে লুকানো
 const ENABLE_COD = false;    // কোড অক্ষত, UI-তে লুকানো
-const WHATSAPP_NUMBER = "+8801516358828"; // যাচাই করুন = 971551896390
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 

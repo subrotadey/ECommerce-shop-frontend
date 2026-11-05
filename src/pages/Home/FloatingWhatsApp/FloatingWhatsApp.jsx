@@ -1,10 +1,11 @@
 
 import { MessageCircle } from "lucide-react";
+import { WHATSAPP_NUMBER } from "../../../utils/wholesale";
 
 const FloatingWhatsApp = () => {
   return (
     <a
-      href="https://wa.me/971551896390"
+      href={`https://wa.me/${WHATSAPP_NUMBER}`}
       target="_blank"
       rel="noopener noreferrer"
       className="fixed bottom-6 right-6 z-50 group flex items-center gap-2.5 rounded-full px-4 py-3 shadow-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl"

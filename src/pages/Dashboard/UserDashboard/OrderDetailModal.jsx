@@ -1,6 +1,6 @@
 // ============================================
 // components/UserDashboard/OrderDetailModal.jsx
-// Shared modal — used in RecentOrdersWidget & MyOrders
+// Shared modal — used in RecentOrdersWidget & other dashboard pages
 // ============================================
 import {
   X,
@@ -16,6 +16,8 @@ import {
   ShoppingBag,
 } from "lucide-react";
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
+import { formatMoney, DELIVERY_NOTICE } from "../../../utils/wholesale";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -74,6 +76,15 @@ export const STATUS_CONFIG = {
     dot: "bg-red-400",
     bar: "bg-red-400",
   },
+  refunding: {
+    label: "Refund in progress",
+    icon: RefreshCw,
+    bg: "bg-blue-50",
+    text: "text-blue-700",
+    border: "border-blue-200",
+    dot: "bg-blue-500",
+    bar: "bg-blue-500",
+  },
   refunded: {
     label: "Refunded",
     icon: RefreshCw,
@@ -97,6 +108,33 @@ export const STATUS_CONFIG = {
 export const getStatusConfig = (status) =>
   STATUS_CONFIG[status?.toLowerCase()] || STATUS_CONFIG.pending;
 
+const METHOD_LABEL = {
+  bank_deposit: "Bank transfer",
+  cod: "Cash on delivery",
+  stripe: "Card",
+  card: "Card",
+};
+
+// ছবি না থাকলে বা ভাঙলে এই ধূসর বক্স দেখায় (আলাদা ফাইল লাগে না)
+const PLACEHOLDER =
+  "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'><rect width='64' height='64' fill='%23e5e7eb'/></svg>";
+
+// image string / {url} / JSON string যেকোনোটি হলে plain URL দেয়
+const toImageUrl = (image) => {
+  if (!image) return "";
+  if (typeof image === "string") {
+    if (image.trim().startsWith("{")) {
+      try {
+        return JSON.parse(image).url || "";
+      } catch {
+        return "";
+      }
+    }
+    return image;
+  }
+  return image.url || "";
+};
+
 // ─── StatusBadge ──────────────────────────────────────────────────────────────
 
 export const StatusBadge = ({ status, size = "sm" }) => {
@@ -117,11 +155,10 @@ export const StatusBadge = ({ status, size = "sm" }) => {
 // ─── OrderDetailModal ─────────────────────────────────────────────────────────
 
 const OrderDetailModal = ({ order, onClose }) => {
-  // close on Escape key
+  // close on Escape key + lock body scroll
   useEffect(() => {
     const onKey = (e) => e.key === "Escape" && onClose();
     document.addEventListener("keydown", onKey);
-    // lock body scroll
     document.body.style.overflow = "hidden";
     return () => {
       document.removeEventListener("keydown", onKey);
@@ -152,9 +189,17 @@ const OrderDetailModal = ({ order, onClose }) => {
   const showTimeline =
     order.status !== "cancelled" && order.status !== "refunded";
 
-  return (
+  const pricing = order.pricing || {};
+  const piecesCount = pricing.totalQuantity ?? order.items?.length ?? 0;
+
+  // বাতিল অর্ডারে payment "Pending" দেখালে ভুল বোঝায়
+  const paymentStatus =
+    order.status === "cancelled" ? "cancelled" : order.payment?.status;
+
+  // Navbar বা কোনো parent-এর stacking context যেন ঢেকে না দেয়, তাই body-তে portal
+  return createPortal(
     <div
-      className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-4"
+      className="fixed inset-0 z-[10000] flex items-end sm:items-center justify-center p-0 sm:p-4"
       style={{ backgroundColor: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }}
     >
       {/* click outside to close */}
@@ -194,7 +239,6 @@ const OrderDetailModal = ({ order, onClose }) => {
         {/* ── Scrollable body ── */}
         <div className="flex-1 overflow-y-auto">
           <div className="p-5 space-y-5">
-
             {/* status + date row */}
             <div className="flex items-center justify-between flex-wrap gap-2">
               <StatusBadge status={order.status} size="md" />
@@ -265,14 +309,17 @@ const OrderDetailModal = ({ order, onClose }) => {
                 {order.items?.length > 0 ? (
                   order.items.map((item, i) => (
                     <div
-                      key={i}
+                      key={item.key || i}
                       className="flex gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100"
                     >
                       <img
-                        src={item.image || "/placeholder.jpg"}
+                        src={toImageUrl(item.image) || PLACEHOLDER}
                         alt={item.name}
                         className="w-16 h-16 object-cover rounded-lg flex-shrink-0 bg-gray-200"
-                        onError={(e) => { e.target.src = "/placeholder.jpg"; }}
+                        onError={(e) => {
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = PLACEHOLDER;
+                        }}
                       />
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-gray-900 text-sm leading-snug line-clamp-2">
@@ -289,7 +336,7 @@ const OrderDetailModal = ({ order, onClose }) => {
                         </div>
                       </div>
                       <p className="font-bold text-gray-900 text-sm flex-shrink-0 self-start pt-0.5">
-                        ${(item.price * item.qty).toFixed(2)}
+                        {formatMoney(item.price * item.qty)}
                       </p>
                     </div>
                   ))
@@ -309,38 +356,26 @@ const OrderDetailModal = ({ order, onClose }) => {
               </p>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between text-gray-600">
-                  <span>Subtotal ({order.items?.length || 0} item{order.items?.length !== 1 ? "s" : ""})</span>
-                  <span>${order.pricing?.subtotal?.toFixed(2) ?? "—"}</span>
+                  <span>Subtotal ({piecesCount} pcs)</span>
+                  <span>{formatMoney(pricing.subtotal)}</span>
                 </div>
-                {order.pricing?.discount > 0 && (
+                {pricing.bulkDiscount > 0 && (
                   <div className="flex justify-between text-emerald-600">
-                    <span>Discount</span>
-                    <span>-${order.pricing.discount.toFixed(2)}</span>
+                    <span>Bulk discount ({pricing.bulkDiscountPercent}%)</span>
+                    <span>- {formatMoney(pricing.bulkDiscount)}</span>
                   </div>
                 )}
-                {order.pricing?.tax > 0 && (
-                  <div className="flex justify-between text-gray-600">
-                    <span>Tax</span>
-                    <span>${order.pricing.tax.toFixed(2)}</span>
+                {pricing.couponDiscount > 0 && (
+                  <div className="flex justify-between text-emerald-600">
+                    <span>Coupon discount</span>
+                    <span>- {formatMoney(pricing.couponDiscount)}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-gray-600">
-                  <span>Shipping</span>
-                  <span>
-                    {order.pricing?.shipping === 0
-                      ? "Free"
-                      : `$${order.pricing?.shipping?.toFixed(2) ?? "—"}`}
-                  </span>
-                </div>
                 <div className="border-t border-gray-200 pt-2 flex justify-between font-bold text-gray-900 text-base">
                   <span>Total</span>
-                  <span>${order.pricing?.total?.toFixed(2) ?? "—"}</span>
+                  <span>{formatMoney(pricing.total)}</span>
                 </div>
-                {order.payment?.method && (
-                  <p className="text-xs text-gray-400 text-right pt-0.5">
-                    Paid via {order.payment.method}
-                  </p>
-                )}
+                <p className="text-xs text-gray-400">{DELIVERY_NOTICE}</p>
               </div>
             </div>
 
@@ -352,12 +387,16 @@ const OrderDetailModal = ({ order, onClose }) => {
                   <div className="w-7 h-7 bg-blue-100 rounded-lg flex items-center justify-center">
                     <CreditCard size={14} className="text-blue-600" />
                   </div>
-                  <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Payment</span>
+                  <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                    Payment
+                  </span>
                 </div>
-                <p className="text-sm font-semibold text-gray-800 capitalize mb-1.5">
-                  {order.payment?.method || "Stripe"}
+                <p className="text-sm font-semibold text-gray-800 mb-1.5">
+                  {METHOD_LABEL[order.payment?.method] ||
+                    order.payment?.method ||
+                    "N/A"}
                 </p>
-                <StatusBadge status={order.payment?.status} size="sm" />
+                <StatusBadge status={paymentStatus} size="sm" />
               </div>
 
               {/* Address */}
@@ -374,7 +413,9 @@ const OrderDetailModal = ({ order, onClose }) => {
                     </div>
                     <p className="text-sm text-gray-700 leading-relaxed">
                       {order.customer.address.street && (
-                        <span className="block font-medium">{order.customer.address.street}</span>
+                        <span className="block font-medium">
+                          {order.customer.address.street}
+                        </span>
                       )}
                       {order.customer.address.city && (
                         <span className="text-gray-500">
@@ -387,11 +428,11 @@ const OrderDetailModal = ({ order, onClose }) => {
                   </div>
                 )}
             </div>
-
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

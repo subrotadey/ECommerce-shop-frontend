@@ -130,6 +130,57 @@ export const showLoading = (title = 'Please wait...') => {
 };
 
 /**
+ * Text input dialog
+ * @returns {Promise<{value?: string, isConfirmed: boolean}>} - Swal result; cancel করলে value থাকে না
+ */
+export const promptDialog = (
+  title = 'Enter value',
+  text = '',
+  inputType = 'text',
+  defaultValue = '',
+  confirmButtonText = 'Confirm'
+) =>
+  Swal.fire({
+    title,
+    text,
+    input: inputType,
+    inputValue: defaultValue,
+    showCancelButton: true,
+    confirmButtonText,
+    confirmButtonColor: '#d33',
+    cancelButtonColor: '#3085d6',
+    reverseButtons: true,
+    inputValidator: (v) => (!String(v ?? '').trim() ? 'This field is required' : undefined),
+  });
+
+/**
+ * Select dialog
+ * @param {string[]} options - যেমন ['processing', 'shipped']
+ * @returns {Promise<{value?: string, isConfirmed: boolean}>}
+ */
+export const selectDialog = (
+  title = 'Select an option',
+  text = '',
+  options = [],
+  confirmButtonText = 'Update'
+) =>
+  Swal.fire({
+    title,
+    text,
+    input: 'select',
+    inputOptions: Object.fromEntries(
+      options.map((o) => [o, o.charAt(0).toUpperCase() + o.slice(1)])
+    ),
+    inputPlaceholder: 'Select...',
+    showCancelButton: true,
+    confirmButtonText,
+    confirmButtonColor: '#3085d6',
+    cancelButtonColor: '#6b7280',
+    reverseButtons: true,
+    inputValidator: (v) => (!v ? 'Please select an option' : undefined),
+  });
+
+/**
  * Close any active notification
  */
 export const closeNotification = () => {
@@ -143,6 +194,8 @@ export default {
   warning: notifyWarning,
   info: notifyInfo,
   confirm: confirmDialog,
+  prompt: promptDialog,
+  select: selectDialog,
   loading: showLoading,
   close: closeNotification,
   toast: showToast,

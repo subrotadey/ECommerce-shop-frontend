@@ -8,6 +8,7 @@ import {
   Phone,
 } from "lucide-react";
 import FadeIn from "../../../components/Animations/FadeIn";
+import { WHATSAPP_NUMBER } from "../../../utils/wholesale";
 
 const GOLD = "#D4AF37";
 const EMERALD = "#123C32";
@@ -30,7 +31,7 @@ const CHANNELS = [
     name: "WhatsApp",
     label: "Chat with us",
     desc: "Fastest way to get wholesale prices, catalogue & order support.",
-    href: "https://wa.me/message/YSYQT53EKGLZN1",
+    href: `https://wa.me/${WHATSAPP_NUMBER}`,
     icon: MessageCircle,
     color: "#25D366",
     featured: true,
@@ -39,7 +40,7 @@ const CHANNELS = [
     name: "Call",
     label: "+971 55 189 6390",
     desc: "Speak directly with our sales team.",
-    href: "tel:+971551896390",
+    href: `tel:${WHATSAPP_NUMBER}`,
     icon: Phone,
     color: GOLD,
   },

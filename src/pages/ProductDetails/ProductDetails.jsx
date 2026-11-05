@@ -43,6 +43,7 @@ import useAddToCart from "../../hooks/useAddToCart";
 import { useAllProducts } from "../../hooks/useProducts";
 import useWishlist from "../../hooks/useWishlist";
 import { optimizedVideoUrl } from "../../config/cloudinary";
+import {WHATSAPP_NUMBER} from "../../utils/wholesale";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const GOLD = "#B8922A";
@@ -54,7 +55,6 @@ const MOQ = 12;
 const BULK_THRESHOLD = 100;
 const BULK_PERCENT = 5;
 const CURRENCY = "AED";
-const WHATSAPP_NUMBER = "971551896390"; // পরে Admin Settings থেকে আসবে
 const DELIVERY_NOTICE =
   "Delivery charges are not included. Shipping costs are payable by the customer.";
 

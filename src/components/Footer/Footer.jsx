@@ -12,6 +12,7 @@ import {
   MessageCircle,
   Globe,
 } from 'lucide-react';
+import { WHATSAPP_NUMBER } from "../../utils/wholesale";
 
 import logo from '../../assets/images/logo.png';
 
@@ -41,7 +42,7 @@ const Footer = () => {
   const socialLinks = [
     {
       icon: MessageCircle,
-      href: 'https://wa.me/971551896390',
+      href: `https://wa.me/${WHATSAPP_NUMBER}`,
       label: 'WhatsApp',
     },
     {
@@ -51,7 +52,7 @@ const Footer = () => {
     },
     {
       icon: Phone,
-      href: 'tel:+971551896390',
+      href: `tel:${WHATSAPP_NUMBER}`,
       label: 'Phone',
     },
     {
@@ -97,7 +98,7 @@ const Footer = () => {
 
             <div className="space-y-3 text-sm">
               <a
-                href="https://wa.me/971551896390"
+                href={`https://wa.me/${WHATSAPP_NUMBER}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-3 text-[#1A1A1A]/70 hover:text-[#123C32] transition-colors"
@@ -107,7 +108,7 @@ const Footer = () => {
               </a>
 
               <a
-                href="mailto:anisabaya290@gmail.com"
+                href={`mailto:anisabaya290@gmail.com`}
                 className="flex items-center gap-3 text-[#1A1A1A]/70 hover:text-[#123C32] transition-colors"
               >
                 <Mail size={17} className="text-[#D4AF37]" />
@@ -235,7 +236,7 @@ const Footer = () => {
             </p>
 
             <a
-              href="https://wa.me/971551896390"
+              href={`https://wa.me/${WHATSAPP_NUMBER}`}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center justify-center gap-2 px-4 py-3 bg-[#123C32] text-white text-sm font-semibold rounded-lg hover:bg-[#1A1A1A] transition-colors"

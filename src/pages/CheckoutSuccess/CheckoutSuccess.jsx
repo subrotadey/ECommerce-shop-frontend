@@ -3,10 +3,7 @@ import { CheckCircle, Clock, MessageCircle, ArrowRight, Loader2, XCircle, Truck 
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import useCart from '../../hooks/useCart';
 import axiosInstance from '../../utils/axios';
-import { DELIVERY_NOTICE, formatMoney } from '../../utils/wholesale';
-
-
-const WHATSAPP_NUMBER = '971551896390';
+import { DELIVERY_NOTICE, formatMoney, WHATSAPP_NUMBER } from '../../utils/wholesale';
 
 const imageUrl = (img) => (typeof img === 'string' ? img : img?.url || '');
 

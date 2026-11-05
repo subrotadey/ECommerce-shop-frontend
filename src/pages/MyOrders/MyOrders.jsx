@@ -1,26 +1,31 @@
 // src/pages/MyOrders/MyOrders.jsx
-import { useState } from "react";
-import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Package,
-  Eye,
-  X,
-  ShoppingBag,
-  Clock,
-  Truck,
-  CheckCircle,
-  XCircle,
-  RefreshCw,
-  MapPin,
-  CreditCard,
-  Calendar,
-  ArrowLeft,
+    ArrowLeft,
+    Calendar,
+    CheckCircle,
+    Clock,
+    CreditCard,
+    Eye,
+    MapPin,
+    MessageCircle,
+    Package,
+    RefreshCw,
+    ShoppingBag,
+    Truck,
+    X,
+    XCircle,
 } from "lucide-react";
-import axiosInstance from "../../utils/axios";
-import useAuth from "../../hooks/useAuth";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import { Link } from "react-router-dom";
+import Swal from "sweetalert2";
 import Breadcrumb from "../../components/Shared/Breadcrumb/Breadcrumb";
 import Loading from "../../components/Shared/Loading/Loading";
+import useAuth from "../../hooks/useAuth";
+import { useCancelMyOrder } from "../../hooks/useOrders";
+import axiosInstance from "../../utils/axios";
+import { DELIVERY_NOTICE, formatMoney, whatsappLink } from "../../utils/wholesale";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -31,6 +36,31 @@ const formatDate = (date) => {
     month: "long",
     day: "numeric",
   });
+};
+
+// ছবি না থাকলে বা ভাঙলে ধূসর বক্স (আলাদা ফাইল লাগে না)
+const PLACEHOLDER =
+  "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'><rect width='64' height='64' fill='%23e5e7eb'/></svg>";
+
+// image string / {url} / JSON string যেকোনোটি হলে plain URL দেয়
+const toImageUrl = (image) => {
+  if (!image) return "";
+  if (typeof image === "string") {
+    if (image.trim().startsWith("{")) {
+      try {
+        return JSON.parse(image).url || "";
+      } catch {
+        return "";
+      }
+    }
+    return image;
+  }
+  return image.url || "";
+};
+
+const onImgError = (e) => {
+  e.currentTarget.onerror = null;
+  e.currentTarget.src = PLACEHOLDER;
 };
 
 // ─── ORDER STATUS CONFIG ─────────────────────────────────────────────────────
@@ -86,7 +116,6 @@ const STATUS_CONFIG = {
 };
 
 // ─── PAYMENT STATUS CONFIG ───────────────────────────────────────────────────
-// Separate config for payment status badge
 const PAYMENT_STATUS_CONFIG = {
   paid: {
     label: "Paid",
@@ -95,7 +124,7 @@ const PAYMENT_STATUS_CONFIG = {
     border: "border-green-200",
   },
   pending: {
-    label: "Pending",
+    label: "Awaiting payment",
     bg: "bg-yellow-100",
     text: "text-yellow-700",
     border: "border-yellow-200",
@@ -105,6 +134,18 @@ const PAYMENT_STATUS_CONFIG = {
     bg: "bg-red-100",
     text: "text-red-700",
     border: "border-red-200",
+  },
+  refunding: {
+    label: "Refund in progress",
+    bg: "bg-blue-100",
+    text: "text-blue-700",
+    border: "border-blue-200",
+  },
+  cancelled: {
+    label: "Cancelled",
+    bg: "bg-gray-100",
+    text: "text-gray-600",
+    border: "border-gray-200",
   },
   failed: {
     label: "Failed",
@@ -119,6 +160,49 @@ const getStatusConfig = (status) =>
 
 const getPaymentStatusConfig = (status) =>
   PAYMENT_STATUS_CONFIG[status] || PAYMENT_STATUS_CONFIG.pending;
+
+const METHOD_LABEL = {
+  bank_deposit: "Bank transfer",
+  cod: "Cash on delivery",
+  stripe: "Card",
+  card: "Card",
+};
+
+// ব্যাকএন্ডের নিয়ম: শুধু pending ও অপরিশোধিত অর্ডার ক্রেতা বাতিল করতে পারে
+const canCancel = (o) => o.status === "pending" && o.payment?.status === "pending";
+const needsTransfer = (o) =>
+  o.payment?.method === "bank_deposit" &&
+  o.payment?.status === "pending" &&
+  o.status !== "cancelled";
+// বাতিল অর্ডারে payment "Awaiting" দেখালে ভুল বোঝায়
+const payStatusOf = (o) => (o.status === "cancelled" ? "cancelled" : o.payment?.status);
+
+// WhatsApp-এ পাঠানোর মেসেজ (অর্ডার দেওয়ার সময়ের মতো ফরম্যাট)
+const buildPayMessage = (order) => {
+  const items = order.items || [];
+  const lines = items.slice(0, 10).map((i) => {
+    const opts = [
+      i.color && i.color !== "NOCOLOR" ? i.color : "",
+      i.size && i.size !== "NOSIZE" ? i.size : "",
+    ]
+      .filter(Boolean)
+      .join(" / ");
+    return `• ${i.name}${opts ? ` (${opts})` : ""} × ${i.qty}`;
+  });
+  if (items.length > 10) lines.push(`• +${items.length - 10} more`);
+
+  return [
+    "Hello, I want to pay for my order.",
+    `Order ID: ${order.orderId}`,
+    `Total: ${formatMoney(order.pricing?.total)}`,
+    `Total pieces: ${order.pricing?.totalQuantity ?? items.length}`,
+    "",
+    "Items:",
+    ...lines,
+    "",
+    "Please share the bank details. I will send the transfer receipt here.",
+  ].join("\n");
+};
 
 // ─── StatusBadge ─────────────────────────────────────────────────────────────
 
@@ -153,7 +237,23 @@ const PaymentBadge = ({ status, size = "sm" }) => {
 
 // ─── OrderDetailModal ─────────────────────────────────────────────────────────
 
-const OrderDetailModal = ({ order, onClose }) => {
+const OrderDetailModal = ({ order, onClose, onCancel, isCancelling }) => {
+  // Escape চাপলে বন্ধ + modal খোলা থাকলে পেছনের পেজ স্ক্রল বন্ধ
+  useEffect(() => {
+    if (!order) return;
+        const onKey = (e) =>
+      e.key === "Escape" &&
+      !document.querySelector(".swal2-container") &&
+      onClose();
+    document.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [order, onClose]);
+
   if (!order) return null;
 
   const timeline = [
@@ -174,9 +274,16 @@ const OrderDetailModal = ({ order, onClose }) => {
     { label: "Delivered", done: order.status === "delivered" },
   ];
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+  // Navbar বা কোনো parent-এর stacking context যেন ঢেকে না দেয়, তাই body-তে portal
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[2147483647] flex items-center justify-center p-4 bg-black/50"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto overscroll-contain"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* header */}
         <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
           <div>
@@ -186,6 +293,7 @@ const OrderDetailModal = ({ order, onClose }) => {
           <button
             onClick={onClose}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            aria-label="Close"
           >
             <X size={20} className="text-gray-600" />
           </button>
@@ -213,11 +321,7 @@ const OrderDetailModal = ({ order, onClose }) => {
                           ${step.done ? "bg-green-500 border-green-500" : "bg-white border-gray-300"}`}
                       >
                         {step.done && (
-                          <svg
-                            viewBox="0 0 12 12"
-                            className="w-3 h-3"
-                            fill="none"
-                          >
+                          <svg viewBox="0 0 12 12" className="w-3 h-3" fill="none">
                             <path
                               d="M2 6l3 3 5-5"
                               stroke="white"
@@ -252,19 +356,20 @@ const OrderDetailModal = ({ order, onClose }) => {
             <div className="space-y-3">
               {order.items?.map((item, i) => (
                 <div
-                  key={i}
+                  key={item.key || i}
                   className="flex gap-3 p-3 border border-gray-200 rounded-xl"
                 >
                   <img
-                    src={item.image || "/placeholder.jpg"}
+                    src={toImageUrl(item.image) || PLACEHOLDER}
                     alt={item.name}
-                    className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
+                    onError={onImgError}
+                    className="w-16 h-16 object-cover rounded-lg flex-shrink-0 bg-gray-200"
                   />
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-gray-900 truncate">
                       {item.name}
                     </p>
-                    <div className="flex gap-2 mt-0.5 text-xs text-gray-500">
+                    <div className="flex flex-wrap gap-x-2 mt-0.5 text-xs text-gray-500">
                       {item.size && item.size !== "NOSIZE" && (
                         <span>Size: {item.size}</span>
                       )}
@@ -275,7 +380,7 @@ const OrderDetailModal = ({ order, onClose }) => {
                     </div>
                   </div>
                   <p className="font-bold text-gray-900 text-sm flex-shrink-0">
-                    ${(item.price * item.qty).toFixed(2)}
+                    {formatMoney(item.price * item.qty)}
                   </p>
                 </div>
               ))}
@@ -285,31 +390,28 @@ const OrderDetailModal = ({ order, onClose }) => {
           {/* pricing */}
           <div className="bg-gray-50 rounded-xl p-4 space-y-2">
             <div className="flex justify-between text-sm text-gray-600">
-              <span>Subtotal</span>
-              <span>${order.pricing?.subtotal?.toFixed(2)}</span>
+              <span>
+                Subtotal ({order.pricing?.totalQuantity ?? order.items?.length ?? 0} pcs)
+              </span>
+              <span>{formatMoney(order.pricing?.subtotal)}</span>
             </div>
-            {order.pricing?.discount > 0 && (
+            {order.pricing?.bulkDiscount > 0 && (
               <div className="flex justify-between text-sm text-green-600">
-                <span>Discount {order.coupon?.code && `(${order.coupon.code})`}</span>
-                <span>-${order.pricing.discount.toFixed(2)}</span>
+                <span>Bulk discount ({order.pricing.bulkDiscountPercent}%)</span>
+                <span>- {formatMoney(order.pricing.bulkDiscount)}</span>
               </div>
             )}
-            <div className="flex justify-between text-sm text-gray-600">
-              <span>Tax</span>
-              <span>${order.pricing?.tax?.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between text-sm text-gray-600">
-              <span>Shipping</span>
-              <span>
-                {order.pricing?.shipping === 0
-                  ? "Free"
-                  : `$${order.pricing?.shipping?.toFixed(2)}`}
-              </span>
-            </div>
+            {order.pricing?.couponDiscount > 0 && (
+              <div className="flex justify-between text-sm text-green-600">
+                <span>Coupon {order.coupon?.code && `(${order.coupon.code})`}</span>
+                <span>- {formatMoney(order.pricing.couponDiscount)}</span>
+              </div>
+            )}
             <div className="border-t border-gray-200 pt-2 flex justify-between font-bold text-gray-900">
               <span>Total</span>
-              <span>${order.pricing?.total?.toFixed(2)}</span>
+              <span>{formatMoney(order.pricing?.total)}</span>
             </div>
+            <p className="text-xs text-gray-500">{DELIVERY_NOTICE}</p>
           </div>
 
           {/* payment + address */}
@@ -321,11 +423,29 @@ const OrderDetailModal = ({ order, onClose }) => {
                   Payment
                 </span>
               </div>
-              <p className="text-sm text-gray-600 capitalize mb-1.5">
-                {order.payment?.method || "Stripe"}
+              <p className="text-sm text-gray-600 mb-1.5">
+                {METHOD_LABEL[order.payment?.method] ||
+                  order.payment?.method ||
+                  "N/A"}
               </p>
-              {/* ✅ Use PaymentBadge instead of StatusBadge for payment */}
-              <PaymentBadge status={order.payment?.status} size="sm" />
+              <PaymentBadge status={payStatusOf(order)} size="sm" />
+              {needsTransfer(order) && (
+                <div className="mt-3 text-xs text-gray-600 space-y-2">
+                  <p>
+                    Transfer {formatMoney(order.pricing?.total)} and send the
+                    receipt on WhatsApp. Your order is confirmed once we receive
+                    the payment.
+                  </p>
+                                    <a
+                    href={whatsappLink(buildPayMessage(order))}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700"
+                  >
+                    <MessageCircle size={14} /> Pay on WhatsApp
+                  </a>
+                </div>
+              )}
             </div>
 
             {order.customer?.address &&
@@ -354,9 +474,23 @@ const OrderDetailModal = ({ order, onClose }) => {
                 </div>
               )}
           </div>
+
+          {/* cancel (শুধু pending ও অপরিশোধিত অর্ডারে) */}
+          {canCancel(order) && (
+            <div className="flex justify-end">
+              <button
+                onClick={() => onCancel(order)}
+                disabled={isCancelling}
+                className="px-4 py-2 text-sm font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 disabled:opacity-50"
+              >
+                {isCancelling ? "Cancelling..." : "Cancel order"}
+              </button>
+            </div>
+          )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
@@ -370,6 +504,26 @@ const MyOrders = () => {
   const LIMIT = 8;
 
   const userId = currentUser?.email;
+  const { mutateAsync: cancelOrder, isPending: isCancelling } = useCancelMyOrder();
+
+  const handleCancel = async (order) => {
+    const { isConfirmed } = await Swal.fire({
+      title: "Cancel this order?",
+      text: `${order.orderId} will be cancelled. This cannot be undone.`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, cancel order",
+      cancelButtonText: "Keep order",
+      confirmButtonColor: "#dc2626",
+    });
+    if (!isConfirmed) return;
+    try {
+      await cancelOrder({ orderId: order.orderId });
+      setSelectedOrder(null);
+    } catch {
+      /* hook নিজেই error দেখায় */
+    }
+  };
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["myOrders", userId, statusFilter, page],
@@ -499,8 +653,8 @@ const MyOrders = () => {
             <div className="space-y-4">
               {orders.map((order) => {
                 const cfg = getStatusConfig(order.status);
-                const paymentCfg = getPaymentStatusConfig(order.payment?.status);
                 const itemCount = order.items?.length || 0;
+                const pieces = order.pricing?.totalQuantity ?? itemCount;
 
                 return (
                   <div
@@ -518,20 +672,20 @@ const MyOrders = () => {
                           {formatDate(order.createdAt)}
                         </p>
                       </div>
-                      {/* Order status */}
                       <StatusBadge status={order.status} />
                     </div>
 
                     {/* order body */}
-                    <div className="p-4 flex items-center gap-4">
+                    <div className="p-4 flex items-center gap-4 flex-wrap sm:flex-nowrap">
                       {/* thumbnail stack */}
                       <div className="flex -space-x-2 flex-shrink-0">
                         {order.items?.slice(0, 3).map((item, i) => (
                           <img
-                            key={i}
-                            src={item.image || "/placeholder.jpg"}
+                            key={item.key || i}
+                            src={toImageUrl(item.image) || PLACEHOLDER}
                             alt={item.name}
-                            className="w-12 h-12 rounded-lg object-cover border-2 border-white"
+                            onError={onImgError}
+                            className="w-12 h-12 rounded-lg object-cover border-2 border-white bg-gray-200"
                             style={{ zIndex: 3 - i }}
                           />
                         ))}
@@ -552,19 +706,18 @@ const MyOrders = () => {
                           {itemCount > 2 && ` +${itemCount - 2} more`}
                         </p>
                         <p className="text-xs text-gray-500 mt-0.5">
-                          {itemCount} {itemCount === 1 ? "item" : "items"}
+                          {pieces} {pieces === 1 ? "piece" : "pieces"}
                         </p>
                       </div>
 
-                      {/* total + payment status + action */}
+                      {/* total + payment status + actions */}
                       <div className="flex items-center gap-4 flex-shrink-0">
                         <div className="text-right">
                           <p className="font-bold text-gray-900">
-                            ${order.pricing?.total?.toFixed(2)}
+                            {formatMoney(order.pricing?.total)}
                           </p>
-                          {/* ✅ PaymentBadge — shows green "Paid" after Stripe payment */}
                           <div className="mt-1">
-                            <PaymentBadge status={order.payment?.status} size="sm" />
+                            <PaymentBadge status={payStatusOf(order)} size="sm" />
                           </div>
                         </div>
                         <button
@@ -574,6 +727,27 @@ const MyOrders = () => {
                           <Eye size={14} />
                           View
                         </button>
+                            {needsTransfer(order) && (
+                          <a
+                            href={whatsappLink(buildPayMessage(order))}
+                            target="_blank"
+                            rel="noreferrer"
+                            title="Open WhatsApp to get bank details and send your receipt"
+                            className="flex items-center gap-1.5 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
+                          >
+                            <MessageCircle size={14} />
+                            Pay
+                          </a>
+                        )}
+                        {canCancel(order) && (
+                          <button
+                            onClick={() => handleCancel(order)}
+                            disabled={isCancelling}
+                            className="px-3 py-2 text-sm font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 disabled:opacity-50"
+                          >
+                            Cancel
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -614,6 +788,8 @@ const MyOrders = () => {
         <OrderDetailModal
           order={selectedOrder}
           onClose={() => setSelectedOrder(null)}
+          onCancel={handleCancel}
+          isCancelling={isCancelling}
         />
       )}
     </>

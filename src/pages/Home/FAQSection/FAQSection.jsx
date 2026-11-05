@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import FadeIn from "../../../components/Animations/FadeIn";
+import { WHATSAPP_NUMBER } from "../../../utils/wholesale";
 
 const EMERALD = "#123C32";
 const GOLD = "#D4AF37";
@@ -160,7 +161,7 @@ const FAQSection = () => {
             </p>
 
             <a
-              href="https://wa.me/971551896390"
+              href={`https://wa.me/${WHATSAPP_NUMBER}`}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center justify-center gap-2 font-semibold text-sm transition-opacity hover:opacity-75"

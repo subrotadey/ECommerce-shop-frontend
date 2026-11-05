@@ -1,8 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { XCircle, ShoppingCart, ArrowLeft, MessageCircle } from "lucide-react";
-
-// Checkout.jsx-এর নম্বরের সাথে মিল রাখুন
-const WHATSAPP_NUMBER = "971551896390";
+import { WHATSAPP_NUMBER } from "../../utils/wholesale";
 
 const CheckoutCancel = () => {
   const navigate = useNavigate();

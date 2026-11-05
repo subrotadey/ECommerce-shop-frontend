@@ -6,8 +6,8 @@ import {
   MessageCircle,
   CheckCircle2,
 } from "lucide-react";
-
 import FadeIn from "../../../components/Animations/FadeIn";
+import { WHATSAPP_NUMBER } from "../../../utils/wholesale";
 
 const COMMITMENTS = [
   {
@@ -131,7 +131,7 @@ const Testimonials = () => {
             </div>
 
             <a
-              href="https://wa.me/971551896390"
+              href={`https://wa.me/${WHATSAPP_NUMBER}`}
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Contact Anis Abaya UAE on WhatsApp"

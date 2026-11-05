@@ -1,198 +1,179 @@
 // src/hooks/useOrders.js
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  getOrders,
-  getOrderById,
-  updateOrderStatus,
-  refundOrder,
-  getOrderStats,
-  exportOrders,
-  batchUpdateOrderStatus
-} from '../services/orderService';
-import notify from '../utils/notification';
+    batchUpdateOrderStatus,
+    cancelMyOrder,
+    exportOrders,
+    getOrderById,
+    getOrders,
+    getOrderStats,
+    markOrderPaid,
+    refundOrder,
+    updateOrderStatus,
+} from "../services/orderService";
+import notify from "../utils/notification";
 
-/**
- * Hook for fetching all orders with filters
- */
-export const useOrders = (filters = {}) => {
-  return useQuery({
-    queryKey: ['orders', filters],
-    queryFn: () => getOrders(filters),
-    staleTime: 1000 * 60 * 2, // 2 minutes
-    retry: 1,
-  });
+// অর্ডার বদলালে এগুলো আবার আনতে হয় (Dashboard-এর সংখ্যাও)
+const useRefreshOrders = () => {
+  const qc = useQueryClient();
+  return (orderId) => {
+    qc.invalidateQueries({ queryKey: ["orders"] });
+    qc.invalidateQueries({ queryKey: ["orderStats"] });
+    qc.invalidateQueries({ queryKey: ["userOrders"] });
+    qc.invalidateQueries({ queryKey: ["myOrders"] });
+    qc.invalidateQueries({ queryKey: ["admin"] });
+    if (orderId) qc.invalidateQueries({ queryKey: ["order", orderId] });
+  };
 };
 
-/**
- * Hook for fetching single order
- */
-export const useOrder = (orderId) => {
-  return useQuery({
-    queryKey: ['order', orderId],
+const errMsg = (error, fallback) => error?.message || fallback;
+
+export const useOrders = (filters = {}) =>
+  useQuery({
+    queryKey: ["orders", filters],
+    queryFn: () => getOrders(filters),
+    staleTime: 1000 * 60 * 2,
+    placeholderData: (prev) => prev, // পেজ বদলালে আগের তালিকা থাকে, ফাঁকা ঝলক নেই
+    retry: 1,
+  });
+
+export const useOrder = (orderId) =>
+  useQuery({
+    queryKey: ["order", orderId],
     queryFn: () => getOrderById(orderId),
     enabled: !!orderId,
     staleTime: 1000 * 60,
     retry: 1,
   });
-};
 
-/**
- * Hook for order statistics
- */
-export const useOrderStats = () => {
-  return useQuery({
-    queryKey: ['orderStats'],
+export const useOrderStats = () =>
+  useQuery({
+    queryKey: ["orderStats"],
     queryFn: getOrderStats,
-    staleTime: 1000 * 60 * 5,
+    staleTime: 1000 * 60,
     retry: 1,
   });
-};
 
-/**
- * Hook for updating order status
- */
 export const useUpdateOrderStatus = () => {
-  const queryClient = useQueryClient();
-
+  const refresh = useRefreshOrders();
   return useMutation({
-    mutationFn: ({ orderId, status }) => 
-      updateOrderStatus(orderId, status),
-    onSuccess: (data, variables) => {
-      queryClient.invalidateQueries(['orders']);
-      queryClient.invalidateQueries(['order', variables.orderId]);
-      queryClient.invalidateQueries(['orderStats']);
-      
-      notify.success(
-        'Status Updated',
-        `Order status changed to ${variables.status}`
-      );
+    mutationFn: ({ orderId, status }) => updateOrderStatus(orderId, status),
+    onSuccess: (_d, v) => {
+      refresh(v.orderId);
+      notify.success("Status Updated", `Order status changed to ${v.status}`);
     },
-    onError: (error) => {
-      notify.error(
-        'Update Failed',
-        error.message || 'Failed to update order status'
-      );
-    }
+    onError: (e) => notify.error("Update Failed", errMsg(e, "Failed to update order status")),
   });
 };
 
-/**
- * Hook for refunding order
- */
+// নতুন: Mark as Paid
+export const useMarkOrderPaid = () => {
+  const refresh = useRefreshOrders();
+  return useMutation({
+    mutationFn: ({ orderId, reference, note, receivedAmount }) =>
+      markOrderPaid(orderId, { reference, note, receivedAmount }),
+    onSuccess: (_d, v) => {
+      refresh(v.orderId);
+      notify.success("Payment Recorded", "Order marked as paid");
+    },
+    onError: (e) => notify.error("Failed", errMsg(e, "Could not mark order as paid")),
+  });
+};
+
+// নতুন: Customer cancel
+export const useCancelMyOrder = () => {
+  const refresh = useRefreshOrders();
+  return useMutation({
+    mutationFn: ({ orderId, reason }) => cancelMyOrder(orderId, reason),
+    onSuccess: (_d, v) => {
+      refresh(v.orderId);
+      notify.success("Order Cancelled", "Your order has been cancelled");
+    },
+    onError: (e) => notify.error("Cancel Failed", errMsg(e, "Could not cancel order")),
+  });
+};
+
 export const useRefundOrder = () => {
-  const queryClient = useQueryClient();
-
+  const refresh = useRefreshOrders();
   return useMutation({
-    mutationFn: ({ orderId, reason }) => 
-      refundOrder(orderId, reason),
-    onSuccess: (data, variables) => {
-      queryClient.invalidateQueries(['orders']);
-      queryClient.invalidateQueries(['order', variables.orderId]);
-      queryClient.invalidateQueries(['orderStats']);
-      
-      notify.success(
-        'Refund Processed',
-        'Order has been refunded successfully'
-      );
+    mutationFn: ({ orderId, reason }) => refundOrder(orderId, reason),
+    onSuccess: (_d, v) => {
+      refresh(v.orderId);
+      notify.success("Refund Processed", "Order has been refunded successfully");
     },
-    onError: (error) => {
-      notify.error(
-        'Refund Failed',
-        error.message || 'Failed to process refund'
-      );
-    }
+    onError: (e) => notify.error("Refund Failed", errMsg(e, "Failed to process refund")),
   });
 };
 
-/**
- * Hook for exporting orders
- */
-export const useExportOrders = () => {
-  return useMutation({
+export const useExportOrders = () =>
+  useMutation({
     mutationFn: exportOrders,
-    onSuccess: () => {
-      notify.success(
-        'Export Successful',
-        'Orders exported successfully'
-      );
-    },
-    onError: (error) => {
-      notify.error(
-        'Export Failed',
-        error.message || 'Failed to export orders'
-      );
-    }
+    onSuccess: () => notify.success("Export Successful", "Orders exported successfully"),
+    onError: (e) => notify.error("Export Failed", errMsg(e, "Failed to export orders")),
   });
-};
 
-/**
- * Hook for batch updating order statuses
- */
 export const useBatchUpdateStatus = () => {
-  const queryClient = useQueryClient();
-
+  const refresh = useRefreshOrders();
   return useMutation({
-    mutationFn: ({ orderIds, status }) => 
-      batchUpdateOrderStatus(orderIds, status),
+    mutationFn: ({ orderIds, status }) => batchUpdateOrderStatus(orderIds, status),
     onSuccess: (data) => {
-      queryClient.invalidateQueries(['orders']);
-      queryClient.invalidateQueries(['orderStats']);
-      
-      notify.success(
-        'Batch Update Complete',
-        data.message
-      );
+      refresh();
+      if (data.failed) notify.error("Batch Update", data.message);
+      else notify.success("Batch Update Complete", data.message);
     },
-    onError: (error) => {
-      notify.error(
-        'Batch Update Failed',
-        error.message || 'Failed to update orders'
-      );
-    }
+    onError: (e) => notify.error("Batch Update Failed", errMsg(e, "Failed to update orders")),
   });
 };
 
-/**
- * Main hook with all order operations
- */
+// Admin Orders পেজের মূল হুক
 const useOrderManagement = (filters = {}) => {
   const ordersQuery = useOrders(filters);
   const statsQuery = useOrderStats();
   const updateStatusMutation = useUpdateOrderStatus();
+  const markPaidMutation = useMarkOrderPaid();
   const refundMutation = useRefundOrder();
   const exportMutation = useExportOrders();
   const batchUpdateMutation = useBatchUpdateStatus();
 
+  const d = ordersQuery.data;
+  // ব্যাকএন্ডের নতুন `pagination` না এলেও পুরোনো ফিল্ড থেকে বানাই
+  const pagination = d?.pagination || {
+    page: d?.currentPage || 1,
+    limit: filters.limit || 10,
+    total: d?.total || 0,
+    totalPages: d?.totalPages || 1,
+  };
+
   return {
-    // Data
-    orders: ordersQuery.data?.orders || [],
-    pagination: ordersQuery.data?.pagination || {},
+    orders: d?.orders || [],
+    pagination,
     stats: statsQuery.data?.stats || {},
-    
-    // Loading states
+
     isLoading: ordersQuery.isLoading,
+    isFetching: ordersQuery.isFetching,
     isLoadingStats: statsQuery.isLoading,
     isUpdating: updateStatusMutation.isPending,
+    isMarkingPaid: markPaidMutation.isPending,
     isRefunding: refundMutation.isPending,
     isExporting: exportMutation.isPending,
     isBatchUpdating: batchUpdateMutation.isPending,
-    
-    // Error states
+
     error: ordersQuery.error,
     statsError: statsQuery.error,
-    
-    // Actions
-    updateStatus: (orderId, status) => 
+
+    updateStatus: (orderId, status) =>
       updateStatusMutation.mutate({ orderId, status }),
-    refundOrder: (orderId, reason) => 
+    // await করা যায় (dialog বন্ধ করার আগে ফল জানতে)
+    markPaid: (orderId, payload) =>
+      markPaidMutation.mutateAsync({ orderId, ...payload }),
+    refundOrder: (orderId, reason) =>
       refundMutation.mutate({ orderId, reason }),
     exportOrders: exportMutation.mutate,
-    batchUpdateStatus: (orderIds, status) => 
+    batchUpdateStatus: (orderIds, status) =>
       batchUpdateMutation.mutate({ orderIds, status }),
-    
-    // Refetch
+
     refetch: ordersQuery.refetch,
-    refetchStats: statsQuery.refetch
+    refetchStats: statsQuery.refetch,
   };
 };
 

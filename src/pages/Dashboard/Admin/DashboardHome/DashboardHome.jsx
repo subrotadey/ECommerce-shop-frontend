@@ -9,19 +9,21 @@ import {
   ShoppingCart,
   TrendingUp,
   Users,
+  Wallet,
 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import useDashboardStats from "../../../../hooks/useDashboardStats";
+import { CURRENCY, formatMoney } from "../../../../utils/wholesale";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
-const fmt = (n) =>
-  n >= 1_000_000
-    ? `$${(n / 1_000_000).toFixed(2)}M`
-    : n >= 1_000
-    ? `$${(n / 1_000).toFixed(1)}k`
-    : `$${n?.toFixed(2) ?? "0.00"}`;
+const fmt = (n) => {
+  const v = Number(n) || 0;
+  if (v >= 1_000_000) return `${CURRENCY} ${(v / 1_000_000).toFixed(2)}M`;
+  if (v >= 1_000) return `${CURRENCY} ${(v / 1_000).toFixed(1)}k`;
+  return formatMoney(v);
+};
 
 const fmtNum = (n) =>
   n >= 1_000_000
@@ -91,7 +93,7 @@ const RevenueBarChart = ({ data }) => {
       <div className="flex justify-between text-[10px] text-gray-400 mb-1 px-1">
         <span>{fmt(max)}</span>
         <span>{fmt(max / 2)}</span>
-        <span>$0</span>
+        <span>{CURRENCY} 0</span>
       </div>
 
       {/* Chart area */}
@@ -195,7 +197,7 @@ const DashboardHome = () => {
           label: "Total Revenue",
           value: fmt(stats.totalRevenue),
           growth: stats.revenueGrowth,
-          icon: DollarSign,
+          icon: Wallet,
           iconBg: "bg-blue-100",
           iconColor: "text-blue-600",
           sub: `${fmt(stats.thisMonthRevenue)} this month`,
@@ -413,17 +415,25 @@ const DashboardHome = () => {
                   <tr key={order._id ?? order.orderId} className="hover">
                     <td className="font-mono text-sm font-medium text-gray-900">{order.orderId}</td>
                     <td>
-                      <p className="font-medium text-sm text-gray-900">{order.customer?.name || "Guest"}</p>
+                      <p className="font-medium text-sm text-gray-900">{order.customer?.address?.fullName || order.customer?.name || "Guest"}</p>
                       <p className="text-xs text-gray-400">{order.customer?.email}</p>
                     </td>
                     <td className="font-semibold text-gray-900 tabular-nums">
-                      ${order.pricing?.total?.toFixed(2) ?? "0.00"}
+                                            {formatMoney(order.pricing?.total)}
                     </td>
                     <td><StatusBadge status={order.status} /></td>
                     <td>
-                      <span className={`badge badge-sm ${order.payment?.status === "paid" ? "badge-success" : "badge-warning"}`}>
-                        {order.payment?.status ?? "pending"}
-                      </span>
+                                            {(() => {
+                        const ps = order.status === "cancelled" ? "cancelled" : order.payment?.status ?? "pending";
+                        const cls = {
+                          paid: "badge-success",
+                          pending: "badge-warning",
+                          refunding: "badge-info",
+                          refunded: "badge-neutral",
+                          cancelled: "badge-ghost",
+                        }[ps] || "badge-ghost";
+                        return <span className={`badge badge-sm ${cls}`}>{ps}</span>;
+                      })()}
                     </td>
                     <td className="text-sm text-gray-500">
                       {order.createdAt
