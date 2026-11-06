@@ -1,49 +1,53 @@
 // src/components/Admin/Topbar.jsx
 import { useState, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Menu, Bell, LogOut, User, Settings, ChevronDown } from "lucide-react";
+import { Menu, LogOut, User, Settings, ChevronDown } from "lucide-react";
 import useAuth from "../../hooks/useAuth";
+import useRole from "../../hooks/useRole";
+import NotificationBell from "../NotificationBell/NotificationBell";
 import avatar from "../../assets/icons/user.svg";
-
-const NOTIFICATIONS = [
-  { id: 1, text: "New order #ORD-1892 placed", time: "2m ago", unread: true },
-  { id: 2, text: "Low stock: Premium Abaya (3 left)", time: "1h ago", unread: true },
-  { id: 3, text: "Review pending approval", time: "3h ago", unread: false },
-];
 
 const Topbar = ({ onMenuClick, collapsed }) => {
   const { currentUser, logOut } = useAuth();
+  const { isAdmin, isStaff } = useRole(currentUser?.email);
   const navigate = useNavigate();
-  const [notifOpen, setNotifOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
-  const notifRef = useRef(null);
   const userRef = useRef(null);
 
-  const unreadCount = NOTIFICATIONS.filter((n) => n.unread).length;
+  const canSeeNotifications = Boolean(isAdmin || isStaff);
 
-  // Close dropdowns on outside click
+  // বাইরে ক্লিক / Escape চাপলে ইউজার মেনু বন্ধ
   useEffect(() => {
-    const handler = (e) => {
-      if (notifRef.current && !notifRef.current.contains(e.target)) setNotifOpen(false);
+    if (!userOpen) return;
+    const onDown = (e) => {
       if (userRef.current && !userRef.current.contains(e.target)) setUserOpen(false);
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
+    const onKey = (e) => e.key === "Escape" && setUserOpen(false);
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [userOpen]);
 
   const handleLogout = async () => {
-    await logOut();
-    navigate("/");
+    try {
+      await logOut();
+    } catch (err) {
+      console.error("Logout failed:", err);
+    } finally {
+      navigate("/");
+    }
   };
 
   return (
     <header
       className={`
-        fixed top-0 right-0 z-30 h-14 flex items-center justify-between
-        bg-white border-b border-gray-100 px-4 gap-4
+        fixed top-0 right-0 left-0 z-30 flex h-14 items-center justify-between gap-4
+        border-b border-gray-100 bg-white px-4
         transition-all duration-300
-        ${collapsed ? "left-[64px]" : "left-[220px]"}
-        left-0 lg:left-auto
+        ${collapsed ? "lg:left-[64px]" : "lg:left-[220px]"}
       `}
     >
       {/* Left: Hamburger (mobile) */}
@@ -55,64 +59,35 @@ const Topbar = ({ onMenuClick, collapsed }) => {
         <Menu size={20} />
       </button>
 
-      {/* Page title placeholder — can be dynamic via context */}
       <div className="hidden lg:block text-sm font-medium text-gray-500 select-none">
         Admin Panel
       </div>
 
       {/* Right actions */}
       <div className="flex items-center gap-2 ml-auto">
-        {/* Notifications */}
-        <div ref={notifRef} className="relative">
-          <button
-            onClick={() => { setNotifOpen((p) => !p); setUserOpen(false); }}
-            className="relative p-2 rounded-md text-gray-500 hover:bg-gray-100 transition-colors"
-            aria-label="Notifications"
-          >
-            <Bell size={18} />
-            {unreadCount > 0 && (
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
-            )}
-          </button>
-
-          {notifOpen && (
-            <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-xl border border-gray-100 shadow-lg shadow-black/[0.08] overflow-hidden z-50">
-              <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-                <span className="text-sm font-semibold text-gray-900">Notifications</span>
-                <span className="text-xs text-[#B8922A] font-medium cursor-pointer hover:underline">
-                  Mark all read
-                </span>
-              </div>
-              <div className="divide-y divide-gray-50 max-h-64 overflow-y-auto">
-                {NOTIFICATIONS.map((n) => (
-                  <div key={n.id} className="px-4 py-3 flex gap-3 hover:bg-gray-50 transition-colors">
-                    <div
-                      className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0
-                        ${n.unread ? "bg-[#B8922A]" : "bg-gray-200"}`}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-gray-800 leading-snug">{n.text}</p>
-                      <p className="text-[11px] text-gray-400 mt-0.5">{n.time}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+        {/* Notifications (Admin/Staff শেয়ার্ড ইনবক্স) */}
+                <NotificationBell
+          scope="staff"
+          enabled={canSeeNotifications}
+          panelClassName="-right-[5rem] sm:right-0"
+        />
 
         {/* User menu */}
         <div ref={userRef} className="relative">
           <button
-            onClick={() => { setUserOpen((p) => !p); setNotifOpen(false); }}
+            onClick={() => setUserOpen((p) => !p)}
             className="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
             aria-label="User menu"
+            aria-expanded={userOpen}
           >
             <img
               src={currentUser?.photoURL || avatar}
               alt="Avatar"
               className="w-7 h-7 rounded-full object-cover ring-1 ring-gray-200"
-              onError={(e) => { e.target.src = avatar; }}
+              onError={(e) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = avatar;
+              }}
             />
             <span className="hidden sm:block text-sm font-medium text-gray-700 max-w-[100px] truncate">
               {currentUser?.displayName?.split(" ")[0] || "Admin"}
@@ -128,14 +103,18 @@ const Topbar = ({ onMenuClick, collapsed }) => {
                 </p>
                 <p className="text-xs text-gray-400 truncate">{currentUser?.email}</p>
               </div>
-              <Link
-                to="/admin/settings"
-                onClick={() => setUserOpen(false)}
-                className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                <Settings size={15} className="text-gray-400" />
-                Settings
-              </Link>
+
+              {isAdmin && (
+                <Link
+                  to="/admin/settings"
+                  onClick={() => setUserOpen(false)}
+                  className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  <Settings size={15} className="text-gray-400" />
+                  Settings
+                </Link>
+              )}
+
               <Link
                 to="/profile"
                 onClick={() => setUserOpen(false)}
@@ -144,6 +123,7 @@ const Topbar = ({ onMenuClick, collapsed }) => {
                 <User size={15} className="text-gray-400" />
                 Profile
               </Link>
+
               <div className="border-t border-gray-100 mt-1">
                 <button
                   onClick={handleLogout}

@@ -5,52 +5,58 @@ import { MENU_ITEMS } from "../../config/adminMenu";
 import logo from "../../assets/images/logo.png";
 
 const Sidebar = ({ collapsed, toggleCollapse, mobileOpen, closeMobile, userRole }) => {
-  const allowed = MENU_ITEMS.filter((item) =>
-    item.roles.includes(userRole)
-  );
+  const allowed = MENU_ITEMS.filter((item) => item.roles.includes(userRole));
+
+  // collapsed শুধু ডেস্কটপে (lg) খাটে; মোবাইলে ড্রয়ার সবসময় পূর্ণ প্রস্থে
+  const hideWhenCollapsed = collapsed ? "lg:hidden" : "";
 
   return (
     <>
       {/* Mobile backdrop */}
-      {mobileOpen && (
-        <div
-          className="fixed inset-0 bg-black/40 z-40 lg:hidden"
-          onClick={closeMobile}
-        />
-      )}
+      <div
+        onClick={closeMobile}
+        aria-hidden="true"
+        className={`fixed inset-0 z-40 bg-black/40 transition-opacity duration-300 lg:hidden ${
+          mobileOpen ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+      />
 
       {/* Sidebar panel */}
       <aside
+        aria-label="Admin navigation"
         className={`
-          fixed top-0 left-0 h-full z-50 flex flex-col
-          border-r border-white/[0.06]
+          fixed top-0 left-0 z-50 flex h-full flex-col
+          w-[260px] max-w-[85vw]
+          border-r border-gray-200 bg-white shadow-xl lg:shadow-none
           transition-all duration-300 ease-in-out
-          ${collapsed ? "w-[64px]" : "w-[220px]"}
+          ${collapsed ? "lg:w-[64px]" : "lg:w-[220px]"}
           ${mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
         `}
       >
         {/* Logo area */}
-        <div className="h-14 flex items-center justify-between px-4 border-b border-white/[0.06] flex-shrink-0">
-          {!collapsed && (
-            <Link to="/" className="flex items-center gap-2 ">
-              <img src={logo} alt="Anis Abaya" className="h-7 w-auto" />
-                <span className="font-bold text-xl text-black">Anis Abaya</span>
-            </Link>
-          )}
+        <div className="flex h-14 flex-shrink-0 items-center justify-between border-b border-gray-200 px-4">
+          <Link
+            to="/"
+            onClick={closeMobile}
+            className={`flex items-center gap-2 ${hideWhenCollapsed}`}
+          >
+            <img src={logo} alt="Anis Abaya" className="h-7 w-auto" />
+            <span className="text-xl font-bold text-gray-900">Anis Abaya</span>
+          </Link>
 
           {/* Mobile close */}
           <button
             onClick={closeMobile}
-            className="lg:hidden p-1.5 rounded-md text-white/40 hover:text-white hover:bg-white/10 transition-colors"
+            className="rounded-md p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 lg:hidden"
             aria-label="Close sidebar"
           >
-            <X size={18} />
+            <X size={20} />
           </button>
 
           {/* Desktop collapse toggle */}
           <button
             onClick={toggleCollapse}
-            className="hidden lg:flex p-1.5 rounded-md bg-gray-200  hover:bg-gray-300 transition-colors ml-auto"
+            className="ml-auto hidden rounded-md bg-gray-100 p-1.5 text-gray-600 transition-colors hover:bg-gray-200 lg:flex"
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
@@ -58,7 +64,7 @@ const Sidebar = ({ collapsed, toggleCollapse, mobileOpen, closeMobile, userRole 
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 overflow-y-auto overflow-x-hidden py-3 space-y-0.5 px-2 ">
+        <nav className="flex-1 space-y-0.5 overflow-y-auto overflow-x-hidden overscroll-contain px-2 py-3">
           {allowed.map((item) => {
             const Icon = item.icon;
             return (
@@ -69,23 +75,23 @@ const Sidebar = ({ collapsed, toggleCollapse, mobileOpen, closeMobile, userRole 
                 onClick={closeMobile}
                 title={collapsed ? item.label : undefined}
                 className={({ isActive }) =>
-                  `group flex items-center gap-3 px-2.5 py-2 rounded-md text-sm 
-                   transition-all duration-150 whitespace-nowrap
-                   ${isActive
-                      ? "bg-[#B8922A]/15 text-[#D4AA4A]"
-                      : "text-white/50 hover:text-white hover:bg-white/[0.06]"
-                   }`
+                  `group flex items-center gap-3 whitespace-nowrap rounded-md px-2.5 py-2.5 text-sm transition-colors duration-150 ${
+                    isActive
+                      ? "bg-[#B8922A]/10 text-[#8A6A12]"
+                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                  }`
                 }
               >
                 {({ isActive }) => (
                   <>
-                    <Icon size={18} className="text-black flex-shrink-0 transition-colors" />
-                    {!collapsed && (
-                      <span className="font-medium tracking-wide text-black ">{item.label}</span>
-                    )}
-                    {/* Active indicator */}
-                    {isActive && !collapsed && (
-                      <div className="ml-auto w-1 h-4 rounded-full bg-[#D4AA4A] opacity-80" />
+                    <Icon size={18} className="flex-shrink-0" />
+                    <span className={`font-medium tracking-wide ${hideWhenCollapsed}`}>
+                      {item.label}
+                    </span>
+                    {isActive && (
+                      <div
+                        className={`ml-auto h-4 w-1 rounded-full bg-[#B8922A] ${hideWhenCollapsed}`}
+                      />
                     )}
                   </>
                 )}
@@ -95,21 +101,19 @@ const Sidebar = ({ collapsed, toggleCollapse, mobileOpen, closeMobile, userRole 
         </nav>
 
         {/* Bottom role badge */}
-        {!collapsed && (
-          <div className="px-4 py-3 border-t border-white/[0.06]">
-            <span
-              className={`inline-block px-2.5 py-1 rounded text-xs font-semibold uppercase tracking-wider
-                ${userRole === "admin"
-                  ? "bg-[#B8922A]/20 text-[#D4AA4A]"
-                  : userRole === "manager"
-                  ? "bg-blue-500/15 text-blue-400"
-                  : "bg-white/10 text-white/60"
-                }`}
-            >
-              {userRole}
-            </span>
-          </div>
-        )}
+        <div className={`border-t border-gray-200 px-4 py-3 ${hideWhenCollapsed}`}>
+          <span
+            className={`inline-block rounded px-2.5 py-1 text-xs font-semibold uppercase tracking-wider ${
+              userRole === "admin"
+                ? "bg-[#B8922A]/15 text-[#8A6A12]"
+                : userRole === "manager"
+                ? "bg-blue-50 text-blue-700"
+                : "bg-gray-100 text-gray-600"
+            }`}
+          >
+            {userRole}
+          </span>
+        </div>
       </aside>
     </>
   );

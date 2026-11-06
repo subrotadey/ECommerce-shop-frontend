@@ -41,7 +41,7 @@ const AdminLayout = () => {
         />
 
         {/* Content — below topbar */}
-        <main className="flex-1 pt-14 p-6 overflow-y-auto">
+          <main className="flex-1 overflow-y-auto p-4 pt-[4.5rem] sm:p-6 sm:pt-20">
           <Outlet />
           {/* <TokenDebugger /> */}
         </main>

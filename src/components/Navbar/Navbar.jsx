@@ -30,6 +30,7 @@ import useCart from "../../hooks/useCart";
 import useAuth from "../../hooks/useAuth";
 import useWishlist from "../../hooks/useWishlist";
 import useRole from "../../hooks/useRole";
+import NotificationBell from "../NotificationBell/NotificationBell";
 
 // ─── Theme ────────────────────────────────────────────────────────────────
 // Deep Emerald: #123C32
@@ -372,6 +373,13 @@ const Navbar = () => {
             <IconButton to="/cart" label="Shopping Cart" count={totalCount}>
               <ShoppingCart size={19} strokeWidth={1.8} />
             </IconButton>
+
+            {currentUser?.uid && (
+              <NotificationBell
+                scope="me"
+                panelClassName="-right-[3.25rem] sm:right-0"
+              />
+            )}
 
             {/* Desktop account */}
             {currentUser?.uid ? (
