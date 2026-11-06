@@ -1,8 +1,6 @@
 // src/services/profileService.js
-
-import axios from 'axios';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://ecommerce-shop-backend-gr7k.onrender.com';
+import axiosInstance from '../utils/axios';
+import notify from '../utils/notification';
 
 // Cloudinary Configuration
 export const CLOUDINARY_CONFIG = {
@@ -10,34 +8,8 @@ export const CLOUDINARY_CONFIG = {
   uploadPreset: import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET,
 };
 
-// Create axios instance
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Add auth token to requests
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('firebaseToken') || localStorage.getItem('accessToken');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-// Response interceptor for error handling
-api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    if (error.response?.status === 401) {
-      // Handle token expiration
-      console.error('Unauthorized - Token may be expired');
-    }
-    return Promise.reject(error);
-  }
-);
+// শেয়ার্ড axios (baseURL ও টোকেন একই জায়গা থেকে)
+const api = axiosInstance;
 
 // ============================================
 // PROFILE API METHODS
@@ -102,7 +74,7 @@ export const uploadImageToCloudinary = async (file, folder = 'user-profiles') =>
   try {
     // Validate file
     if (!file) throw new Error('No file provided');
-    
+
     if (!file.type.startsWith('image/')) {
       throw new Error('Please select an image file');
     }
@@ -198,7 +170,7 @@ export const formatDate = (date) => {
  */
 export const formatDateTime = (date) => {
   if (!date) return 'N/A';
-  return new Date(date).toLocaleDateString('en-US', {
+  return new Date(date).toLocaleString('en-US', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
@@ -251,29 +223,22 @@ export const getRoleConfig = (role) => {
  */
 export const getOrderStatusConfig = (status) => {
   const configs = {
-    delivered: {
-      label: 'Delivered',
-      bgColor: 'bg-green-100',
-      textColor: 'text-green-700',
-    },
-    pending: {
-      label: 'Pending',
-      bgColor: 'bg-yellow-100',
-      textColor: 'text-yellow-700',
-    },
-    processing: {
-      label: 'Processing',
-      bgColor: 'bg-blue-100',
-      textColor: 'text-blue-700',
-    },
-    cancelled: {
-      label: 'Cancelled',
-      bgColor: 'bg-red-100',
-      textColor: 'text-red-700',
-    },
+    pending: { label: 'Pending', bgColor: 'bg-yellow-100', textColor: 'text-yellow-700' },
+    processing: { label: 'Processing', bgColor: 'bg-blue-100', textColor: 'text-blue-700' },
+    shipped: { label: 'Shipped', bgColor: 'bg-purple-100', textColor: 'text-purple-700' },
+    delivered: { label: 'Delivered', bgColor: 'bg-green-100', textColor: 'text-green-700' },
+    cancelled: { label: 'Cancelled', bgColor: 'bg-red-100', textColor: 'text-red-700' },
+    refunding: { label: 'Refunding', bgColor: 'bg-orange-100', textColor: 'text-orange-700' },
+    refunded: { label: 'Refunded', bgColor: 'bg-gray-100', textColor: 'text-gray-700' },
   };
 
-  return configs[status] || configs.pending;
+  return (
+    configs[status] || {
+      label: status ? String(status) : 'Unknown',
+      bgColor: 'bg-gray-100',
+      textColor: 'text-gray-700',
+    }
+  );
 };
 
 /**
@@ -301,25 +266,12 @@ export const validateProfileData = (data) => {
 };
 
 /**
- * Show notification (using SweetAlert2 or browser notification)
+ * Show a toast (utils/notification.js ব্যবহার করে)
+ * type: 'success' | 'error' | 'warning' | 'info'
  */
 export const showNotification = (type, title, message) => {
-  // If you have SweetAlert2 installed
-  if (window.Swal) {
-    window.Swal.fire({
-      icon: type,
-      title: title,
-      text: message,
-      toast: true,
-      position: 'top-end',
-      showConfirmButton: false,
-      timer: 3000,
-      timerProgressBar: true,
-    });
-  } else {
-    // Fallback to alert
-    alert(`${title}: ${message}`);
-  }
+  const show = notify[type] || notify.info;
+  show(title, message);
 };
 
 export default {

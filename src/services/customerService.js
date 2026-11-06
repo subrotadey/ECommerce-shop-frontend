@@ -1,7 +1,7 @@
 // src/services/customerService.js
 import axiosInstance from '../utils/axios';
 
-const API_BASE_URL = '/api/customers';
+const API_BASE_URL = '/customers';
 
 /**
  * Get all customers with pagination and filters

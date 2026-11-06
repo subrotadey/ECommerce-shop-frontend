@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { formatDate, getOrderStatusConfig } from '../../services/profileService';
 import OrderDetailModal from '../../pages/Dashboard/UserDashboard/OrderDetailModal';
+import { formatMoney } from '../../utils/wholesale';
 
 const RecentOrdersWidget = ({ orders = [] }) => {
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -49,7 +50,8 @@ const RecentOrdersWidget = ({ orders = [] }) => {
         <div className="space-y-3">
           {orders.slice(0, 5).map((order) => {
             const statusConfig = getOrderStatusConfig(order.status);
-            const firstImage = order.items?.[0]?.image;
+            const rawImage = order.items?.[0]?.image;
+            const firstImage = typeof rawImage === 'string' ? rawImage : rawImage?.url;
             const itemCount = order.items?.length || 0;
 
             return (
@@ -84,7 +86,7 @@ const RecentOrdersWidget = ({ orders = [] }) => {
                 {/* Price + Status */}
                 <div className="text-right mr-2">
                   <p className="font-bold text-blue-600 text-sm">
-                    ${order.pricing?.total?.toFixed(2) || order.total}
+                      {formatMoney(order.pricing?.total ?? order.total ?? 0)}
                   </p>
                   <span
                     className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold mt-0.5 ${statusConfig.bgColor} ${statusConfig.textColor}`}

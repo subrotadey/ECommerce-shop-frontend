@@ -10,6 +10,7 @@ import {
   getAvatarUrl 
 } from '../../services/profileService';
 import AddressList from '../Address/AddressList';
+import { getAuth, EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
 
 // ============================================
 // PHOTO UPLOAD SECTION
@@ -176,7 +177,7 @@ export const ProfileEditForm = ({ userData, onSaved }) => {
               name="phoneNumber"
               value={formData.phoneNumber}
               onChange={handleInputChange}
-              placeholder="+880 1234 567890"
+              placeholder="+971 5X XXX XXXX"
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
             />
           </div>
@@ -321,18 +322,22 @@ export const PasswordChangeForm = () => {
     try {
       setSaving(true);
       
-      // Implement Firebase password change here
-      // const auth = getAuth();
-      // const user = auth.currentUser;
-      // const credential = EmailAuthProvider.credential(user.email, passwordData.currentPassword);
-      // await reauthenticateWithCredential(user, credential);
-      // await updatePassword(user, passwordData.newPassword);
-      
+      const user = getAuth().currentUser;
+      if (!user) throw new Error('Please log in again');
+      if (!user.providerData.some((p) => p.providerId === 'password')) {
+        throw new Error('This account uses Google sign-in. Password cannot be changed here.');
+      }
+      const credential = EmailAuthProvider.credential(user.email, passwordData.currentPassword);
+      await reauthenticateWithCredential(user, credential);
+      await updatePassword(user, passwordData.newPassword);
+
       showNotification('success', 'Success!', 'Password changed successfully');
+
       setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
     } catch (error) {
       console.error('Password change error:', error);
-      showNotification('error', 'Error', error.message || 'Failed to change password');
+      const wrong = ['auth/wrong-password', 'auth/invalid-credential'].includes(error.code);
+      showNotification('error', 'Error', wrong ? 'Current password is incorrect' : error.message || 'Failed to change password');
     } finally {
       setSaving(false);
     }
@@ -482,9 +487,9 @@ export const PreferencesForm = ({ userData, onSaved }) => {
             <div className="flex items-start gap-3">
               <Bell className="text-blue-500 mt-1" size={20} />
               <div>
-                <div className="font-medium text-gray-900">Email Notifications</div>
+                <div className="font-medium text-gray-900">Order Update Notifications</div>
                 <div className="text-sm text-gray-600 mt-1">
-                  Receive order updates and important news via email
+                  Show payment, shipping and delivery updates in the notification bell
                 </div>
               </div>
             </div>

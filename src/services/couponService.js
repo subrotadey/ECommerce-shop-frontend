@@ -2,7 +2,7 @@
 
 import axiosInstance from '../utils/axios';
 
-const API_BASE_URL = '/api/coupons';
+const API_BASE_URL = '/coupons';
 
 /**
  * Get all coupons (Admin/Staff)

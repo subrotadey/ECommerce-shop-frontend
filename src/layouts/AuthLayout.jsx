@@ -4,20 +4,20 @@ import Footer from '../components/Footer/Footer';
 import loginSVG from '../assets/icons/login.svg';
 
 const AuthLayout = () => {
-    return (
-        <div>
-            <Navbar></Navbar>
-            <div class="container mx-auto flex px-5 py-24 md:flex-row flex-col items-center">
-                <div class="w-1/2 flex flex-col md:items-start md:text-left items-center text-center">
-                    <Outlet></Outlet>
-                </div>
-                <div class="lg:max-w-lg lg:w-full w-1/2 mb-10 md:mb-0">
-                    <img class="object-cover object-center rounded" alt="hero" src={loginSVG} />
-                </div>
-            </div>
-            <Footer></Footer>
+  return (
+    <div>
+      <Navbar />
+      <div className="container mx-auto flex flex-col items-center px-5 py-12 md:flex-row md:py-24">
+        <div className="flex w-full flex-col items-center text-center md:w-1/2 md:items-start md:text-left">
+          <Outlet />
         </div>
-    );
+        <div className="mt-10 hidden w-full md:mt-0 block md:w-1/2 lg:max-w-lg">
+          <img className="rounded object-cover object-center" alt="hero" src={loginSVG} />
+        </div>
+      </div>
+      <Footer />
+    </div>
+  );
 };
 
 export default AuthLayout;

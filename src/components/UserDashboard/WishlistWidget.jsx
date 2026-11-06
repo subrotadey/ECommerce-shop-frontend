@@ -42,7 +42,7 @@ const WishlistWidget = () => {
           {wishlist.slice(0, 3).map((item) => (
             <div key={item._id} className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
               <img
-                src={item.product?.images?.[0]?.url || '/placeholder.jpg'}
+                src={item.product?.media?.images?.[0]?.url || item.product?.images?.[0]?.url || '/placeholder.jpg'}
                 alt={item.product?.productName}
                 className="w-full h-full object-cover"
               />

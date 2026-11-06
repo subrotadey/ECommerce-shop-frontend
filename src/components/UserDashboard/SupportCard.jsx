@@ -4,9 +4,15 @@
 import { Package, AlertCircle, Bell, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
+const TONE = {
+  blue: { row: 'bg-blue-50 hover:bg-blue-100', box: 'bg-blue-100 group-hover:bg-blue-200', icon: 'text-blue-600' },
+  green: { row: 'bg-green-50 hover:bg-green-100', box: 'bg-green-100 group-hover:bg-green-200', icon: 'text-green-600' },
+  purple: { row: 'bg-purple-50 hover:bg-purple-100', box: 'bg-purple-100 group-hover:bg-purple-200', icon: 'text-purple-600' },
+};
+
 const SupportCard = () => {
   const supportLinks = [
-    { icon: Package, title: 'Track Order', desc: 'Check delivery status', path: '/track', color: 'blue' },
+    { icon: Package, title: 'My Orders', desc: 'Check order status', path: '/orders', color: 'blue' },
     { icon: AlertCircle, title: 'FAQs', desc: 'Find quick answers', path: '/faq', color: 'green' },
     { icon: Bell, title: 'Contact Support', desc: "We're here to help", path: '/contact', color: 'purple' }
   ];
@@ -22,10 +28,10 @@ const SupportCard = () => {
             <Link
               key={link.path}
               to={link.path}
-              className={`flex items-center gap-3 p-3 bg-${link.color}-50 hover:bg-${link.color}-100 rounded-xl transition-all group`}
+              className={`flex items-center gap-3 p-3 ${TONE[link.color].row} rounded-xl transition-all group`}
             >
-              <div className={`w-10 h-10 bg-${link.color}-100 rounded-lg flex items-center justify-center group-hover:bg-${link.color}-200 transition-all`}>
-                <Icon size={20} className={`text-${link.color}-600`} />
+              <div className={`w-10 h-10 ${TONE[link.color].box} rounded-lg flex items-center justify-center transition-all`}>
+                <Icon size={20} className={TONE[link.color].icon} />
               </div>
               <div className="flex-1">
                 <p className="font-medium text-gray-900">{link.title}</p>

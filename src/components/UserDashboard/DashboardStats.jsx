@@ -1,7 +1,8 @@
 // ============================================
 // 3. components/UserDashboard/DashboardStats.jsx
 // ============================================
-import { DollarSign, Heart, Package, ShoppingBag } from 'lucide-react';
+import { Wallet, Heart, Package, ShoppingBag } from 'lucide-react';
+import { formatMoney } from '../../utils/wholesale';
 
 const DashboardStats = ({ userData }) => {
   const stats = [
@@ -24,7 +25,7 @@ const DashboardStats = ({ userData }) => {
     {
       id: 3,
       title: 'Pending Orders',
-      value: userData?.recentOrders?.filter(o => o.status === 'pending').length || 0,
+      value: userData?.pendingOrders ?? 0,
       icon: Package,
       color: 'purple',
       bgGradient: 'from-purple-500 to-indigo-500'
@@ -32,8 +33,8 @@ const DashboardStats = ({ userData }) => {
     {
       id: 4,
       title: 'Total Spent',
-      value: `$${userData?.totalSpent || 0}`,
-      icon: DollarSign,
+      value: formatMoney(userData?.totalSpent || 0),
+      icon: Wallet,
       color: 'green',
       bgGradient: 'from-green-500 to-emerald-500'
     }

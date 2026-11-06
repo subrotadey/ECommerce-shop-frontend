@@ -1,15 +1,22 @@
 // ============================================
 // 4. components/UserDashboard/QuickActions.jsx
 // ============================================
-import { ShoppingBag, Heart, MapPin, CreditCard } from 'lucide-react';
+import { ShoppingBag, Heart, MapPin, CreditCard, Package } from 'lucide-react';
 import { Link } from 'react-router-dom';
+
+const TONE = {
+  blue: { box: 'bg-blue-100', icon: 'text-blue-600' },
+  pink: { box: 'bg-pink-100', icon: 'text-pink-600' },
+  green: { box: 'bg-green-100', icon: 'text-green-600' },
+  purple: { box: 'bg-purple-100', icon: 'text-purple-600' },
+};
 
 const QuickActions = () => {
   const actions = [
     { icon: ShoppingBag, label: 'Browse Products', path: '/abaya', color: 'blue' },
     { icon: Heart, label: 'My Wishlist', path: '/wishlist', color: 'pink' },
     { icon: MapPin, label: 'Addresses', path: '/profile', color: 'green' },
-    { icon: CreditCard, label: 'Payment Methods', path: '/payment-methods', color: 'purple' }
+    { icon: Package, label: 'My Orders', path: '/orders', color: 'purple' }
   ];
 
   return (
@@ -24,8 +31,8 @@ const QuickActions = () => {
               to={action.path}
               className="flex flex-col items-center gap-3 p-4 bg-gray-50 hover:bg-gray-100 rounded-xl transition-all group"
             >
-              <div className={`w-12 h-12 bg-${action.color}-100 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform`}>
-                <Icon className={`w-6 h-6 text-${action.color}-600`} />
+              <div className={`w-12 h-12 ${TONE[action.color].box} rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform`}>
+                <Icon className={`w-6 h-6 ${TONE[action.color].icon}`} />
               </div>
               <span className="text-sm font-medium text-gray-700 text-center">{action.label}</span>
             </Link>
