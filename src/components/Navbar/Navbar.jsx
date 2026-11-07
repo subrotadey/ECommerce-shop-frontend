@@ -23,7 +23,7 @@ import {
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
-import logo from "../../assets/images/logo.png";
+import useSiteImages from "../../hooks/useSiteImages";
 import avatar from "../../assets/icons/user.svg";
 
 import useCart from "../../hooks/useCart";
@@ -105,6 +105,8 @@ const Navbar = () => {
   const { wishlistCount = 0 } = useWishlist();
   const { currentUser, logOut } = useAuth();
   const { isAdmin, isStaff } = useRole(currentUser?.email);
+  const { getImage } = useSiteImages();
+  const logo = getImage("logo", 300);
 
   const totalCount = items.reduce((total, item) => total + (item.qty || 0), 0);
 

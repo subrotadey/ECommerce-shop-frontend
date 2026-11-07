@@ -2,11 +2,8 @@
 import {
   ArrowDownRight,
   ArrowUpRight,
-  DollarSign,
-  Eye,
   Package,
   RefreshCw,
-  ShoppingCart,
   TrendingUp,
   Users,
   Wallet,
@@ -32,7 +29,18 @@ const fmtNum = (n) =>
     ? `${(n / 1_000).toFixed(1)}k`
     : `${n ?? 0}`;
 
+const fmtDate = (d) =>
+  d
+    ? new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+    : "—";
+
+// ছবি কখনো string, কখনো { url } অবজেক্ট
+const toImg = (img) => (typeof img === "string" ? img : img?.url || "");
+
 const GrowthChip = ({ value }) => {
+  if (value === null || value === undefined) {
+    return <p className="mt-2 text-xs text-gray-400">No data for last month</p>;
+  }
   const up = value >= 0;
   return (
     <div className="flex items-center mt-2 gap-1">
@@ -51,12 +59,13 @@ const GrowthChip = ({ value }) => {
 
 const StatusBadge = ({ status }) => {
   const map = {
-    completed:  "bg-green-100 text-green-700",
-    delivered:  "bg-green-100 text-green-700",
+    delivered: "bg-green-100 text-green-700",
     processing: "bg-blue-100 text-blue-700",
-    pending:    "bg-yellow-100 text-yellow-700",
-    shipped:    "bg-purple-100 text-purple-700",
-    cancelled:  "bg-red-100 text-red-700",
+    pending: "bg-yellow-100 text-yellow-700",
+    shipped: "bg-purple-100 text-purple-700",
+    cancelled: "bg-red-100 text-red-700",
+    refunded: "bg-gray-100 text-gray-700",
+    refunding: "bg-orange-100 text-orange-700",
   };
   return (
     <span className={`badge badge-sm px-2 py-1 rounded-md font-medium ${map[status] ?? "bg-gray-100 text-gray-700"}`}>
@@ -78,30 +87,25 @@ const StatSkeleton = () => (
   </div>
 );
 
-// ── Revenue Bar Chart — fixed layout ─────────────────────────────────────────
-// Uses a fixed pixel height container with absolute positioned bars
-const CHART_HEIGHT = 200; // px — the actual drawable area for bars
+// ── Revenue Bar Chart ────────────────────────────────────────────────────────
+const CHART_HEIGHT = 200;
 
 const RevenueBarChart = ({ data }) => {
   const [hoveredIdx, setHoveredIdx] = useState(null);
   const max = Math.max(...data.map((d) => d.revenue), 1);
 
   return (
-    // Total visual height = chart area + month labels + tooltip space
     <div className="w-full select-none">
-      {/* Y-axis labels */}
       <div className="flex justify-between text-[10px] text-gray-400 mb-1 px-1">
         <span>{fmt(max)}</span>
         <span>{fmt(max / 2)}</span>
         <span>{CURRENCY} 0</span>
       </div>
 
-      {/* Chart area */}
       <div
         className="relative w-full border-b border-l border-gray-200"
         style={{ height: CHART_HEIGHT }}
       >
-        {/* Horizontal grid lines */}
         {[0.25, 0.5, 0.75].map((pct) => (
           <div
             key={pct}
@@ -110,7 +114,6 @@ const RevenueBarChart = ({ data }) => {
           />
         ))}
 
-        {/* Bars */}
         <div className="absolute inset-0 flex items-end gap-[3px] px-1 pb-0">
           {data.map((d, i) => {
             const barHeightPct = Math.max((d.revenue / max) * 100, d.revenue > 0 ? 1 : 0);
@@ -123,7 +126,6 @@ const RevenueBarChart = ({ data }) => {
                 onMouseEnter={() => setHoveredIdx(i)}
                 onMouseLeave={() => setHoveredIdx(null)}
               >
-                {/* Tooltip — always rendered, toggled via opacity */}
                 <div
                   className="absolute z-10 pointer-events-none transition-opacity duration-150"
                   style={{
@@ -136,7 +138,6 @@ const RevenueBarChart = ({ data }) => {
                   <div className="bg-gray-900 text-white text-[11px] rounded-lg px-2.5 py-1.5 whitespace-nowrap shadow-xl">
                     <div className="font-bold">{fmt(d.revenue)}</div>
                     <div className="text-gray-300">{d.orders} orders</div>
-                    {/* Arrow */}
                     <div
                       className="absolute left-1/2 -translate-x-1/2 w-0 h-0"
                       style={{
@@ -149,7 +150,6 @@ const RevenueBarChart = ({ data }) => {
                   </div>
                 </div>
 
-                {/* The bar itself */}
                 <div
                   className="w-full rounded-t-[3px] transition-all duration-200 cursor-pointer"
                   style={{
@@ -167,7 +167,6 @@ const RevenueBarChart = ({ data }) => {
         </div>
       </div>
 
-      {/* Month labels */}
       <div className="flex gap-[3px] px-1 mt-1">
         {data.map((d, i) => (
           <div key={i} className="flex-1 text-center">
@@ -188,46 +187,56 @@ const RevenueBarChart = ({ data }) => {
 // ── main component ────────────────────────────────────────────────────────────
 
 const DashboardHome = () => {
-  const { stats, recentOrders, chartData, topProducts, isLoading, isError, refetch } =
-    useDashboardStats();
+  const {
+    stats,
+    recentOrders,
+    chartData,
+    topProducts,
+    topCustomers,
+    isLoading,
+    isFetching,
+    isError,
+    refetch,
+  } = useDashboardStats();
 
   const kpiCards = stats
     ? [
         {
-          label: "Total Revenue",
-          value: fmt(stats.totalRevenue),
-          growth: stats.revenueGrowth,
+          label: "Awaiting Payment",
+          value: fmtNum(stats.awaitingPayment),
+          sub: `${fmt(stats.awaitingAmount)} to collect`,
           icon: Wallet,
+          iconBg: "bg-yellow-100",
+          iconColor: "text-yellow-600",
+          to: "/admin/orders",
+        },
+        {
+          label: "Processing",
+          value: fmtNum(stats.processingOrders),
+          sub: "Orders being prepared",
+          icon: Package,
           iconBg: "bg-blue-100",
           iconColor: "text-blue-600",
-          sub: `${fmt(stats.thisMonthRevenue)} this month`,
+          to: "/admin/orders",
         },
         {
-          label: "Total Orders",
-          value: fmtNum(stats.totalOrders),
-          growth: stats.ordersGrowth,
-          icon: ShoppingCart,
+          label: "Revenue This Month",
+          value: fmt(stats.thisMonthRevenue),
+          growth: stats.revenueGrowth,
+          sub: `${fmt(stats.totalRevenue)} total (paid orders)`,
+          icon: TrendingUp,
           iconBg: "bg-green-100",
           iconColor: "text-green-600",
-          sub: `${stats.thisMonthOrders} this month`,
+          showGrowth: true,
         },
         {
-          label: "Total Customers",
+          label: "Customers",
           value: fmtNum(stats.totalCustomers),
-          growth: stats.customersGrowth,
+          sub: `${stats.thisMonthCustomers} new this month`,
           icon: Users,
           iconBg: "bg-purple-100",
           iconColor: "text-purple-600",
-          sub: `${stats.thisMonthCustomers} new this month`,
-        },
-        {
-          label: "Total Products",
-          value: fmtNum(stats.totalProducts),
-          growth: stats.productsGrowth,
-          icon: Package,
-          iconBg: "bg-orange-100",
-          iconColor: "text-orange-600",
-          sub: `${stats.thisMonthProducts} added this month`,
+          to: "/admin/customers",
         },
       ]
     : [];
@@ -236,7 +245,7 @@ const DashboardHome = () => {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
         <p className="text-gray-600 text-lg">Failed to load dashboard data.</p>
-        <button onClick={refetch} className="btn btn-primary gap-2">
+        <button onClick={() => refetch()} className="btn btn-primary gap-2">
           <RefreshCw size={16} /> Retry
         </button>
       </div>
@@ -251,55 +260,51 @@ const DashboardHome = () => {
           <h1 className="text-3xl font-bold text-gray-900">Dashboard Overview</h1>
           <p className="text-gray-500 mt-1 text-sm">Welcome back! Here's what's happening today.</p>
         </div>
-        <div className="flex gap-2">
-          <button
-            onClick={refetch}
-            disabled={isLoading}
-            className="btn btn-ghost btn-sm gap-2"
-          >
-            <RefreshCw size={16} className={isLoading ? "animate-spin" : ""} />
-            Refresh
-          </button>
-          <Link to="/admin/analytics" className="btn btn-outline btn-sm gap-2">
-            <TrendingUp size={16} /> Full Report
-          </Link>
-          <Link to="/admin/products" className="btn btn-primary btn-sm gap-2">
-            <Package size={16} /> Add Product
-          </Link>
-        </div>
+                <button
+          onClick={() => refetch()}
+          disabled={isFetching}
+          className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-800 shadow-sm transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <RefreshCw size={16} className={isFetching ? "animate-spin" : ""} />
+          {isFetching ? "Refreshing..." : "Refresh"}
+        </button>
       </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
         {isLoading
           ? Array.from({ length: 4 }).map((_, i) => <StatSkeleton key={i} />)
-          : kpiCards.map((card) => (
-              <div
-                key={card.label}
-                className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-gray-500 font-medium">{card.label}</p>
-                    <p className="text-3xl font-bold text-gray-900 mt-2 tabular-nums">{card.value}</p>
-                    <GrowthChip value={card.growth} />
-                    <p className="text-xs text-gray-400 mt-1">{card.sub}</p>
+          : kpiCards.map((card) => {
+              const Wrapper = card.to ? Link : "div";
+              const wrapperProps = card.to ? { to: card.to } : {};
+              return (
+                <Wrapper
+                  key={card.label}
+                  {...wrapperProps}
+                  className="block bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-gray-500 font-medium">{card.label}</p>
+                      <p className="text-3xl font-bold text-gray-900 mt-2 tabular-nums">{card.value}</p>
+                      {card.showGrowth && <GrowthChip value={card.growth} />}
+                      <p className="text-xs text-gray-400 mt-1">{card.sub}</p>
+                    </div>
+                    <div className={`w-12 h-12 ${card.iconBg} rounded-lg flex items-center justify-center flex-shrink-0 ml-4`}>
+                      <card.icon className={`w-6 h-6 ${card.iconColor}`} />
+                    </div>
                   </div>
-                  <div className={`w-12 h-12 ${card.iconBg} rounded-lg flex items-center justify-center flex-shrink-0 ml-4`}>
-                    <card.icon className={`w-6 h-6 ${card.iconColor}`} />
-                  </div>
-                </div>
-              </div>
-            ))}
+                </Wrapper>
+              );
+            })}
       </div>
 
       {/* Chart + Top Products */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Revenue Chart */}
         <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="mb-5">
             <h3 className="text-lg font-bold text-gray-900">Revenue Overview</h3>
-            <p className="text-xs text-gray-400 mt-0.5">Last 12 months — hover a bar for details</p>
+            <p className="text-xs text-gray-400 mt-0.5">Paid orders, last 12 months — hover a bar for details</p>
           </div>
           {isLoading ? (
             <div className="h-64 bg-gray-100 rounded-lg animate-pulse" />
@@ -312,13 +317,10 @@ const DashboardHome = () => {
           )}
         </div>
 
-        {/* Top Products */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center justify-between mb-5">
+          <div className="mb-5">
             <h3 className="text-lg font-bold text-gray-900">Top Products</h3>
-            <Link to="/admin/products" className="text-sm text-primary hover:underline">
-              View all
-            </Link>
+            <p className="text-xs text-gray-400 mt-0.5">Paid orders only · all time · ranked by revenue</p>
           </div>
 
           {isLoading ? (
@@ -334,43 +336,103 @@ const DashboardHome = () => {
               ))}
             </div>
           ) : topProducts.length === 0 ? (
-            <p className="text-gray-400 text-sm text-center py-8">No sales data yet.</p>
+            <p className="text-gray-400 text-sm text-center py-8">No paid orders yet.</p>
           ) : (
             <div className="space-y-4">
-              {topProducts.map((p, idx) => (
-                <div key={p.productId ?? idx} className="flex items-center gap-3">
-                  <div className="relative flex-shrink-0">
-                    <div className="w-10 h-10 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center border border-gray-200">
-                      {p.image ? (
-                        <img
-                          src={p.image}
-                          alt={p.name}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            e.target.style.display = "none";
-                            e.target.parentElement.innerHTML = `<span class="text-lg">🧥</span>`;
-                          }}
-                        />
-                      ) : (
-                        <span className="text-lg">🧥</span>
-                      )}
+              {topProducts.map((p, idx) => {
+                const img = toImg(p.image);
+                return (
+                  <div key={p.productId ?? idx} className="flex items-center gap-3">
+                    <div className="relative flex-shrink-0">
+                      <div className="w-10 h-10 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center border border-gray-200">
+                        {img ? (
+                          <img
+                            src={img}
+                            alt={p.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.style.display = "none";
+                            }}
+                          />
+                        ) : null}
+                      </div>
+                      <span className="absolute -top-1.5 -left-1.5 w-4 h-4 bg-gray-800 text-white rounded-full text-[9px] flex items-center justify-center font-bold">
+                        {idx + 1}
+                      </span>
                     </div>
-                    <span className="absolute -top-1.5 -left-1.5 w-4 h-4 bg-gray-800 text-white rounded-full text-[9px] flex items-center justify-center font-bold">
-                      {idx + 1}
-                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">{p.name || "Unknown Product"}</p>
+                                            <p className="text-xs text-gray-500">
+                        {p.sales} pcs sold
+                        {p.inCatalog === false && (
+                          <span className="ml-1.5 rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500">
+                            not in catalog
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-sm font-semibold text-gray-900">{fmt(p.revenue)}</p>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{p.name || "Unknown Product"}</p>
-                    <p className="text-xs text-gray-500">{p.sales} units sold</p>
-                  </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className="text-sm font-semibold text-gray-900">{fmt(p.revenue)}</p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
+      </div>
+
+      {/* Top Customers */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="flex items-center justify-between mb-5 flex-wrap gap-2">
+          <div>
+            <h3 className="text-lg font-bold text-gray-900">Top Customers</h3>
+            <p className="text-xs text-gray-400 mt-0.5">Paid orders only · all time · ranked by pieces bought</p>
+          </div>
+          <Link to="/admin/customers" className="text-sm text-primary hover:underline flex items-center gap-1">
+            All customers <ArrowUpRight className="w-4 h-4" />
+          </Link>
+        </div>
+
+        {isLoading ? (
+          <div className="space-y-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-8 bg-gray-100 rounded animate-pulse" />
+            ))}
+          </div>
+        ) : topCustomers.length === 0 ? (
+          <p className="text-center text-gray-400 py-8 text-sm">No paid orders yet.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="table w-full">
+              <thead className="bg-gray-100">
+                <tr className="text-black">
+                  <th>#</th>
+                  <th>Customer</th>
+                  <th>Orders</th>
+                  <th>Pieces</th>
+                  <th>Total Spent</th>
+                  <th>Last Order</th>
+                </tr>
+              </thead>
+              <tbody>
+                {topCustomers.map((c, idx) => (
+                  <tr key={c.email} className="hover">
+                    <td className="font-bold text-gray-500">{idx + 1}</td>
+                    <td>
+                      <p className="font-medium text-sm text-gray-900">{c.name || "Guest"}</p>
+                      <p className="text-xs text-gray-400">{c.email}</p>
+                    </td>
+                    <td className="tabular-nums">{c.orders}</td>
+                    <td className="font-semibold tabular-nums">{c.pieces} pcs</td>
+                    <td className="font-semibold text-gray-900 tabular-nums">{formatMoney(c.spent)}</td>
+                    <td className="text-sm text-gray-500">{fmtDate(c.lastOrderAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Recent Orders */}
@@ -397,7 +459,7 @@ const DashboardHome = () => {
         ) : (
           <div className="overflow-x-auto">
             <table className="table w-full">
-              <thead className="bg-gray-200">
+              <thead className="bg-gray-100">
                 <tr className="text-black">
                   <th>Order ID</th>
                   <th>Customer</th>
@@ -405,48 +467,41 @@ const DashboardHome = () => {
                   <th>Status</th>
                   <th>Payment</th>
                   <th>Date</th>
-                  {/* <th>View</th> */}
                 </tr>
               </thead>
               <tbody>
-                
-                {recentOrders.slice(0, 3).map((order) => (
-                  
-                  <tr key={order._id ?? order.orderId} className="hover">
-                    <td className="font-mono text-sm font-medium text-gray-900">{order.orderId}</td>
-                    <td>
-                      <p className="font-medium text-sm text-gray-900">{order.customer?.address?.fullName || order.customer?.name || "Guest"}</p>
-                      <p className="text-xs text-gray-400">{order.customer?.email}</p>
-                    </td>
-                    <td className="font-semibold text-gray-900 tabular-nums">
-                                            {formatMoney(order.pricing?.total)}
-                    </td>
-                    <td><StatusBadge status={order.status} /></td>
-                    <td>
-                                            {(() => {
-                        const ps = order.status === "cancelled" ? "cancelled" : order.payment?.status ?? "pending";
-                        const cls = {
-                          paid: "badge-success",
-                          pending: "badge-warning",
-                          refunding: "badge-info",
-                          refunded: "badge-neutral",
-                          cancelled: "badge-ghost",
-                        }[ps] || "badge-ghost";
-                        return <span className={`badge badge-sm ${cls}`}>{ps}</span>;
-                      })()}
-                    </td>
-                    <td className="text-sm text-gray-500">
-                      {order.createdAt
-                        ? new Date(order.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-                        : "—"}
-                    </td>
-                    {/* <td>
-                      <Link to="/admin/orders" className="btn btn-ghost btn-xs">
-                        <Eye size={14} />
-                      </Link>
-                    </td> */}
-                  </tr>
-                ))}
+                {recentOrders.slice(0, 8).map((order) => {
+                  const ps =
+                    order.status === "cancelled"
+                      ? "cancelled"
+                      : order.payment?.status ?? "pending";
+                  const payCls =
+                    {
+                      paid: "badge-success",
+                      pending: "badge-warning",
+                      refunding: "badge-info",
+                      refunded: "badge-neutral",
+                      cancelled: "badge-ghost",
+                    }[ps] || "badge-ghost";
+
+                  return (
+                    <tr key={order._id ?? order.orderId} className="hover">
+                      <td className="font-mono text-sm font-medium text-gray-900">{order.orderId}</td>
+                      <td>
+                        <p className="font-medium text-sm text-gray-900">
+                          {order.customer?.address?.fullName || order.customer?.name || "Guest"}
+                        </p>
+                        <p className="text-xs text-gray-400">{order.customer?.email}</p>
+                      </td>
+                      <td className="font-semibold text-gray-900 tabular-nums">
+                        {formatMoney(order.pricing?.total)}
+                      </td>
+                      <td><StatusBadge status={order.status} /></td>
+                      <td><span className={`badge badge-sm ${payCls}`}>{ps}</span></td>
+                      <td className="text-sm text-gray-500">{fmtDate(order.createdAt)}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

@@ -31,7 +31,8 @@ import UserProfile from "../pages/UserProfile/UserProfile";
 import PrivateRoute from "./PrivateRoute";
 import AdminRoute from "./AdminRoute";
 import StaffRoute from "./StaffRoute";
-import Settings from "../pages/Settings/Settings";
+import UserSettings from "../pages/Settings/Settings";
+import AdminSettings from "../pages/Dashboard/Admin/Settings/Settings";
 import UserDashboard from "../pages/Dashboard/UserDashboard/UserDashboard";
 import CheckoutSuccess from "../pages/CheckoutSuccess/CheckoutSuccess";
 import CheckoutCancel from "../pages/CheckoutCancel/CheckoutCancel";
@@ -146,9 +147,9 @@ const router = createBrowserRouter([
       {
         path: "/settings",
         element: (
-          // <PrivateRoute>
-          <Settings />
-          // </PrivateRoute>
+          <PrivateRoute>
+            <UserSettings />
+          </PrivateRoute>
         )
       }
     ],
@@ -209,7 +210,7 @@ const router = createBrowserRouter([
       },
       {
         path: "settings",
-        element: <Settings />
+        element: <AdminSettings />
       }
     ],
   },

@@ -26,9 +26,9 @@ const Settings = () => {
     }
   }, [currentUser]);
 
-  const loadProfile = async () => {
+  const loadProfile = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       setError(null);
       const data = await fetchUserProfile();
       setUserData(data);
@@ -146,7 +146,7 @@ const Settings = () => {
               <hr className="border-gray-200" />
               <ProfileEditForm 
                 userData={userData}
-                onSaved={loadProfile}
+                onSaved={() => loadProfile(true)}
               />
             </div>
           )}
@@ -163,7 +163,7 @@ const Settings = () => {
             <div>
               <PreferencesForm 
                 userData={userData}
-                onSaved={loadProfile}
+                onSaved={() => loadProfile(true)}
               />
             </div>
           )}

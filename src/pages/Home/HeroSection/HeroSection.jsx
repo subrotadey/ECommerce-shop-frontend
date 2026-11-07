@@ -3,8 +3,11 @@ import React from "react";
 import { ArrowRight, Check, MessageCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { WHATSAPP_NUMBER } from "../../../utils/wholesale";
+import useSiteImages from "../../../hooks/useSiteImages";
 
 const HeroSection = () => {
+  const { getImage } = useSiteImages();
+
   const trustPoints = [
     "Wholesale Only",
     "Direct UAE Manufacturer",
@@ -122,7 +125,7 @@ const HeroSection = () => {
               {/* Main Image */}
               <div className="row-span-2 overflow-hidden rounded-2xl bg-ivory shadow-xl">
                 <img
-                  src="https://i.ibb.co.com/xK1GfQh2/1.webp"
+                  src={getImage("hero1", 900)}
                   alt="Premium Anis Abaya collection"
                   className="h-full w-full object-cover transition-transform duration-700 hover:scale-105"
                   loading="eager"
@@ -133,7 +136,7 @@ const HeroSection = () => {
               {/* Top Right Image */}
               <div className="overflow-hidden rounded-2xl bg-ivory shadow-lg">
                 <img
-                  src="https://i.ibb.co.com/k2GVTwvx/6.webp"
+                  src={getImage("hero2", 700)}
                   alt="Elegant abaya design"
                   className="h-full w-full object-cover object-top transition-transform duration-700 hover:scale-105"
                   loading="lazy"
@@ -143,7 +146,7 @@ const HeroSection = () => {
               {/* Bottom Right Image */}
               <div className="overflow-hidden rounded-2xl bg-ivory shadow-lg">
                 <img
-                  src="https://i.ibb.co.com/q3J6rLsR/3.webp"
+                  src={getImage("hero3", 700)}
                   alt="Premium abaya fashion collection"
                   className="h-full w-full object-cover object-top transition-transform duration-700 hover:scale-105"
                   loading="lazy"

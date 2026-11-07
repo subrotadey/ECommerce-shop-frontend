@@ -3,6 +3,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, Package, ShoppingBag } from "lucide-react";
 import FadeIn from "../../../components/Animations/FadeIn";
+import useSiteImages from "../../../hooks/useSiteImages";
 
 const ITEMS = [
   {
@@ -39,7 +40,11 @@ const ITEMS = [
   },
 ];
 
+const FEATURED_SLOTS = ["feat1", "feat2", "feat3", "feat4"];
+
 const PricingShowcase = () => {
+  const { getImage } = useSiteImages();
+
   return (
     <section className="bg-white py-16 sm:py-20 lg:py-24">
 
@@ -84,7 +89,7 @@ const PricingShowcase = () => {
                   className="relative block aspect-[3/4] overflow-hidden bg-ivory"
                 >
                   <img
-                    src={item.image}
+                    src={getImage(FEATURED_SLOTS[index], 700)}
                     alt={item.name}
                     loading="lazy"
                     className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"

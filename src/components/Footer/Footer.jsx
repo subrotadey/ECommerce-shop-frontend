@@ -14,9 +14,12 @@ import {
 } from 'lucide-react';
 import { WHATSAPP_NUMBER } from "../../utils/wholesale";
 
-import logo from '../../assets/images/logo.png';
+// import logo from '../../assets/images/logo.png';
+   import useSiteImages from '../../hooks/useSiteImages';
 
 const Footer = () => {
+     const { getImage } = useSiteImages();
+   const logo = getImage('logo', 300);
   const currentYear = new Date().getFullYear();
 
   const companyLinks = [

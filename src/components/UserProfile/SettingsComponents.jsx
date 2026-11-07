@@ -1,16 +1,36 @@
 // src/components/UserProfile/SettingsComponents.jsx
 
 import React, { useState } from 'react';
-import { Camera, Loader, Save, Eye, EyeOff, Bell, Mail } from 'lucide-react';
-import { 
-  uploadImageToCloudinary, 
+import { Camera, Loader, Save, Eye, EyeOff, Bell, Mail, Info } from 'lucide-react';
+import {
+  uploadImageToCloudinary,
   updateUserProfile,
   validateProfileData,
   showNotification,
-  getAvatarUrl 
+  getAvatarUrl
 } from '../../services/profileService';
 import AddressList from '../Address/AddressList';
-import { getAuth, EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
+import {
+  getAuth,
+  updateProfile,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+  updatePassword
+} from 'firebase/auth';
+
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+const ALLOWED_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
+// Navbar Firebase user থেকে নাম/ছবি পড়ে, তাই Firebase-এও sync রাখি।
+// ব্যর্থ হলে মূল কাজ থামে না।
+const syncFirebaseProfile = async (fields) => {
+  try {
+    const user = getAuth().currentUser;
+    if (user) await updateProfile(user, fields);
+  } catch (error) {
+    console.warn('Firebase profile sync failed:', error.message);
+  }
+};
 
 // ============================================
 // PHOTO UPLOAD SECTION
@@ -20,22 +40,28 @@ export const PhotoUploadSection = ({ userData, onPhotoUpdated }) => {
 
   const handlePhotoUpload = async (e) => {
     const file = e.target.files?.[0];
+    e.target.value = ''; // একই ফাইল আবার বাছা যাবে
     if (!file) return;
+
+    if (!ALLOWED_PHOTO_TYPES.includes(file.type)) {
+      showNotification('error', 'Invalid file', 'Only JPG, PNG or WebP images are allowed');
+      return;
+    }
+    if (file.size > MAX_PHOTO_BYTES) {
+      showNotification('error', 'File too large', 'Image must be 5MB or smaller');
+      return;
+    }
 
     try {
       setUploading(true);
-      
-      // Upload to Cloudinary
+
       const result = await uploadImageToCloudinary(file);
-      
-      // Update profile with new photo URL
       await updateUserProfile({ photoURL: result.url });
-      
+      await syncFirebaseProfile({ photoURL: result.url });
+
       showNotification('success', 'Success!', 'Profile photo updated successfully');
-      
-      if (onPhotoUpdated) {
-        onPhotoUpdated(result.url);
-      }
+
+      if (onPhotoUpdated) onPhotoUpdated(result.url);
     } catch (error) {
       console.error('Photo upload error:', error);
       showNotification('error', 'Upload Failed', error.message || 'Failed to upload photo');
@@ -54,11 +80,13 @@ export const PhotoUploadSection = ({ userData, onPhotoUpdated }) => {
           className="w-24 h-24 rounded-full object-cover border-4 border-gray-200 shadow-lg"
         />
         <div>
-          <label className={`inline-flex items-center gap-2 px-6 py-3 rounded-lg font-semibold cursor-pointer transition-all shadow-md hover:shadow-lg ${
-            uploading 
-              ? 'bg-gray-400 cursor-not-allowed' 
-              : 'bg-blue-600 hover:bg-blue-700 text-white'
-          }`}>
+          <label
+            className={`inline-flex items-center gap-2 px-6 py-3 rounded-lg font-semibold cursor-pointer transition-all shadow-md hover:shadow-lg ${
+              uploading
+                ? 'bg-gray-400 cursor-not-allowed'
+                : 'bg-blue-600 hover:bg-blue-700 text-white'
+            }`}
+          >
             {uploading ? (
               <>
                 <Loader className="animate-spin" size={18} />
@@ -72,14 +100,14 @@ export const PhotoUploadSection = ({ userData, onPhotoUpdated }) => {
             )}
             <input
               type="file"
-              accept="image/*"
+              accept="image/png,image/jpeg,image/webp"
               onChange={handlePhotoUpload}
               disabled={uploading}
               className="hidden"
             />
           </label>
           <p className="text-sm text-gray-500 mt-2">
-            JPG, PNG or GIF. Max size 5MB
+            JPG, PNG or WebP. Max size 5MB
           </p>
         </div>
       </div>
@@ -88,58 +116,41 @@ export const PhotoUploadSection = ({ userData, onPhotoUpdated }) => {
 };
 
 // ============================================
-// PROFILE EDIT FORM
+// PROFILE EDIT FORM (name + phone). Address আলাদা, AddressList নিজে সংরক্ষণ করে।
 // ============================================
 export const ProfileEditForm = ({ userData, onSaved }) => {
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
     displayName: userData.displayName || '',
-    phoneNumber: userData.phoneNumber || '',
-    address: userData.address || {
-      street: '',
-      city: '',
-      state: '',
-      zipCode: '',
-      country: ''
-    }
+    phoneNumber: userData.phoneNumber || ''
   });
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    
-    if (name.includes('.')) {
-      const [parent, child] = name.split('.');
-      setFormData(prev => ({
-        ...prev,
-        [parent]: {
-          ...prev[parent],
-          [child]: value
-        }
-      }));
-    } else {
-      setFormData(prev => ({ ...prev, [name]: value }));
-    }
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSave = async () => {
     try {
-      // Validate
-      const validation = validateProfileData(formData);
+      const payload = {
+        displayName: formData.displayName.trim(),
+        phoneNumber: formData.phoneNumber.trim()
+      };
+
+      const validation = validateProfileData(payload);
       if (!validation.isValid) {
         showNotification('error', 'Validation Error', Object.values(validation.errors)[0]);
         return;
       }
 
       setSaving(true);
-      
-      // Update profile
-      await updateUserProfile(formData);
-      
+
+      await updateUserProfile(payload);
+      await syncFirebaseProfile({ displayName: payload.displayName });
+
       showNotification('success', 'Success!', 'Profile updated successfully');
-      
-      if (onSaved) {
-        onSaved();
-      }
+
+      if (onSaved) onSaved();
     } catch (error) {
       console.error('Save error:', error);
       showNotification('error', 'Update Failed', error.message || 'Failed to update profile');
@@ -149,7 +160,7 @@ export const ProfileEditForm = ({ userData, onSaved }) => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Basic Information */}
       <div>
         <h3 className="text-lg font-bold text-gray-900 mb-4">Basic Information</h3>
@@ -164,6 +175,7 @@ export const ProfileEditForm = ({ userData, onSaved }) => {
               value={formData.displayName}
               onChange={handleInputChange}
               placeholder="Enter your full name"
+              autoComplete="name"
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
             />
           </div>
@@ -178,105 +190,40 @@ export const ProfileEditForm = ({ userData, onSaved }) => {
               value={formData.phoneNumber}
               onChange={handleInputChange}
               placeholder="+971 5X XXX XXXX"
+              autoComplete="tel"
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
             />
           </div>
         </div>
-      </div>
 
-      {/* Address Information */}
-      <AddressList></AddressList>
-      {/* <div>
-        <h3 className="text-lg font-bold text-gray-900 mb-4">Address</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Street Address
-            </label>
-            <input
-              type="text"
-              name="address.street"
-              value={formData.address.street}
-              onChange={handleInputChange}
-              placeholder="123 Main Street, Apt 4B"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">City</label>
-            <input
-              type="text"
-              name="address.city"
-              value={formData.address.city}
-              onChange={handleInputChange}
-              placeholder="Chattogram"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">State/Province</label>
-            <input
-              type="text"
-              name="address.state"
-              value={formData.address.state}
-              onChange={handleInputChange}
-              placeholder="Chittagong"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Zip Code</label>
-            <input
-              type="text"
-              name="address.zipCode"
-              value={formData.address.zipCode}
-              onChange={handleInputChange}
-              placeholder="4000"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Country</label>
-            <input
-              type="text"
-              name="address.country"
-              value={formData.address.country}
-              onChange={handleInputChange}
-              placeholder="Bangladesh"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-            />
-          </div>
+        <div className="flex justify-end mt-4">
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving}
+            className={`flex items-center gap-2 px-8 py-3 rounded-lg font-semibold transition-all shadow-md hover:shadow-lg ${
+              saving
+                ? 'bg-gray-400 cursor-not-allowed'
+                : 'bg-blue-600 hover:bg-blue-700 text-white'
+            }`}
+          >
+            {saving ? (
+              <>
+                <Loader className="animate-spin" size={18} />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save size={18} />
+                Save Changes
+              </>
+            )}
+          </button>
         </div>
-      </div> */}
-
-      {/* Save Button */}
-      <div className="flex justify-end">
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className={`flex items-center gap-2 px-8 py-3 rounded-lg font-semibold transition-all shadow-md hover:shadow-lg ${
-            saving
-              ? 'bg-gray-400 cursor-not-allowed'
-              : 'bg-blue-600 hover:bg-blue-700 text-white'
-          }`}
-        >
-          {saving ? (
-            <>
-              <Loader className="animate-spin" size={18} />
-              Saving...
-            </>
-          ) : (
-            <>
-              <Save size={18} />
-              Save Changes
-            </>
-          )}
-        </button>
       </div>
+
+      {/* Addresses (নিজস্ব add/edit/delete আছে) */}
+      <AddressList />
     </div>
   );
 };
@@ -284,6 +231,22 @@ export const ProfileEditForm = ({ userData, onSaved }) => {
 // ============================================
 // PASSWORD CHANGE FORM
 // ============================================
+const mapPasswordError = (code, fallback) => {
+  switch (code) {
+    case 'auth/wrong-password':
+    case 'auth/invalid-credential':
+      return 'Current password is incorrect';
+    case 'auth/weak-password':
+      return 'New password is too weak';
+    case 'auth/too-many-requests':
+      return 'Too many attempts. Please try again later';
+    case 'auth/requires-recent-login':
+      return 'Please log out, log in again and retry';
+    default:
+      return fallback || 'Failed to change password';
+  }
+};
+
 export const PasswordChangeForm = () => {
   const [saving, setSaving] = useState(false);
   const [showPasswords, setShowPasswords] = useState({
@@ -297,13 +260,17 @@ export const PasswordChangeForm = () => {
     confirmPassword: ''
   });
 
+  const hasPasswordLogin = getAuth().currentUser?.providerData?.some(
+    (p) => p.providerId === 'password'
+  );
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setPasswordData(prev => ({ ...prev, [name]: value }));
+    setPasswordData((prev) => ({ ...prev, [name]: value }));
   };
 
   const toggleShowPassword = (field) => {
-    setShowPasswords(prev => ({ ...prev, [field]: !prev[field] }));
+    setShowPasswords((prev) => ({ ...prev, [field]: !prev[field] }));
   };
 
   const handleChangePassword = async (e) => {
@@ -319,106 +286,83 @@ export const PasswordChangeForm = () => {
       return;
     }
 
+    if (passwordData.newPassword === passwordData.currentPassword) {
+      showNotification('error', 'Error', 'New password must be different from the current one');
+      return;
+    }
+
     try {
       setSaving(true);
-      
+
       const user = getAuth().currentUser;
       if (!user) throw new Error('Please log in again');
-      if (!user.providerData.some((p) => p.providerId === 'password')) {
-        throw new Error('This account uses Google sign-in. Password cannot be changed here.');
-      }
+
       const credential = EmailAuthProvider.credential(user.email, passwordData.currentPassword);
       await reauthenticateWithCredential(user, credential);
       await updatePassword(user, passwordData.newPassword);
 
       showNotification('success', 'Success!', 'Password changed successfully');
-
       setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
     } catch (error) {
       console.error('Password change error:', error);
-      const wrong = ['auth/wrong-password', 'auth/invalid-credential'].includes(error.code);
-      showNotification('error', 'Error', wrong ? 'Current password is incorrect' : error.message || 'Failed to change password');
+      showNotification('error', 'Error', mapPasswordError(error.code, error.message));
     } finally {
       setSaving(false);
     }
   };
+
+  // Google ইত্যাদি দিয়ে লগইন করা অ্যাকাউন্টে পাসওয়ার্ড নেই
+  if (!hasPasswordLogin) {
+    return (
+      <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+        <Info className="text-blue-500 mt-0.5 shrink-0" size={20} />
+        <div>
+          <div className="font-medium text-gray-900">No password to change</div>
+          <div className="text-sm text-gray-600 mt-1">
+            You signed in with Google, so your password is managed by your Google account.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const fields = [
+    { key: 'current', name: 'currentPassword', label: 'Current Password', autoComplete: 'current-password' },
+    { key: 'new', name: 'newPassword', label: 'New Password', autoComplete: 'new-password' },
+    { key: 'confirm', name: 'confirmPassword', label: 'Confirm New Password', autoComplete: 'new-password' }
+  ];
 
   return (
     <form onSubmit={handleChangePassword} className="space-y-6">
       <div>
         <h3 className="text-lg font-bold text-gray-900 mb-4">Change Password</h3>
         <div className="space-y-4">
-          {/* Current Password */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Current Password
-            </label>
-            <div className="relative">
-              <input
-                type={showPasswords.current ? 'text' : 'password'}
-                name="currentPassword"
-                value={passwordData.currentPassword}
-                onChange={handleInputChange}
-                required
-                className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              <button
-                type="button"
-                onClick={() => toggleShowPassword('current')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-              >
-                {showPasswords.current ? <EyeOff size={20} /> : <Eye size={20} />}
-              </button>
+          {fields.map(({ key, name, label, autoComplete }) => (
+            <div key={key}>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {label}
+              </label>
+              <div className="relative">
+                <input
+                  type={showPasswords[key] ? 'text' : 'password'}
+                  name={name}
+                  value={passwordData[name]}
+                  onChange={handleInputChange}
+                  autoComplete={autoComplete}
+                  required
+                  className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <button
+                  type="button"
+                  onClick={() => toggleShowPassword(key)}
+                  aria-label={showPasswords[key] ? 'Hide password' : 'Show password'}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                >
+                  {showPasswords[key] ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
             </div>
-          </div>
-
-          {/* New Password */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              New Password
-            </label>
-            <div className="relative">
-              <input
-                type={showPasswords.new ? 'text' : 'password'}
-                name="newPassword"
-                value={passwordData.newPassword}
-                onChange={handleInputChange}
-                required
-                className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              <button
-                type="button"
-                onClick={() => toggleShowPassword('new')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-              >
-                {showPasswords.new ? <EyeOff size={20} /> : <Eye size={20} />}
-              </button>
-            </div>
-          </div>
-
-          {/* Confirm Password */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Confirm New Password
-            </label>
-            <div className="relative">
-              <input
-                type={showPasswords.confirm ? 'text' : 'password'}
-                name="confirmPassword"
-                value={passwordData.confirmPassword}
-                onChange={handleInputChange}
-                required
-                className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              <button
-                type="button"
-                onClick={() => toggleShowPassword('confirm')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-              >
-                {showPasswords.confirm ? <EyeOff size={20} /> : <Eye size={20} />}
-              </button>
-            </div>
-          </div>
+          ))}
         </div>
       </div>
 
@@ -454,13 +398,14 @@ export const PasswordChangeForm = () => {
 // ============================================
 export const PreferencesForm = ({ userData, onSaved }) => {
   const [saving, setSaving] = useState(false);
-  const [preferences, setPreferences] = useState(
-    userData.preferences || { newsletter: false, notifications: true }
-  );
+  const [preferences, setPreferences] = useState({
+    newsletter: userData.preferences?.newsletter ?? false,
+    notifications: userData.preferences?.notifications ?? true
+  });
 
   const handleCheckboxChange = (e) => {
     const { name, checked } = e.target;
-    setPreferences(prev => ({ ...prev, [name]: checked }));
+    setPreferences((prev) => ({ ...prev, [name]: checked }));
   };
 
   const handleSave = async () => {
@@ -481,7 +426,7 @@ export const PreferencesForm = ({ userData, onSaved }) => {
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-bold text-gray-900 mb-4">Communication Preferences</h3>
-        
+
         <div className="space-y-4">
           <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
             <div className="flex items-start gap-3">
@@ -525,6 +470,7 @@ export const PreferencesForm = ({ userData, onSaved }) => {
 
       <div className="flex justify-end">
         <button
+          type="button"
           onClick={handleSave}
           disabled={saving}
           className={`flex items-center gap-2 px-8 py-3 rounded-lg font-semibold transition-all shadow-md hover:shadow-lg ${

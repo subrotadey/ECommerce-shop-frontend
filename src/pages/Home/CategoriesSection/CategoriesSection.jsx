@@ -2,6 +2,7 @@
 import { Link } from "react-router-dom";
 import { ArrowUpRight } from "lucide-react";
 import FadeIn from "../../../components/Animations/FadeIn";
+import useSiteImages from "../../../hooks/useSiteImages";
 
 const CATEGORIES = [
   {
@@ -42,7 +43,10 @@ const CATEGORIES = [
   },
 ];
 
+const CATEGORY_SLOTS = ["cat1", "cat2", "cat3", "cat4", "cat5", "cat6"];
+
 const CategoriesSection = () => {
+  const { getImage } = useSiteImages();
   return (
     <section className="bg-ivory/50 py-16 sm:py-20 lg:py-24">
 
@@ -84,7 +88,7 @@ const CategoriesSection = () => {
 
                 {/* Category image */}
                 <img
-                  src={category.img}
+                  src={getImage(CATEGORY_SLOTS[index], 700)}
                   alt={category.name}
                   loading="lazy"
                   className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-110"
