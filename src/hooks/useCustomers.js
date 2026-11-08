@@ -1,209 +1,150 @@
 // src/hooks/useCustomers.js
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  getCustomers,
-  getCustomerById,
-  updateCustomerStatus,
-  updateCustomer,
+  batchUpdateCustomerStatus,
   deleteCustomer,
-  getCustomerStats,
-  sendCustomerMessage,
   exportCustomers,
-  batchUpdateCustomerStatus
+  getCustomerById,
+  getCustomerStats,
+  getCustomers,
+  sendCustomerMessage,
+  updateCustomer,
+  updateCustomerStatus
 } from '../services/customerService';
 import notify from '../utils/notification';
 
-/**
- * Hook for fetching all customers with filters
- */
-export const useCustomers = (filters = {}) => {
-  return useQuery({
+// তালিকা: filter/sort/পেজ বদলালে আগের ডেটা দেখিয়ে রাখে, পুরো পেজ খালি হয় না
+export const useCustomers = (filters = {}) =>
+  useQuery({
     queryKey: ['customers', filters],
     queryFn: () => getCustomers(filters),
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    retry: 1,
+    placeholderData: keepPreviousData,
+    staleTime: 1000 * 60,
+    retry: 1
   });
-};
 
-/**
- * Hook for fetching single customer
- */
-export const useCustomer = (customerId) => {
-  return useQuery({
+export const useCustomer = (customerId) =>
+  useQuery({
     queryKey: ['customer', customerId],
     queryFn: () => getCustomerById(customerId),
     enabled: !!customerId,
-    staleTime: 1000 * 60 * 2,
-    retry: 1,
+    staleTime: 1000 * 30,
+    retry: 1
   });
-};
 
-/**
- * Hook for customer statistics
- */
-export const useCustomerStats = () => {
-  return useQuery({
+export const useCustomerStats = () =>
+  useQuery({
     queryKey: ['customerStats'],
     queryFn: getCustomerStats,
-    staleTime: 1000 * 60 * 5,
-    retry: 1,
+    staleTime: 1000 * 60,
+    retry: 1
   });
+
+// TanStack v5: invalidateQueries-এ অবশ্যই { queryKey }
+const useInvalidateCustomers = () => {
+  const queryClient = useQueryClient();
+  return () => {
+    queryClient.invalidateQueries({ queryKey: ['customers'] });
+    queryClient.invalidateQueries({ queryKey: ['customer'] });
+    queryClient.invalidateQueries({ queryKey: ['customerStats'] });
+  };
 };
 
-/**
- * Hook for updating customer status
- */
 export const useUpdateCustomerStatus = () => {
-  const queryClient = useQueryClient();
+  const invalidate = useInvalidateCustomers();
 
   return useMutation({
-    mutationFn: ({ customerId, isActive }) => 
-      updateCustomerStatus(customerId, isActive),
+    mutationFn: ({ customerId, isActive }) => updateCustomerStatus(customerId, isActive),
     onSuccess: (data, variables) => {
-      queryClient.invalidateQueries(['customers']);
-      queryClient.invalidateQueries(['customer', variables.customerId]);
-      queryClient.invalidateQueries(['customerStats']);
-      
+      invalidate();
+
+      if (data?.firebaseSynced === false) {
+        notify.warning(
+          'Saved, but login not changed',
+          'Status was saved, but the sign-in block could not be applied. Orders are still blocked.'
+        );
+        return;
+      }
+
       notify.success(
         'Status Updated',
         `Customer ${variables.isActive ? 'activated' : 'deactivated'} successfully`
       );
     },
     onError: (error) => {
-      notify.error(
-        'Update Failed',
-        error.message || 'Failed to update customer status'
-      );
+      notify.error('Update Failed', error.message || 'Failed to update customer status');
     }
   });
 };
 
-/**
- * Hook for updating customer details
- */
 export const useUpdateCustomer = () => {
-  const queryClient = useQueryClient();
+  const invalidate = useInvalidateCustomers();
 
   return useMutation({
-    mutationFn: ({ customerId, customerData }) => 
-      updateCustomer(customerId, customerData),
-    onSuccess: (data, variables) => {
-      queryClient.invalidateQueries(['customers']);
-      queryClient.invalidateQueries(['customer', variables.customerId]);
-      
-      notify.success(
-        'Customer Updated',
-        'Customer details updated successfully'
-      );
+    mutationFn: ({ customerId, customerData }) => updateCustomer(customerId, customerData),
+    onSuccess: () => {
+      invalidate();
+      notify.success('Customer Updated', 'Customer details updated successfully');
     },
     onError: (error) => {
-      notify.error(
-        'Update Failed',
-        error.message || 'Failed to update customer'
-      );
+      notify.error('Update Failed', error.message || 'Failed to update customer');
     }
   });
 };
 
-/**
- * Hook for deleting customer
- */
 export const useDeleteCustomer = () => {
-  const queryClient = useQueryClient();
+  const invalidate = useInvalidateCustomers();
 
   return useMutation({
     mutationFn: deleteCustomer,
     onSuccess: () => {
-      queryClient.invalidateQueries(['customers']);
-      queryClient.invalidateQueries(['customerStats']);
-      
-      notify.success(
-        'Customer Deleted',
-        'Customer deleted successfully'
-      );
+      invalidate();
+      notify.success('Customer Deleted', 'Customer deleted successfully');
     },
     onError: (error) => {
-      notify.error(
-        'Delete Failed',
-        error.message || 'Failed to delete customer'
-      );
+      notify.error('Delete Failed', error.message || 'Failed to delete customer');
     }
   });
 };
 
-/**
- * Hook for sending message to customer
- */
-export const useSendMessage = () => {
-  return useMutation({
-    mutationFn: ({ customerId, messageData }) => 
-      sendCustomerMessage(customerId, messageData),
+export const useSendMessage = () =>
+  useMutation({
+    mutationFn: ({ customerId, messageData }) => sendCustomerMessage(customerId, messageData),
     onSuccess: () => {
-      notify.success(
-        'Message Sent',
-        'Message sent to customer successfully'
-      );
+      notify.success('Message Sent', 'The customer will see it in their notification bell');
     },
     onError: (error) => {
-      notify.error(
-        'Send Failed',
-        error.message || 'Failed to send message'
-      );
+      notify.error('Send Failed', error.message || 'Failed to send message');
     }
   });
-};
 
-/**
- * Hook for exporting customers
- */
-export const useExportCustomers = () => {
-  return useMutation({
-    mutationFn: exportCustomers,
+export const useExportCustomers = () =>
+  useMutation({
+    mutationFn: (params) => exportCustomers(params),
     onSuccess: () => {
-      notify.success(
-        'Export Successful',
-        'Customer data exported successfully'
-      );
+      notify.success('Export Ready', 'The CSV file has been downloaded');
     },
     onError: (error) => {
-      notify.error(
-        'Export Failed',
-        error.message || 'Failed to export customers'
-      );
+      notify.error('Export Failed', error.message || 'Failed to export customers');
     }
   });
-};
 
-/**
- * Hook for batch updating customer statuses
- */
 export const useBatchUpdateStatus = () => {
-  const queryClient = useQueryClient();
+  const invalidate = useInvalidateCustomers();
 
   return useMutation({
-    mutationFn: ({ customerIds, isActive }) => 
-      batchUpdateCustomerStatus(customerIds, isActive),
+    mutationFn: ({ customerIds, isActive }) => batchUpdateCustomerStatus(customerIds, isActive),
     onSuccess: (data) => {
-      queryClient.invalidateQueries(['customers']);
-      queryClient.invalidateQueries(['customerStats']);
-      
-      notify.success(
-        'Batch Update Complete',
-        data.message
-      );
+      invalidate();
+      notify.success('Batch Update Complete', data.message);
     },
     onError: (error) => {
-      notify.error(
-        'Batch Update Failed',
-        error.message || 'Failed to update customers'
-      );
+      notify.error('Batch Update Failed', error.message || 'Failed to update customers');
     }
   });
 };
 
-/**
- * Main hook with all customer operations
- */
+// সব operation এক জায়গায়। options দিলে (যেমন onSuccess) পেজ থেকে modal বন্ধ ইত্যাদি করা যায়।
 const useCustomerManagement = (filters = {}) => {
   const customersQuery = useCustomers(filters);
   const statsQuery = useCustomerStats();
@@ -219,32 +160,33 @@ const useCustomerManagement = (filters = {}) => {
     customers: customersQuery.data?.customers || [],
     pagination: customersQuery.data?.pagination || {},
     stats: statsQuery.data?.stats || {},
-    
-    // Loading states
-    isLoading: customersQuery.isLoading,
+
+    // States
+    isLoading: customersQuery.isPending, // শুধু একদম প্রথম লোড
+    isFetching: customersQuery.isFetching, // প্রতিটি refetch
     isLoadingStats: statsQuery.isLoading,
     isUpdating: updateStatusMutation.isPending || updateCustomerMutation.isPending,
     isDeleting: deleteCustomerMutation.isPending,
     isSending: sendMessageMutation.isPending,
     isExporting: exportMutation.isPending,
     isBatchUpdating: batchUpdateMutation.isPending,
-    
-    // Error states
+
+    // Errors
     error: customersQuery.error,
     statsError: statsQuery.error,
-    
+
     // Actions
-    updateStatus: (customerId, isActive) => 
-      updateStatusMutation.mutate({ customerId, isActive }),
-    updateCustomer: (customerId, customerData) => 
-      updateCustomerMutation.mutate({ customerId, customerData }),
-    deleteCustomer: deleteCustomerMutation.mutate,
-    sendMessage: (customerId, messageData) => 
-      sendMessageMutation.mutate({ customerId, messageData }),
-    exportCustomers: exportMutation.mutate,
-    batchUpdateStatus: (customerIds, isActive) => 
-      batchUpdateMutation.mutate({ customerIds, isActive }),
-    
+    updateStatus: (customerId, isActive, options) =>
+      updateStatusMutation.mutate({ customerId, isActive }, options),
+    updateCustomer: (customerId, customerData, options) =>
+      updateCustomerMutation.mutate({ customerId, customerData }, options),
+    deleteCustomer: (customerId, options) => deleteCustomerMutation.mutate(customerId, options),
+    sendMessage: (customerId, messageData, options) =>
+      sendMessageMutation.mutate({ customerId, messageData }, options),
+    exportCustomers: (params) => exportMutation.mutate(params),
+    batchUpdateStatus: (customerIds, isActive, options) =>
+      batchUpdateMutation.mutate({ customerIds, isActive }, options),
+
     // Refetch
     refetch: customersQuery.refetch,
     refetchStats: statsQuery.refetch

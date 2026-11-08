@@ -106,24 +106,29 @@ export const sendCustomerMessage = async (customerId, messageData) => {
 /**
  * Export customers to CSV
  */
-export const exportCustomers = async () => {
+export const exportCustomers = async (params = {}) => {
   try {
     const response = await axiosInstance.get(`${API_BASE_URL}/export/csv`, {
+      params,
       responseType: 'blob'
     });
-    
-    // Create download link
-    const url = window.URL.createObjectURL(new Blob([response.data]));
+
+    const url = window.URL.createObjectURL(
+      new Blob([response.data], { type: 'text/csv;charset=utf-8' })
+    );
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `customers-${Date.now()}.csv`);
+    link.setAttribute('download', `customers-${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     link.remove();
-    
+    window.URL.revokeObjectURL(url);
+
     return { success: true };
   } catch (error) {
     console.error('Export customers error:', error);
+    // blob অবস্থায় error-এর বার্তা পড়া যায় না
+    if (error.response?.data instanceof Blob) throw new Error('Export failed');
     throw error.response?.data || error;
   }
 };
@@ -132,26 +137,25 @@ export const exportCustomers = async () => {
  * Batch update customer statuses
  */
 export const batchUpdateCustomerStatus = async (customerIds, isActive) => {
-  try {
-    const updatePromises = customerIds.map(id => 
-      updateCustomerStatus(id, isActive)
-    );
-    
-    const results = await Promise.allSettled(updatePromises);
-    
-    const successful = results.filter(r => r.status === 'fulfilled').length;
-    const failed = results.filter(r => r.status === 'rejected').length;
-    
-    return {
-      success: true,
-      message: `Updated ${successful} customers. ${failed > 0 ? `${failed} failed.` : ''}`,
-      successful,
-      failed
-    };
-  } catch (error) {
-    console.error('Batch update error:', error);
-    throw error;
+  const results = await Promise.allSettled(
+    customerIds.map((id) => updateCustomerStatus(id, isActive))
+  );
+
+  const successful = results.filter((r) => r.status === 'fulfilled').length;
+  const failed = results.length - successful;
+
+  // সবগুলো ব্যর্থ হলে "সফল" দেখানো যাবে না
+  if (successful === 0) {
+    const firstError = results.find((r) => r.status === 'rejected')?.reason;
+    throw new Error(firstError?.message || 'No customers were updated');
   }
+
+  return {
+    success: true,
+    message: `Updated ${successful} customer(s).${failed > 0 ? ` ${failed} failed.` : ''}`,
+    successful,
+    failed
+  };
 };
 
 /**

@@ -71,7 +71,7 @@ export const MENU_ITEMS = [
   },
   {
     id: "settings",
-    label: "Settings",
+    label: "Site Settings",
     path: "/admin/settings",
     icon: Settings,
     roles: ["admin"],
