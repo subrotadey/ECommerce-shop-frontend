@@ -1,238 +1,205 @@
-// ============================================
-// pages/admin/Categories/Categories.jsx
-// ============================================
-import { useState } from 'react';
-import { Plus, Edit2, Trash2, Eye, X, Image as ImageIcon } from 'lucide-react';
+// src/pages/Dashboard/Admin/Categories/Categories.jsx
+import { useQuery } from '@tanstack/react-query';
+import { ExternalLink, Layers, Loader2, Package, RefreshCw, Tag } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { getCategoryOverview } from '../../../../services/categoryService';
+
+const MAIN_LABEL = { abaya: 'Abaya', hijab: 'Hijab' };
+const SITE_PATH = { abaya: '/abaya', hijab: '/hijab' };
+
+const money = (n) =>
+  `AED ${Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
+
+const priceRange = (c) => {
+  if (c.minPrice == null) return '—';
+  return c.minPrice === c.maxPrice ? money(c.minPrice) : `${money(c.minPrice)} – ${money(c.maxPrice)}`;
+};
 
 const Categories = () => {
-    const [categories, setCategories] = useState([
-        { id: 1, name: 'Abayas', slug: 'abayas', description: 'Traditional modest wear', products: 45, icon: '🧥', status: 'active' },
-        { id: 2, name: 'Hijabs', slug: 'hijabs', description: 'Headscarves and wraps', products: 67, icon: '🧕', status: 'active' },
-        { id: 3, name: 'Dresses', slug: 'dresses', description: 'Modest dresses collection', products: 34, icon: '👗', status: 'active' },
-        { id: 4, name: 'Tops', slug: 'tops', description: 'Modest tops and tunics', products: 28, icon: '👚', status: 'active' },
-        { id: 5, name: 'Bottoms', slug: 'bottoms', description: 'Pants and skirts', products: 19, icon: '👖', status: 'active' },
-        { id: 6, name: 'Accessories', slug: 'accessories', description: 'Prayer mats, scarves', products: 52, icon: '🕌', status: 'active' },
-    ]);
+  const { data, isLoading, isFetching, error, refetch } = useQuery({
+    queryKey: ['admin', 'categories'],
+    queryFn: getCategoryOverview,
+    staleTime: 1000 * 30,
+    retry: 1,
+  });
 
-    const [showModal, setShowModal] = useState(false);
-    const [editingCategory, setEditingCategory] = useState(null);
-
-    const handleDelete = (id) => {
-        if (confirm('Are you sure you want to delete this category?')) {
-            setCategories(categories.filter(c => c.id !== id));
-        }
-    };
-
-    const CategoryModal = ({ category, onClose }) => {
-        const [formData, setFormData] = useState(category || {
-            name: '',
-            slug: '',
-            description: '',
-            icon: '📦',
-            status: 'active'
-        });
-
-        const handleSubmit = (e) => {
-            e.preventDefault();
-            if (category) {
-                setCategories(categories.map(c => c.id === category.id ? { ...formData, id: category.id, products: category.products } : c));
-            } else {
-                setCategories([...categories, { ...formData, id: Date.now(), products: 0 }]);
-            }
-            onClose();
-        };
-
-        return (
-            <div className="modal modal-open">
-                <div className="modal-box">
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="font-bold text-lg">
-                            {category ? 'Edit Category' : 'Add New Category'}
-                        </h3>
-                        <button onClick={onClose} className="btn btn-ghost btn-sm btn-circle">
-                            <X size={20} />
-                        </button>
-                    </div>
-
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        <div className="form-control">
-                            <label className="label">
-                                <span className="label-text font-medium">Category Name</span>
-                            </label>
-                            <input
-                                type="text"
-                                className="input input-bordered"
-                                value={formData.name}
-                                onChange={(e) => setFormData({...formData, name: e.target.value, slug: e.target.value.toLowerCase().replace(/\s+/g, '-')})}
-                                required
-                            />
-                        </div>
-
-                        <div className="form-control">
-                            <label className="label">
-                                <span className="label-text font-medium">Slug</span>
-                            </label>
-                            <input
-                                type="text"
-                                className="input input-bordered"
-                                value={formData.slug}
-                                onChange={(e) => setFormData({...formData, slug: e.target.value})}
-                                required
-                            />
-                        </div>
-
-                        <div className="form-control">
-                            <label className="label">
-                                <span className="label-text font-medium">Icon (Emoji)</span>
-                            </label>
-                            <input
-                                type="text"
-                                className="input input-bordered text-2xl"
-                                value={formData.icon}
-                                onChange={(e) => setFormData({...formData, icon: e.target.value})}
-                                maxLength={2}
-                            />
-                        </div>
-
-                        <div className="form-control">
-                            <label className="label">
-                                <span className="label-text font-medium">Description</span>
-                            </label>
-                            <textarea
-                                className="textarea textarea-bordered h-20"
-                                value={formData.description}
-                                onChange={(e) => setFormData({...formData, description: e.target.value})}
-                            />
-                        </div>
-
-                        <div className="form-control">
-                            <label className="label">
-                                <span className="label-text font-medium">Status</span>
-                            </label>
-                            <select
-                                className="select select-bordered"
-                                value={formData.status}
-                                onChange={(e) => setFormData({...formData, status: e.target.value})}
-                            >
-                                <option value="active">Active</option>
-                                <option value="inactive">Inactive</option>
-                            </select>
-                        </div>
-
-                        <div className="modal-action">
-                            <button type="button" onClick={onClose} className="btn btn-ghost">
-                                Cancel
-                            </button>
-                            <button type="submit" className="btn btn-primary">
-                                {category ? 'Update' : 'Create'} Category
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        );
-    };
-
+  if (isLoading) {
     return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-900">Categories</h1>
-                    <p className="text-gray-600 mt-1">Organize your products into categories</p>
-                </div>
-                <button
-                    onClick={() => {
-                        setEditingCategory(null);
-                        setShowModal(true);
-                    }}
-                    className="btn btn-primary btn-sm gap-2"
-                >
-                    <Plus size={16} />
-                    Add Category
-                </button>
-            </div>
-
-            {/* Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                    <p className="text-sm text-gray-600">Total Categories</p>
-                    <p className="text-2xl font-bold text-gray-900 mt-1">{categories.length}</p>
-                </div>
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                    <p className="text-sm text-gray-600">Active Categories</p>
-                    <p className="text-2xl font-bold text-green-600 mt-1">
-                        {categories.filter(c => c.status === 'active').length}
-                    </p>
-                </div>
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                    <p className="text-sm text-gray-600">Total Products</p>
-                    <p className="text-2xl font-bold text-gray-900 mt-1">
-                        {categories.reduce((sum, c) => sum + c.products, 0)}
-                    </p>
-                </div>
-            </div>
-
-            {/* Categories Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {categories.map((category) => (
-                    <div key={category.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
-                        <div className="flex items-start justify-between mb-4">
-                            <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-purple-100 rounded-xl flex items-center justify-center text-4xl">
-                                {category.icon}
-                            </div>
-                            <div className="dropdown dropdown-end">
-                                <button className="btn btn-ghost btn-sm btn-circle">
-                                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                        <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-                                    </svg>
-                                </button>
-                                <ul className="dropdown-content menu p-2 shadow-lg bg-white rounded-box w-40 border border-gray-200">
-                                    <li>
-                                        <a onClick={() => {
-                                            setEditingCategory(category);
-                                            setShowModal(true);
-                                        }}>
-                                            <Edit2 size={14} /> Edit
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a onClick={() => handleDelete(category.id)} className="text-red-600">
-                                            <Trash2 size={14} /> Delete
-                                        </a>
-                                    </li>
-                                </ul>
-                            </div>
-                        </div>
-
-                        <h3 className="text-xl font-bold text-gray-900 mb-2">{category.name}</h3>
-                        <p className="text-sm text-gray-600 mb-4">{category.description}</p>
-
-                        <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                            <div>
-                                <p className="text-2xl font-bold text-gray-900">{category.products}</p>
-                                <p className="text-xs text-gray-500">Products</p>
-                            </div>
-                            <span className={`badge ${category.status === 'active' ? 'badge-success' : 'badge-ghost'} badge-sm`}>
-                                {category.status}
-                            </span>
-                        </div>
-                    </div>
-                ))}
-            </div>
-
-            {/* Category Modal */}
-            {showModal && (
-                <CategoryModal
-                    category={editingCategory}
-                    onClose={() => {
-                        setShowModal(false);
-                        setEditingCategory(null);
-                    }}
-                />
-            )}
-        </div>
+      <div className="flex h-96 items-center justify-center">
+        <Loader2 className="h-10 w-10 animate-spin text-gray-500" />
+      </div>
     );
+  }
+
+  if (error && !data) {
+    return (
+      <div className="rounded-lg border border-red-200 bg-red-50 p-8 text-center">
+        <p className="mb-4 text-sm text-red-700">{error.message || 'Failed to load categories.'}</p>
+        <button
+          type="button"
+          onClick={() => refetch()}
+          className="rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-100"
+        >
+          Try again
+        </button>
+      </div>
+    );
+  }
+
+  const mains = data?.mainCategories || [];
+  const labels = data?.labels || [];
+  const totals = data?.totals || {};
+
+  const statCards = [
+    { label: 'Total Products', value: totals.products, color: 'text-gray-900' },
+    { label: 'Active (on website)', value: totals.active, color: 'text-green-600' },
+    { label: 'Draft / Archived', value: totals.inactive, color: 'text-yellow-600' },
+    { label: 'Pieces in stock (active)', value: totals.stock, color: 'text-blue-600' },
+  ];
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Categories</h1>
+          <p className="mt-1 text-gray-600">Live overview of your products by category</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => refetch()}
+          disabled={isFetching}
+          className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-800 shadow-sm hover:bg-gray-100 disabled:opacity-60"
+        >
+          <RefreshCw size={16} className={isFetching ? 'animate-spin' : ''} />
+          Refresh
+        </button>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        {statCards.map((c) => (
+          <div key={c.label} className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+            <p className="text-sm text-gray-600">{c.label}</p>
+            <p className={`mt-1 text-2xl font-bold ${c.color}`}>
+              {Number(c.value || 0).toLocaleString('en-US')}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      {/* Main categories */}
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        {mains.map((c) => (
+          <div key={c.key} className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100 text-gray-700">
+                  <Layers size={22} />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">{MAIN_LABEL[c.key] || c.key}</h2>
+                  <p className="text-xs text-gray-500">Main category</p>
+                </div>
+              </div>
+              <Link
+                to={SITE_PATH[c.key] || '/'}
+                target="_blank"
+                className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-100"
+              >
+                <ExternalLink size={13} /> View on site
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div className="rounded-lg bg-gray-50 p-3">
+                <p className="text-2xl font-bold text-gray-900">{c.total}</p>
+                <p className="text-xs text-gray-500">Products</p>
+              </div>
+              <div className="rounded-lg bg-green-50 p-3">
+                <p className="text-2xl font-bold text-green-700">{c.active}</p>
+                <p className="text-xs text-gray-500">Active</p>
+              </div>
+              <div className="rounded-lg bg-yellow-50 p-3">
+                <p className="text-2xl font-bold text-yellow-700">{c.draft + c.archived}</p>
+                <p className="text-xs text-gray-500">Draft / Archived</p>
+              </div>
+            </div>
+
+            <dl className="mt-4 space-y-1.5 border-t border-gray-100 pt-4 text-sm">
+              <div className="flex justify-between">
+                <dt className="text-gray-600">Stock (active)</dt>
+                <dd className="font-semibold text-gray-900">
+                  {Number(c.stock).toLocaleString('en-US')} pcs
+                </dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-gray-600">Wholesale price range</dt>
+                <dd className="font-semibold text-gray-900">{priceRange(c)}</dd>
+              </div>
+            </dl>
+          </div>
+        ))}
+      </div>
+
+      {/* Labels */}
+      <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
+        <div className="flex items-center gap-2 border-b border-gray-200 px-5 py-4">
+          <Tag size={18} className="text-gray-500" />
+          <h2 className="font-bold text-gray-900">Category labels used on products</h2>
+        </div>
+
+        {labels.length === 0 ? (
+          <div className="py-12 text-center">
+            <Package className="mx-auto mb-3 h-12 w-12 text-gray-300" />
+            <p className="text-gray-500">No category labels yet</p>
+            <p className="mt-1 text-sm text-gray-400">
+              Add labels in the “Categories” field when creating or editing a product.
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="table w-full">
+              <thead>
+                <tr className="text-black">
+                  <th>Label</th>
+                  <th>Products</th>
+                  <th>Active</th>
+                  <th>Main category</th>
+                </tr>
+              </thead>
+              <tbody>
+                {labels.map((l) => (
+                  <tr key={l.name.toLowerCase()} className="hover">
+                    <td className="font-medium text-gray-900">{l.name}</td>
+                    <td className="text-gray-700">{l.total}</td>
+                    <td className="text-gray-700">{l.active}</td>
+                    <td>
+                      <div className="flex flex-wrap gap-1.5">
+                        {l.mainCategories.map((m) => (
+                          <span
+                            key={m}
+                            className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-700"
+                          >
+                            {MAIN_LABEL[m] || m}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        <p className="border-t border-gray-100 px-5 py-3 text-xs text-gray-500">
+          Categories are set on each product (Main category + Categories field). To add or rename
+          a label, edit the products that use it.
+        </p>
+      </div>
+    </div>
+  );
 };
 
 export default Categories;

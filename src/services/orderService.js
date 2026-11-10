@@ -1,5 +1,6 @@
 // src/services/orderService.js
 import axiosInstance from "../utils/axios";
+import axios from "axios";
 
 const API_BASE_URL = "/orders";
 
@@ -151,6 +152,61 @@ export const searchOrders = async (searchTerm) => {
   }
 };
 
+// Staff/Admin: অর্ডারের জন্য ক্রেতা খোঁজা
+export const findCustomersForOrder = async (search) => {
+  try {
+    const { data } = await axiosInstance.get("/customers", {
+      params: { search, limit: 8, status: "active", role: "user", sortBy: "displayName", sortOrder: "asc" },
+    });
+    return data.customers || [];
+  } catch (error) {
+    fail("Find customers error", error);
+  }
+};
+
+// Staff/Admin: নতুন অফলাইন ক্রেতা
+export const createOfflineCustomer = async (payload) => {
+  try {
+    const { data } = await axiosInstance.post("/admin/customers/offline", payload);
+    return data;
+  } catch (error) {
+    fail("Create offline customer error", error);
+  }
+};
+
+// Staff/Admin: ক্রেতার হয়ে অর্ডার
+export const createAdminOrder = async (payload) => {
+  try {
+    const { data } = await axiosInstance.post("/admin/orders", payload);
+    return data;
+  } catch (error) {
+    fail("Create admin order error", error);
+  }
+};
+
+// Staff/Admin: মেমো লিংকের টোকেন
+export const getMemoLink = async (orderId) => {
+  try {
+    const { data } = await axiosInstance.post(`/admin/orders/${orderId}/memo-link`, {});
+    return data;
+  } catch (error) {
+    fail("Memo link error", error);
+  }
+};
+
+// পাবলিক মেমো (লগইন ছাড়া)
+export const getPublicMemo = async (orderId, key) => {
+  try {
+    const base = String(axiosInstance.defaults.baseURL || "").replace(/\/$/, "");
+    const { data } = await axios.get(`${base}/memo/${encodeURIComponent(orderId)}`, {
+      params: { k: key },
+    });
+    return data;
+  } catch (error) {
+    fail("Public memo error", error);
+  }
+};
+
 export default {
   getOrders,
   getOrderById,
@@ -163,4 +219,9 @@ export default {
   exportOrders,
   batchUpdateOrderStatus,
   searchOrders,
+  findCustomersForOrder,
+  createOfflineCustomer,
+  createAdminOrder,
+  getMemoLink,
+  getPublicMemo,
 };

@@ -3,6 +3,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
     batchUpdateOrderStatus,
     cancelMyOrder,
+    createAdminOrder,
+    createOfflineCustomer,
     exportOrders,
     getOrderById,
     getOrders,
@@ -122,6 +124,30 @@ export const useBatchUpdateStatus = () => {
       else notify.success("Batch Update Complete", data.message);
     },
     onError: (e) => notify.error("Batch Update Failed", errMsg(e, "Failed to update orders")),
+  });
+};
+
+// Staff/Admin: ক্রেতার হয়ে অর্ডার (এরর caller দেখায়)
+export const useCreateAdminOrder = () => {
+  const refresh = useRefreshOrders();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: createAdminOrder,
+    onSuccess: () => {
+      refresh();
+      // স্টক বদলেছে, প্রোডাক্ট তালিকা নতুন করে আনতে
+      qc.invalidateQueries({ queryKey: ["products"] });
+      qc.invalidateQueries({ queryKey: ["allProducts"] });
+      qc.invalidateQueries({ queryKey: ["customers"] });
+    },
+  });
+};
+
+export const useCreateOfflineCustomer = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: createOfflineCustomer,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["customers"] }),
   });
 };
 

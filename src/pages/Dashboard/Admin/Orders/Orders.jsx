@@ -3,12 +3,14 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   CheckCircle, Clock, Download, Eye, Filter, MapPin, MessageCircle, Package,
-  Printer, RefreshCw, RotateCcw, Search, Truck, X, XCircle,
+  Plus, Printer, RefreshCw, RotateCcw, Search, Truck, X, XCircle,
 } from 'lucide-react';
 import useAuth from '../../../../hooks/useAuth';
 import useRole from '../../../../hooks/useRole';
 import useOrderManagement from '../../../../hooks/useOrders';
 import notify from '../../../../utils/notification';
+import { Link } from 'react-router-dom';
+import MemoWhatsAppButton, { toWaDigits } from '../../../../components/Admin/MemoWhatsAppButton';
 import { DELIVERY_NOTICE, WHATSAPP_DISPLAY, formatMoney } from '../../../../utils/wholesale';
 
 // ── constants (Tailwind 4: ক্লাস নাম পুরো লেখা, জোড়া লাগানো নয়) ─────────────
@@ -201,7 +203,7 @@ const printInvoice = (order) => {
     <div class="grid">
       <div class="box"><h3>Bill To</h3>
         <strong>${esc(addr?.name || order.customer?.name || 'N/A')}</strong><br>
-        ${esc(order.customer?.email || '')}<br>
+        ${order.customer?.isOffline ? '' : esc(order.customer?.email || '') + '<br>'}
         ${addr?.phone ? esc(addr.phone) + '<br>' : ''}
         ${addr ? addr.lines.map(esc).join('<br>') : ''}
       </div>
@@ -314,7 +316,7 @@ const OrderDetailsModal = ({
   const p = order.pricing || {};
   const pay = order.payment || {};
   const final = isFinal(order);
-  const waDigits = (addr?.phone || '').replace(/\D/g, '');
+  const waDigits = toWaDigits(addr?.phone);
   useModalLock(onClose);
 
   return createPortal(
@@ -372,7 +374,20 @@ const OrderDetailsModal = ({
           <div>
             <h4 className="font-semibold mb-2">Customer</h4>
             <div className="border border-gray-200 rounded-lg p-4 space-y-1 text-sm">
-              <div className="flex justify-between"><span className="text-gray-600">Account:</span><span className="font-medium">{order.customer?.email || 'N/A'}</span></div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Account:</span>
+                <span className="font-medium">
+                  {order.customer?.isOffline
+                    ? `Offline customer${order.customer?.businessName ? ` · ${order.customer.businessName}` : ''}`
+                    : order.customer?.email || 'N/A'}
+                </span>
+              </div>
+              {order.internalNote && (
+                <div className="flex justify-between gap-4">
+                  <span className="text-gray-600">Internal note:</span>
+                  <span className="font-medium text-right">{order.internalNote}</span>
+                </div>
+              )}
               <div className="flex justify-between"><span className="text-gray-600">Name:</span><span className="font-medium">{addr?.name || order.customer?.name || 'N/A'}</span></div>
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Phone:</span>
@@ -490,6 +505,7 @@ const OrderDetailsModal = ({
               <CheckCircle size={16} /> Mark as Paid
             </button>
           )}
+          <MemoWhatsAppButton order={order} />
           <button onClick={() => printInvoice(order)} className="btn btn-primary gap-2">
             <Printer size={16} /> Print Invoice
           </button>
@@ -654,6 +670,12 @@ const Orders = () => {
           <p className="text-gray-600 mt-1">Track and manage customer orders</p>
         </div>
         <div className="flex gap-2">
+          <Link
+            to="/admin/orders/new"
+            className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-3 py-1.5 text-sm font-semibold text-white hover:bg-black"
+          >
+            <Plus size={16} /> New Order
+          </Link>
           {selectedOrders.length > 0 && (
             <button onClick={handleBatchUpdate} disabled={isBatchUpdating} className="btn btn-outline btn-sm gap-2">
               <Filter size={16} /> Batch Update ({selectedOrders.length})
@@ -691,7 +713,7 @@ const Orders = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
             <input
               type="text"
-              placeholder="Search by order ID, customer name or email..."
+              placeholder="Search by order ID, name, phone or email..."
               className="input input-bordered w-full pl-10 pr-10 bg-white border-gray-300 ring ring-blue-200 rounded-lg"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
@@ -770,7 +792,16 @@ const Orders = () => {
                     <td className="font-medium text-gray-900 whitespace-nowrap">{order.orderId}</td>
                     <td>
                       <div className="font-medium text-gray-900">{order.customer?.address?.fullName || order.customer?.name || 'N/A'}</div>
-                      <div className="text-sm text-gray-500">{order.customer?.email || 'N/A'}</div>
+                      <div className="text-sm text-gray-500">
+                        {order.customer?.isOffline
+                          ? [order.customer?.businessName, order.customer?.phone].filter(Boolean).join(' · ') || 'Offline customer'
+                          : order.customer?.email || 'N/A'}
+                      </div>
+                      {order.source && order.source !== 'website' && (
+                        <span className="mt-0.5 inline-block rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-amber-800">
+                          {order.source.replace('_', ' ')}
+                        </span>
+                      )}
                     </td>
                     <td className="text-gray-600 whitespace-nowrap">
                       {order.pricing?.totalQuantity ?? order.items?.length ?? 0} pcs
@@ -801,6 +832,7 @@ const Orders = () => {
                         <button onClick={() => printInvoice(order)} className="btn btn-ghost btn-xs" title="Print Invoice">
                           <Printer size={16} />
                         </button>
+                        <MemoWhatsAppButton order={order} label="Memo" compact />
                       </div>
                     </td>
                   </tr>

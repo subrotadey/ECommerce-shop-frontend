@@ -37,6 +37,8 @@ import UserDashboard from "../pages/Dashboard/UserDashboard/UserDashboard";
 import CheckoutSuccess from "../pages/CheckoutSuccess/CheckoutSuccess";
 import CheckoutCancel from "../pages/CheckoutCancel/CheckoutCancel";
 import MyOrders from "../pages/MyOrders/MyOrders";
+import CreateOrder from "../pages/Dashboard/Admin/Orders/CreateOrder";
+import Memo from "../pages/Memo/Memo";
 
 const router = createBrowserRouter([
   {
@@ -172,6 +174,14 @@ const router = createBrowserRouter([
         element: <Products />
       },
       {
+        path: "orders/new",
+        element: (
+          <StaffRoute>
+            <CreateOrder />
+          </StaffRoute>
+        )
+      },
+      {
         path: "orders",
         element: (
           <StaffRoute> {/* Staff can also access orders */}
@@ -215,6 +225,11 @@ const router = createBrowserRouter([
     ],
   },
 
+  {
+    path: "/memo/:orderId",
+    element: <Memo />,
+    errorElement: <DisplayError />,
+  },
   {
     path: "*",
     element: <NotFound />,

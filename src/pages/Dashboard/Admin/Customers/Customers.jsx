@@ -1,32 +1,32 @@
 // pages/Dashboard/Admin/Customers/Customers.jsx
-import { useEffect, useState } from 'react';
 import {
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
-  Ban,
-  Calendar,
-  CheckCircle,
-  Download,
-  Eye,
-  Loader2,
-  Mail,
-  MapPin,
-  MessageCircle,
-  MessageSquare,
-  Phone,
-  Search,
-  Shield,
-  ShoppingBag,
-  Trash2,
-  UserCog,
-  Users,
-  Wallet,
-  X
+    ArrowDown,
+    ArrowUp,
+    ArrowUpDown,
+    Ban,
+    Calendar,
+    CheckCircle,
+    Download,
+    Eye,
+    Loader2,
+    Mail,
+    MapPin,
+    MessageCircle,
+    MessageSquare,
+    Phone,
+    Search,
+    Shield,
+    ShoppingBag,
+    Trash2,
+    UserCog,
+    Users,
+    Wallet,
+    X
 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import useAuth from '../../../../hooks/useAuth';
 import useCustomerManagement, { useCustomer } from '../../../../hooks/useCustomers';
 import useDebounce from '../../../../hooks/useDebounce';
-import useAuth from '../../../../hooks/useAuth';
 import useRole from '../../../../hooks/useRole';
 import notify from '../../../../utils/notification';
 
@@ -215,7 +215,7 @@ const CustomerDetailsModal = ({
     String(customer.email || '').toLowerCase() === String(currentEmail || '').toLowerCase();
   const canManage = isAdmin && !!customer && !isSelf && customer.role !== 'admin';
 
-  const whatsappNumber = String(customer?.phoneNumber || '').replace(/\D/g, '');
+  const whatsappNumber = String(customer?.phoneDigits || customer?.phoneNumber || '').replace(/\D/g, '');
   const location = [customer?.address?.city, customer?.address?.country].filter(Boolean).join(', ');
 
   return (
@@ -271,7 +271,11 @@ const CustomerDetailsModal = ({
               <div className="space-y-3 rounded-lg bg-gray-50 p-4 text-sm">
                 <div className="flex items-center gap-3">
                   <Mail size={16} className="shrink-0 text-gray-400" />
-                  <span className="break-all text-gray-700">{customer.email}</span>
+                  <span className="break-all text-gray-700">
+                    {customer.isOffline
+                      ? customer.contactEmail || 'No email (offline customer)'
+                      : customer.email}
+                  </span>
                 </div>
                 <div className="flex items-center gap-3">
                   <Phone size={16} className="shrink-0 text-gray-400" />
@@ -292,14 +296,16 @@ const CustomerDetailsModal = ({
               </div>
 
               <div className="flex flex-col gap-2">
-                <button
-                  type="button"
-                  onClick={() => onMessage(customer)}
-                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
-                >
-                  <MessageSquare size={16} />
-                  Send message
-                </button>
+                {!customer.isOffline && (
+                  <button
+                    type="button"
+                    onClick={() => onMessage(customer)}
+                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                  >
+                    <MessageSquare size={16} />
+                    Send message
+                  </button>
+                )}
 
                 {whatsappNumber.length >= 10 && (
                   <a
@@ -821,11 +827,20 @@ const Customers = () => {
                           <span className="font-medium text-gray-900">
                             {customer.displayName || 'Unknown'}
                           </span>
+                          {customer.isOffline && (
+                            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">
+                              OFFLINE
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td>
                         <div className="text-sm">
-                          <div className="text-gray-900">{customer.email}</div>
+                          <div className="text-gray-900">
+                            {customer.isOffline
+                              ? customer.businessName || customer.contactEmail || 'Offline customer'
+                              : customer.email}
+                          </div>
                           <div className="text-gray-500">{customer.phoneNumber || 'N/A'}</div>
                         </div>
                       </td>

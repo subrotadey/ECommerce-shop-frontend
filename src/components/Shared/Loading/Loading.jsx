@@ -11,10 +11,6 @@ const Loading = () => {
             key={index}
             className="group relative bg-white p-3 rounded-xl shadow-sm border border-gray-200"
           >
-            {/* Wishlist button placeholder */}
-            {/* <div className="absolute top-3 right-3 z-10">
-              <Skeleton circle width={32} height={32} />
-            </div> */}
 
             {/* Product Image */}
             <Skeleton height={320} borderRadius={10} />
