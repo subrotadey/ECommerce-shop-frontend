@@ -1,4 +1,4 @@
-
+// src/pages/Home/ConnectBar/ConnectBar.jsx
 import {
   Facebook,
   Instagram,

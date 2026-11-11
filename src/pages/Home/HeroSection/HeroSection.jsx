@@ -1,5 +1,4 @@
-
-import React from "react";
+// src/pages/Home/HeroSection/HeroSection.jsx
 import { ArrowRight, Check, MessageCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { WHATSAPP_NUMBER } from "../../../utils/wholesale";

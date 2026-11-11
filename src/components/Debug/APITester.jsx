@@ -22,8 +22,6 @@ const APITester = () => {
           data: response.data
         }
       }));
-      
-      console.log(`✅ ${name} SUCCESS:`, response.data);
     } catch (error) {
       setResults(prev => ({
         ...prev,

@@ -89,8 +89,6 @@ export const uploadImageToCloudinary = async (file, folder = 'user-profiles') =>
     formData.append('upload_preset', CLOUDINARY_CONFIG.uploadPreset);
     formData.append('folder', folder);
 
-    console.log('📤 Uploading to Cloudinary...');
-
     // Upload to Cloudinary
     const response = await fetch(
       `https://api.cloudinary.com/v1_1/${CLOUDINARY_CONFIG.cloudName}/image/upload`,
@@ -106,8 +104,6 @@ export const uploadImageToCloudinary = async (file, folder = 'user-profiles') =>
     }
 
     const data = await response.json();
-
-    console.log('✅ Upload successful:', data.secure_url);
 
     return {
       url: data.secure_url,
@@ -131,8 +127,6 @@ export const deleteImageFromCloudinary = async (publicId) => {
   try {
     if (!publicId) throw new Error('Public ID is required');
 
-    console.log('🗑️ Deleting image from Cloudinary:', publicId);
-
     const response = await api.delete('/cloudinary/delete/image', {
       data: { publicId },
     });
@@ -141,7 +135,6 @@ export const deleteImageFromCloudinary = async (publicId) => {
       throw new Error(response.data.message || 'Delete failed');
     }
 
-    console.log('✅ Image deleted successfully');
     return response.data;
   } catch (error) {
     console.error('❌ Delete image error:', error);

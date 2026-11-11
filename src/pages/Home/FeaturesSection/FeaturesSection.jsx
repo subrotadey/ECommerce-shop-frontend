@@ -1,4 +1,4 @@
-
+// src/pages/Home/FeaturesSection/FeaturesSection.jsx
 import {
   Factory,
   Gem,

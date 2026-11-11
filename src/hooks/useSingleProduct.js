@@ -2,8 +2,11 @@
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 
+// Backend base URL is read from the .env file
+const API_URL = import.meta.env.VITE_API_URL;
+
 const fetchProductById = async (id) => {
-  const { data } = await axios.get(`https://ecommerce-shop-backend-gr7k.onrender.com/products/${id}`);
+  const { data } = await axios.get(`${API_URL}/products/${id}`);
   return data;
 };
 

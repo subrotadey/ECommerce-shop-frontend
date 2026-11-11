@@ -1,3 +1,4 @@
+// src/utils/siteImages.js
 import logo from "../assets/images/logo.png";
 
 export const SITE_IMAGE_DEFAULTS = {

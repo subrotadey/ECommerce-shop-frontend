@@ -3,21 +3,24 @@ import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { getAdminProducts } from "../services/productService";
 
-// Function to fetch products by category
+// Backend base URL is read from the .env file
+const API_URL = import.meta.env.VITE_API_URL;
+
+// Fetch products filtered by category
 const fetchProductsByCategory = async (category) => {
-  const { data } = await axios.get(
-    `https://ecommerce-shop-backend-gr7k.onrender.com/products?category=${category}`
-  );
+  const { data } = await axios.get(`${API_URL}/products`, {
+    params: { category },
+  });
   return data;
 };
 
 // Fetch all products
 const fetchAllProducts = async () => {
-  const { data } = await axios.get(`https://ecommerce-shop-backend-gr7k.onrender.com/products`);
+  const { data } = await axios.get(`${API_URL}/products`);
   return data;
 };
 
-// Custom hook
+// Custom hook: products by category
 const useProducts = (category) => {
   return useQuery({
     queryKey: ["products", category], // cache key
@@ -27,7 +30,7 @@ const useProducts = (category) => {
   });
 };
 
-// Hook for all products (public, draft/archived বাদে)
+// Hook for all products (public, excludes draft/archived)
 export const useAllProducts = () => {
   return useQuery({
     queryKey: ["products", "all"],
@@ -36,8 +39,9 @@ export const useAllProducts = () => {
   });
 };
 
-// Admin: সব product (draft সহ)। Backend: GET /api/admin/products (Firebase token + admin)
-// queryKey আলাদা, যাতে public cache-এর সঙ্গে মিশে না যায়।
+// Admin: all products (including drafts)
+// Backend: GET /api/admin/products (Firebase token + admin role required)
+// Separate queryKey so it does not mix with the public cache
 export const useAdminProducts = () => {
   return useQuery({
     queryKey: ["admin", "products"],

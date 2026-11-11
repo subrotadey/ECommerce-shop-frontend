@@ -45,9 +45,6 @@ const SignUp = () => {
   };
 
   const handleSignUp = (data) => {
-    console.log(data);
-    console.log(createUser);
-
     setSignUpError("");
     createUser(data.email, data.password)
       .then((result) => {

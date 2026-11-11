@@ -20,7 +20,6 @@ const ForgetPassword = () => {
   const handleEmailBlur = (event) => {
     const email = event.target.value;
     setUserEmail(email);
-    // console.log(email);
   };
 
   const handleForgotPassword = () => {

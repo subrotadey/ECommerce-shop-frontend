@@ -1,4 +1,4 @@
-
+// src/pages/Home/HowItWorks/HowItWorks.jsx
 import {
   UserPlus,
   Search,

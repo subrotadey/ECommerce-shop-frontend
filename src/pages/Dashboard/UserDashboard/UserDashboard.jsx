@@ -20,8 +20,6 @@ const UserDashboard = () => {
     const { role } = useRole(currentUser?.email);
     const { userData, loading, error, refreshDashboard } = useDashboard();
 
-    console.log("📊 Dashboard Data:", { userData, loading, error });
-
     // Loading State
     if (loading) {
         return (

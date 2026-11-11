@@ -4,17 +4,17 @@
 
 import HeroSection from "./HeroSection/HeroSection";
 import TrustBar from "./TrustBar/TrustBar";
+import BrandVideoSection from "./BrandVideoSection/BrandVideoSection";
 import CategoriesSection from "./CategoriesSection/CategoriesSection";
-import PricingShowcase from "./PricingShowcase/PricingShowcase";
+import AbayaSection from "./AbayaSection/AbayaSection";
+import CollectionVideoSection from "./CollectionVideoSection/CollectionVideoSection";
+import HijabSection from "./HijabSection/HijabSection";
 import FeaturesSection from "./FeaturesSection/FeaturesSection";
 import HowItWorks from "./HowItWorks/HowItWorks";
 import Testimonials from "./Testimonials/Testimonials";
 import UAECoverage from "./UAECoverage/UAECoverage";
-import PartnerCTA from "./PartnerCTA/PartnerCTA";
 import FAQSection from "./FAQSection/FAQSection";
-import Newsletter from "./Newsletter/Newsletter";
 import FloatingWhatsApp from "./FloatingWhatsApp/FloatingWhatsApp";
-import BackToTop from "../../components/Shared/BackToTop/BackToTop";
 import ConnectSection from "./ConnectSection/ConnectSection";
 import ConnectBar from "./ConnectBar/ConnectBar";
 
@@ -22,19 +22,20 @@ import ConnectBar from "./ConnectBar/ConnectBar";
 const Home = () => {
   return (
     <div className="bg-white">
-      <HeroSection/>
+      <HeroSection />
       <ConnectBar />
       <TrustBar />
-      <CategoriesSection/>
-      <PricingShowcase />
+      <BrandVideoSection />
+      <CategoriesSection />
+      <AbayaSection />
+      <CollectionVideoSection />
+      <HijabSection />
       <FeaturesSection />
       <HowItWorks />
       <Testimonials />
       <UAECoverage />
-      {/* <PartnerCTA /> */}
       <FAQSection />
       <ConnectSection />
-      {/* <Newsletter /> */}
       <FloatingWhatsApp />
     </div>
   );

@@ -1,4 +1,4 @@
-
+// src/pages/Home/FloatingWhatsApp/FloatingWhatsApp.jsx
 import { MessageCircle } from "lucide-react";
 import { WHATSAPP_NUMBER } from "../../../utils/wholesale";
 

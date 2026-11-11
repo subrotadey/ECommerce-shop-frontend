@@ -1,5 +1,4 @@
-
-import React from "react";
+// src/pages/Home/PricingShowcase/PricingShowcase.jsx
 import { Link } from "react-router-dom";
 import { ArrowRight, Package, ShoppingBag } from "lucide-react";
 import FadeIn from "../../../components/Animations/FadeIn";

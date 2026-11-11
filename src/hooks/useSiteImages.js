@@ -1,3 +1,4 @@
+// src/hooks/useSiteImages.js
 import { useQuery } from "@tanstack/react-query";
 import axiosInstance from "../utils/axios";
 import { SITE_IMAGE_DEFAULTS } from "../utils/siteImages";

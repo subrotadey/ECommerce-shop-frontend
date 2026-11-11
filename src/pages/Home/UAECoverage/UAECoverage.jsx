@@ -1,12 +1,9 @@
-
+// src/pages/Home/UAECoverage/UAECoverage.jsx
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import {
-  ArrowRight,
   MapPin,
   Globe2,
-  PackageCheck,
-  MessageCircle,
+  PackageCheck
 } from "lucide-react";
 import FadeIn from "../../../components/Animations/FadeIn";
 

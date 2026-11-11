@@ -17,7 +17,6 @@ const AbayaAll = () => {
       category="Abaya"
       breadcrumbs={[
         { label: 'HOME', link: '/' },
-        { label: 'BORKA', link: '/borka' },
         { label: 'ABAYA' }
       ]}
     />

@@ -14,11 +14,19 @@ import Swal from "sweetalert2";
 import useWishlist from "../../../hooks/useWishlist";
 import QuickViewModal from "../QuickViewModal/QuickViewModal";
 import Loading from "../Loading/Loading";
+import { formatMoney } from "../../../utils/currency";
+import { stamp } from "../../../utils/homeProducts";
+import {
+  BULK_DISCOUNT_PERCENT,
+  BULK_DISCOUNT_THRESHOLD,
+  MOQ_PER_COLOR,
+} from "../../../utils/wholesale";
 
 // ─── Design tokens ─────────────────────────────────────────────────────────
 const GOLD = "#B8922A";
 const CHARCOAL = "#1A1A1A";
 const SAGE = "#4A7C6F";
+const money0 = (n) => formatMoney(n, { minimumFractionDigits: 0 });
 
 // ─── Tiny InView hook ──────────────────────────────────────────────────────
 function useInView(threshold = 0.1) {
@@ -146,9 +154,9 @@ function CategoryHero({ category, count }) {
           {/* Stats */}
           <div className="flex flex-wrap gap-6">
             {[
-              { label: "Products", value: `${count}+` },
-              { label: "MOQ", value: "10 pcs" },
-              { label: "Delivery", value: "2–4 days" },
+              { label: "Styles", value: `${count}` },
+              { label: "Min. per colour", value: `${MOQ_PER_COLOR} pcs` },
+              { label: `Bulk discount (${BULK_DISCOUNT_THRESHOLD}+ pcs)`, value: `${BULK_DISCOUNT_PERCENT}% off` },
             ].map(s => (
               <div key={s.label}>
                 <div className="text-2xl font-bold text-white" style={{ color: cfg.accent }}>{s.value}</div>
@@ -193,19 +201,21 @@ function ProductCard({ product, idx, onQuickView }) {
     toggleWishlist(product._id || product.sku);
   };
 
-  const discount = product.oldPrice && product.oldPrice > product.newPrice
-    ? Math.round(((product.oldPrice - product.newPrice) / product.oldPrice) * 100)
+  const price = Number(product.newPrice) || 0;
+  const oldPrice = Number(product.oldPrice) || 0;
+  const discount = oldPrice > price
+    ? Math.round(((oldPrice - price) / oldPrice) * 100)
     : 0;
 
   const isBestSeller = product.tags?.includes("Best Seller");
   const isNew = product.tags?.includes("New") || product.tags?.includes("New Arrival");
 
   return (
-    <FadeIn delay={idx * 40} className="h-full">
+    <FadeIn delay={(idx % 4) * 60} className="h-full">
       <div className="group bg-white rounded-2xl overflow-hidden border border-gray-100 hover:border-gray-200 hover:shadow-xl transition-all duration-300 h-full flex flex-col">
 
         {/* Image */}
-        <div className="relative overflow-hidden bg-gray-50 aspect-[3/4]">
+        <div className="relative overflow-hidden bg-gray-50 aspect-[4/5]">
           {/* Badges */}
           <div className="absolute top-3 left-3 z-10 flex flex-col gap-1.5">
             {isBestSeller && (
@@ -287,17 +297,11 @@ function ProductCard({ product, idx, onQuickView }) {
           <div className="flex-1" />
 
           {/* Price */}
-          <div className="flex items-end justify-between mb-3">
-            <div>
-              <div className="text-xl font-bold" style={{ color: CHARCOAL }}>${product.newPrice}</div>
-              {product.oldPrice > product.newPrice && (
-                <div className="text-xs text-gray-400 line-through">${product.oldPrice} retail</div>
-              )}
-            </div>
+          <div className="mb-3 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+            <span className="text-xl font-bold" style={{ color: CHARCOAL }}>{formatMoney(price)}</span>
+            <span className="text-xs text-gray-500">/ piece</span>
             {discount > 0 && (
-              <div className="text-xs font-bold px-2 py-1 rounded-lg" style={{ background: `${SAGE}12`, color: SAGE }}>
-                Save ${product.oldPrice - product.newPrice}
-              </div>
+              <span className="text-xs text-gray-400 line-through">{formatMoney(oldPrice)}</span>
             )}
           </div>
 
@@ -367,7 +371,7 @@ export default function ProductsGrid({
   const [sortBy, setSortBy] = useState("default");
   const [showFilters, setShowFilters] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
-  const [gridCols, setGridCols] = useState(4); // 3 or 4
+  const [gridCols, setGridCols] = useState(3); // 3 or 4
 
   // Extract filter options
   const allCategories = useMemo(() => [...new Set(products.flatMap(p => p.categories || []))], [products]);
@@ -403,7 +407,7 @@ export default function ProductsGrid({
       });
       case "popularity": return [...list].sort((a, b) =>
         (b.tags?.includes("Best Seller") ? 1 : 0) - (a.tags?.includes("Best Seller") ? 1 : 0));
-      case "latest": return [...list].reverse();
+      case "latest": return [...list].sort((a, b) => stamp(b) - stamp(a));
       default: return list;
     }
   }, [products, searchQuery, selectedCategories, selectedColors, selectedTags, priceRange, sortBy]);
@@ -448,10 +452,11 @@ export default function ProductsGrid({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-wrap items-center justify-center sm:justify-between gap-4 py-3">
             {[
-              { icon: Package, text: `${products.length}+ styles in stock` },
-              { icon: Truck, text: "2–4 Day UAE Delivery" },
-              { icon: Tag, text: "MOQ from 10 pieces" },
-              { icon: Shield, text: "Quality Guaranteed" },
+              { icon: Package, text: `${products.length} ${products.length === 1 ? "style" : "styles"} available` },
+              { icon: Tag, text: `Min. ${MOQ_PER_COLOR} pcs per colour` },
+              { icon: Star, text: `${BULK_DISCOUNT_PERCENT}% off on ${BULK_DISCOUNT_THRESHOLD}+ pieces` },
+              { icon: Truck, text: "Worldwide wholesale orders" },
+              { icon: Shield, text: "Direct UAE manufacturer" },
             ].map(({ icon: Icon, text }) => (
               <div key={text} className="flex items-center gap-2 text-xs font-medium text-gray-500">
                 <Icon size={13} style={{ color: GOLD }} /> {text}
@@ -523,7 +528,7 @@ export default function ProductsGrid({
                   className="w-full h-1.5 rounded-full accent-gray-900"
                 />
                 <div className="flex justify-between text-xs text-gray-500 mt-2">
-                  <span>$0</span><span className="font-semibold text-gray-700">${priceRange[1]}</span>
+                  <span>{money0(0)}</span><span className="font-semibold text-gray-700">{money0(priceRange[1])}</span>
                 </div>
               </div>
 
@@ -675,7 +680,7 @@ export default function ProductsGrid({
                     <FilterPill key={t} label={t} onRemove={() => toggle(selectedTags, setSelectedTags, t)} />
                   ))}
                   {(priceRange[0] > 0 || priceRange[1] < maxPrice) && (
-                    <FilterPill label={`$0–$${priceRange[1]}`} onRemove={() => setPriceRange([0, maxPrice])} />
+                    <FilterPill label={`${money0(0)}–${money0(priceRange[1])}`} onRemove={() => setPriceRange([0, maxPrice])} />
                   )}
                 </div>
               )}

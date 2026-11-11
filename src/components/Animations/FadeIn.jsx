@@ -1,3 +1,4 @@
+// src/components/Animations/FadeIn.jsx
 import useInView from "../../hooks/useInView";
 
 export default function FadeIn({
