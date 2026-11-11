@@ -1,14 +1,13 @@
-import { Eye, ShoppingBag, Trash2 } from 'lucide-react';
+import { ShoppingBag, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import Breadcrumb from '../../components/Shared/Breadcrumb/Breadcrumb';
 import Loading from '../../components/Shared/Loading/Loading';
-import useCart from '../../hooks/useCart';
 import useWishlist from '../../hooks/useWishlist';
+import { formatMoney } from '../../utils/currency';
 
 const Wishlist = () => {
     const { wishlist, isLoading, isError, removeFromWishlist, isRemoving } = useWishlist();
-    const { addToCart, isAdding } = useCart();
 
     const handleRemove = (productId, productName) => {
         if (confirm(`Remove "${productName}" from wishlist?`)) {
@@ -42,37 +41,7 @@ const Wishlist = () => {
         }
     };
 
-    const handleAddToCart = (product) => {
-        addToCart(
-            { productId: product._id, quantity: 1 },
-            {
-                onSuccess: () => {
-                    Swal.fire({
-                        position: "top-end",
-                        icon: "success",
-                        title: `"${product.productName}" added to cart\n`,
-                        showConfirmButton: false,
-                        timer: 1000,
-                        toast: true,
-                        background: "#d4edda",
-                        color: "#155724",
-                    });
-                },
-                onError: () => {
-                    Swal.fire({
-                        position: "top-end",
-                        icon: "error",
-                        title: `Failed to add "${product.productName}" to cart\n`,
-                        showConfirmButton: false,
-                        timer: 1000,
-                        toast: true,
-                        background: "#f8d7da",
-                        color: "#721c24",
-                    });
-                }
-            }
-        );
-    };
+
 
     if (isLoading) {
         return <Loading />;
@@ -131,7 +100,12 @@ const Wishlist = () => {
                                         {/* Product Image */}
                                         <Link to={`/product/${product._id}`} className="shrink-0">
                                             <img
-                                                src={product.images?.[0]}
+                                                src={
+                                                    product.media?.images?.find((i) => i?.isMain && i?.url)?.url ||
+                                                    product.media?.images?.[0]?.url ||
+                                                    (typeof product.images?.[0] === 'string' ? product.images[0] : product.images?.[0]?.url) ||
+                                                    'https://placehold.co/300x300?text=Image'
+                                                }
                                                 alt={product.productName}
                                                 className="w-full sm:w-32 h-32 object-cover rounded-lg"
                                             />
@@ -156,11 +130,11 @@ const Wishlist = () => {
                                                 <div className="flex items-center gap-2 mb-3">
                                                     {product.oldPrice && (
                                                         <span className="text-sm text-gray-400 line-through">
-                                                            ${product.oldPrice}
+                                                            {formatMoney(product.oldPrice)}
                                                         </span>
                                                     )}
                                                     <span className="text-xl font-bold text-gray-900">
-                                                        ${product.newPrice}
+                                                        {formatMoney(product.newPrice)}
                                                     </span>
                                                     {product.oldPrice && (
                                                         <span className="text-xs font-semibold text-green-600 bg-green-50 px-2 py-1 rounded">
@@ -181,24 +155,15 @@ const Wishlist = () => {
 
                                                 {/* Action Buttons */}
                                                 <div className="flex flex-wrap gap-2 mt-auto">
-                                                    <button
-                                                        onClick={() => handleAddToCart(product)}
-                                                        disabled={!inStock || isAdding}
+                                                    <Link
+                                                        to={`/product/${product._id}`}
                                                         className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${inStock
                                                             ? 'bg-gray-900 text-white hover:bg-gray-800'
-                                                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                                            : 'bg-white border-2 border-gray-900 text-gray-900 hover:bg-gray-50'
                                                             }`}
                                                     >
                                                         <ShoppingBag size={16} />
-                                                        {inStock ? 'Add to Cart' : 'Out of Stock'}
-                                                    </button>
-
-                                                    <Link
-                                                        to={`/product/${product._id}`}
-                                                        className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-gray-900 text-gray-900 rounded-lg font-medium text-sm hover:bg-gray-50 transition-colors"
-                                                    >
-                                                        <Eye size={16} />
-                                                        View Details
+                                                        {inStock ? 'Choose colours & sizes' : 'View details'}
                                                     </Link>
 
                                                     <button

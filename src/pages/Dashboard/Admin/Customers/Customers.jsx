@@ -29,15 +29,9 @@ import useCustomerManagement, { useCustomer } from '../../../../hooks/useCustome
 import useDebounce from '../../../../hooks/useDebounce';
 import useRole from '../../../../hooks/useRole';
 import notify from '../../../../utils/notification';
+import { formatMoney } from '../../../../utils/currency';
 
 const PAGE_SIZE = 10;
-
-// ─── Helpers ─────────────────────────────────────────────────────────
-const formatMoney = (value) =>
-  `AED ${Number(value || 0).toLocaleString('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  })}`;
 
 const formatDate = (value) =>
   value

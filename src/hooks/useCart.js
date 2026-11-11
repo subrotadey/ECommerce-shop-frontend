@@ -25,9 +25,12 @@ const toImageUrl = (image) => {
   return image.url || "";
 };
 
+const pickMain = (list) =>
+  Array.isArray(list) ? list.find((i) => i?.isMain && i?.url) || list[0] : null;
+
 const getProductImage = (product) =>
-  toImageUrl(product?.media?.images?.[0]) ||
-  toImageUrl(product?.images?.[0]) ||
+  toImageUrl(pickMain(product?.media?.images)) ||
+  toImageUrl(pickMain(product?.images)) ||
   "";
 
 const makeKey = (productId, size, color) =>

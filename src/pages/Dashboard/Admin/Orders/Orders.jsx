@@ -268,7 +268,7 @@ const MarkPaidDialog = ({ order, onClose, onSubmit, isSaving }) => {
           Confirm only after the money is in your account.
         </p>
 
-        <label className="block text-sm font-medium mb-1">Amount received (AED)</label>
+        <label className="block text-sm font-medium mb-1">Amount received (USD)</label>
         <input
           type="number" min="0" step="0.01" value={amount}
           onChange={(e) => setAmount(e.target.value)}

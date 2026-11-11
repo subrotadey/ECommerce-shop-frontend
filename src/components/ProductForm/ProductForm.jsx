@@ -568,10 +568,10 @@ const ProductForm = forwardRef(function ProductForm(
             <Section
                 number={2}
                 title="Pricing"
-                hint="Enter prices in AED. Delivery charges are not included in the product price."
+                hint="Enter prices in USD. Delivery charges are not included in the product price."
             >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Field label="Wholesale Price (AED)" required error={fieldError('newPrice')}>
+                    <Field label="Wholesale Price (USD)" required error={fieldError('newPrice')}>
                         <input
                             type="number"
                             name="newPrice"
@@ -585,7 +585,7 @@ const ProductForm = forwardRef(function ProductForm(
                         />
                     </Field>
 
-                    <Field label="Compare-at Price (AED)" error={fieldError('oldPrice')}>
+                    <Field label="Compare-at Price (USD)" error={fieldError('oldPrice')}>
                         <input
                             type="number"
                             name="oldPrice"

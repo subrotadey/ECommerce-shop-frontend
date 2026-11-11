@@ -4,7 +4,7 @@
 // Business rules (handover §3 / project instructions §5–§8):
 //  - MOQ: প্রতি Product + Color ≥ 12 (size mix চলবে, ভিন্ন color যোগ হবে না)
 //  - Bulk discount: পুরো অর্ডারের মোট qty ≥ 100 হলে 5%, শুধু merchandise subtotal-এ
-//  - Currency AED, delivery charge মোটে যোগ হয় না
+//  - Currency USD, delivery charge মোটে যোগ হয় না
 //  - Sizes: S=52, M=54, L=56, XL=58, XXL=60, 3XL=62
 //  এখানকার সব অঙ্ক শুধু preview। চূড়ান্ত হিসাব backend করে।
 //
@@ -44,6 +44,7 @@ import { useAllProducts } from "../../hooks/useProducts";
 import useWishlist from "../../hooks/useWishlist";
 import { optimizedVideoUrl } from "../../config/cloudinary";
 import {WHATSAPP_NUMBER} from "../../utils/wholesale";
+import { formatMoney } from "../../utils/currency";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const GOLD = "#B8922A";
@@ -54,7 +55,7 @@ const EMERALD = "#0F5C4A";
 const MOQ = 12;
 const BULK_THRESHOLD = 100;
 const BULK_PERCENT = 5;
-const CURRENCY = "AED";
+const CURRENCY = "USD";
 const DELIVERY_NOTICE =
   "Delivery charges are not included. Shipping costs are payable by the customer.";
 
@@ -70,11 +71,7 @@ const SIZE_CHART = [
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 
-const fmtAed = (n) =>
-  `${CURRENCY} ${Number(n || 0).toLocaleString("en-US", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  })}`;
+const fmtUsd = (n) => formatMoney(n, { minimumFractionDigits: 0 });
 
 const isCssColor = (name) =>
   typeof CSS !== "undefined" &&
@@ -580,7 +577,7 @@ function WholesaleOrderPanel({ product, addColorGroup }) {
           <h3 className="text-sm font-bold" style={{ color: CHARCOAL }}>
             {active.color} — quantity by size
           </h3>
-          <span className="text-xs text-gray-500">{fmtAed(price)} / piece</span>
+          <span className="text-xs text-gray-500">{fmtUsd(price)} / piece</span>
         </div>
 
         <div className="divide-y divide-gray-100">
@@ -709,17 +706,17 @@ function WholesaleOrderPanel({ product, addColorGroup }) {
             </div>
             <div className="flex justify-between">
               <dt className="text-gray-500">Subtotal</dt>
-              <dd className="font-semibold">{fmtAed(subtotal)}</dd>
+              <dd className="font-semibold">{fmtUsd(subtotal)}</dd>
             </div>
             {bulkApplies && (
               <div className="flex justify-between" style={{ color: EMERALD }}>
                 <dt>Bulk discount ({BULK_PERCENT}%)</dt>
-                <dd className="font-semibold">− {fmtAed(discount)}</dd>
+                <dd className="font-semibold">− {fmtUsd(discount)}</dd>
               </div>
             )}
             <div className="flex justify-between pt-1.5 border-t border-gray-100">
               <dt className="font-bold" style={{ color: CHARCOAL }}>Estimated total</dt>
-              <dd className="font-bold text-base" style={{ color: CHARCOAL }}>{fmtAed(estimatedTotal)}</dd>
+              <dd className="font-bold text-base" style={{ color: CHARCOAL }}>{fmtUsd(estimatedTotal)}</dd>
             </div>
           </dl>
 
@@ -783,7 +780,7 @@ function WholesaleOrderPanel({ product, addColorGroup }) {
         <div className="min-w-0 mr-1">
           <p className="text-xs text-gray-500">{totalQty} pcs</p>
           <p className="font-bold text-sm leading-tight" style={{ color: CHARCOAL }}>
-            {fmtAed(estimatedTotal)}
+            {fmtUsd(estimatedTotal)}
           </p>
         </div>
         <button
@@ -1010,7 +1007,7 @@ function RelatedProducts({ products = [], currentId, category }) {
             <p className="text-sm font-semibold truncate mt-0.5" style={{ color: CHARCOAL }}>
               {item.productName}
             </p>
-            <p className="text-sm font-bold mt-1" style={{ color: GOLD }}>{fmtAed(item.newPrice)}</p>
+            <p className="text-sm font-bold mt-1" style={{ color: GOLD }}>{fmtUsd(item.newPrice)}</p>
           </Link>
         ))}
       </div>
@@ -1145,11 +1142,11 @@ export default function ProductDetails() {
 
                 <div className="flex items-end flex-wrap gap-x-3 gap-y-1 mb-3">
                   <span className="text-3xl font-bold" style={{ color: CHARCOAL }}>
-                    {fmtAed(product.newPrice)}
+                    {fmtUsd(product.newPrice)}
                   </span>
                   <span className="text-sm text-gray-500 pb-1">per piece · wholesale</span>
                   {discount > 0 && (
-                    <del className="text-sm text-gray-400 pb-1">{fmtAed(product.oldPrice)}</del>
+                    <del className="text-sm text-gray-400 pb-1">{fmtUsd(product.oldPrice)}</del>
                   )}
                 </div>
 

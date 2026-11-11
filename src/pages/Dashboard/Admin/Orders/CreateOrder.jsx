@@ -10,6 +10,7 @@ import {
 } from "../../../../hooks/useOrders";
 import { findCustomersForOrder } from "../../../../services/orderService";
 import notify from "../../../../utils/notification";
+import { formatMoney } from "../../../../utils/currency";
 
 const SIZES = ["S", "M", "L", "XL", "XXL", "3XL"];
 const MOQ = 12;
@@ -17,8 +18,7 @@ const BULK_THRESHOLD = 100;
 const BULK_PERCENT = 5;
 
 const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
-const fmt = (n) =>
-  `AED ${Number(n || 0).toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
+const fmt = (n) => formatMoney(n);
 const productImage = (p) => p?.media?.images?.[0]?.url || p?.images?.[0]?.url || "";
 
 const inputCls =

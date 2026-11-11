@@ -8,6 +8,7 @@ import { useAdminProducts } from '../../../../hooks/useProducts';
 import { getProductVideos } from '../../../../hooks/useMediaLifecycle';
 import { createProduct, updateProduct, deleteProduct } from '../../../../services/productService';
 import notify from '../../../../utils/notification';
+import { formatMoney } from '../../../../utils/currency';
 import { optimizedVideoUrl } from '../../../../config/cloudinary';
 
 const LOW_STOCK_THRESHOLD = 10;
@@ -35,7 +36,7 @@ const STATUS_BADGE = {
     archived: { className: 'badge-neutral', label: 'Archived' },
 };
 
-const formatAed = (value) => `AED ${Number(value || 0).toLocaleString('en-US')}`;
+const formatUsd = (value) => formatMoney(value);
 
 const getProductImages = (product) => product.media?.images || product.images || [];
 
@@ -383,7 +384,7 @@ const Products = () => {
                                 <th>Product</th>
                                 <th>SKU</th>
                                 <th>Category</th>
-                                <th>Price (AED)</th>
+                                <th>Price (USD)</th>
                                 <th>Total Stock</th>
                                 <th>Status</th>
                                 <th>Actions</th>
@@ -445,7 +446,7 @@ const Products = () => {
                                                 </span>
                                             </td>
                                             <td className="font-semibold text-gray-900">
-                                                {formatAed(product.newPrice)}
+                                                {formatUsd(product.newPrice)}
                                             </td>
                                             <td>
                                                 <span
@@ -624,11 +625,11 @@ const Products = () => {
                                     <div>
                                         <p className="text-sm text-gray-500">Wholesale Price</p>
                                         <p className="text-2xl font-bold text-gray-900">
-                                            {formatAed(viewingProduct.newPrice)}
+                                            {formatUsd(viewingProduct.newPrice)}
                                         </p>
                                         {viewingProduct.oldPrice && (
                                             <p className="text-sm text-gray-500 line-through">
-                                                {formatAed(viewingProduct.oldPrice)}
+                                                {formatUsd(viewingProduct.oldPrice)}
                                             </p>
                                         )}
                                     </div>

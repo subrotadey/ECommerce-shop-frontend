@@ -2,6 +2,7 @@ import { MessageCircle } from "lucide-react";
 import { useState } from "react";
 import { getMemoLink } from "../../services/orderService";
 import notify from "../../utils/notification";
+import { formatMoney } from "../../utils/currency";
 
 // wa.me এর জন্য শুধু সংখ্যা (UAE: 05xxxxxxxx → 971xxxxxxxx)
 export const toWaDigits = (raw) => {
@@ -30,16 +31,13 @@ const MemoWhatsAppButton = ({ order, label = "Send memo on WhatsApp", className 
     try {
       const { token } = await getMemoLink(order.orderId);
       const link = `${window.location.origin}/memo/${order.orderId}?k=${token}`;
-      const total = Number(order.pricing?.total || 0).toLocaleString("en-US", {
-        maximumFractionDigits: 2,
-      });
       const text = [
         `Hello ${order.customer?.name || ""},`,
         ``,
         `Thank you for your order with AnisAbayaUAE.`,
         `Order: ${order.orderId}`,
         `Pieces: ${order.pricing?.totalQuantity ?? ""}`,
-        `Total: AED ${total}`,
+        `Total: ${formatMoney(order.pricing?.total)}`,,
         ``,
         `Your memo (invoice): ${link}`,
       ].join("\n");

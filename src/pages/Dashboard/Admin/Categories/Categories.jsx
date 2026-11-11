@@ -3,12 +3,12 @@ import { useQuery } from '@tanstack/react-query';
 import { ExternalLink, Layers, Loader2, Package, RefreshCw, Tag } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getCategoryOverview } from '../../../../services/categoryService';
+import { formatMoney } from '../../../../utils/currency';
 
 const MAIN_LABEL = { abaya: 'Abaya', hijab: 'Hijab' };
 const SITE_PATH = { abaya: '/abaya', hijab: '/hijab' };
 
-const money = (n) =>
-  `AED ${Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
+const money = (n) => formatMoney(n);
 
 const priceRange = (c) => {
   if (c.minPrice == null) return '—';

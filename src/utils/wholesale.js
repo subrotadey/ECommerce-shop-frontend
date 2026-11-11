@@ -2,7 +2,8 @@
 // Wholesale নিয়ম (শুধু preview)। আসল হিসাব ও যাচাই backend-এ হয়।
 // backend-এর MOQ_PER_COLOR / BULK_DISCOUNT_* এর সাথে মিল রাখতে হবে।
 
-export const CURRENCY = "AED";
+import { CURRENCY_CODE, formatMoney as formatCurrency } from "./currency";
+export const CURRENCY = CURRENCY_CODE;
 export const MOQ_PER_COLOR = 12;
 export const BULK_DISCOUNT_THRESHOLD = 100;
 export const BULK_DISCOUNT_PERCENT = 5;
@@ -18,11 +19,7 @@ export const whatsappLink = (text = "") =>
 export const round2 = (n) =>
   Math.round((Number(n || 0) + Number.EPSILON) * 100) / 100;
 
-export const formatMoney = (n) =>
-  `${CURRENCY} ${round2(n).toLocaleString("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
+export const formatMoney = (n) => formatCurrency(round2(n));
 
 // cart item-গুলোকে Product + Color অনুযায়ী ভাগ করে
 export function groupByProductColor(items = []) {

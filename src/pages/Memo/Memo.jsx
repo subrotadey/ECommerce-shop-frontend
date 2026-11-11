@@ -2,8 +2,10 @@ import { Printer } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { getPublicMemo } from "../../services/orderService";
+import { formatMoney } from "../../utils/currency";
 
-// ⚠️ এখানে আপনার আসল তথ্য বসান। ফাঁকা রাখলে ওই লাইন মেমোতে দেখাবে না।
+// Use the real info here, otherwise memo will be empty this field is used to display the business info on the memo page. If you want to change the business info, change it here.
+
 const BUSINESS = {
   name: "AnisAbayaUAE",
   address: "",
@@ -19,8 +21,7 @@ const BUSINESS = {
 };
 
 const METHOD = { bank_deposit: "Bank transfer", cod: "Cash on delivery", stripe: "Card" };
-const fmt = (n) =>
-  `AED ${Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const fmt = (n) => formatMoney(n);
 
 const Memo = () => {
   const { orderId } = useParams();
@@ -170,6 +171,7 @@ const Memo = () => {
         <p className="mt-4 text-xs text-gray-500">
           Delivery charges are not included. Shipping costs are payable by the customer.
         </p>
+        <p className="mt-1 text-xs text-gray-500">All amounts are in US Dollars (USD).</p>
         <p className="mt-1 text-xs text-gray-500">
           Payment method: {METHOD[memo.payment?.method] || memo.payment?.method}
         </p>
