@@ -6,7 +6,7 @@ import SiteVideosManager from './SiteVideosManager';
 
 const TABS = [
     { key: 'images', label: 'Site Images', icon: ImageIcon, Panel: SiteImagesManager },
-    // { key: 'videos', label: 'Site Videos', icon: VideoIcon, Panel: SiteVideosManager },
+    { key: 'videos', label: 'Site Videos', icon: VideoIcon, Panel: SiteVideosManager },
 ];
 
 const Settings = () => {
