@@ -1,5 +1,5 @@
 // src/utils/siteImages.js
-import logo from "../assets/images/logo.png";
+import logo from "../assets/logo/anis-abaya-logo.png";
 
 export const SITE_IMAGE_DEFAULTS = {
   logo,

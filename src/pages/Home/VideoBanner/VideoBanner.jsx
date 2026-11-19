@@ -51,8 +51,8 @@ const VideoBanner = ({ src, title, subtitle, ctaLabel, to }) => {
   const [width] = useState(() =>
     typeof window !== "undefined" &&
     window.matchMedia("(max-width: 767px)").matches
-      ? 800
-      : 1440
+      ? 720
+      : 1080
   );
 
   // Force muted inline playback
@@ -96,7 +96,7 @@ const VideoBanner = ({ src, title, subtitle, ctaLabel, to }) => {
     observer.observe(el);
 
     return () => observer.disconnect();
-  }, []);
+  }, [src]);
 
   // Play and pause video based on visibility
   useEffect(() => {
@@ -199,7 +199,7 @@ const VideoBanner = ({ src, title, subtitle, ctaLabel, to }) => {
           muted
           loop
           playsInline
-          preload="none"
+          preload="metadata"
           disablePictureInPicture
           aria-hidden="true"
           tabIndex={-1}

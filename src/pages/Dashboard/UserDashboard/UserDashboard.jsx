@@ -6,7 +6,6 @@ import ActivityTimeline from "../../../components/UserDashboard/ActivityTimeline
 import DashboardStats from "../../../components/UserDashboard/DashboardStats";
 import QuickActions from "../../../components/UserDashboard/QuickActions";
 import RecentOrdersWidget from "../../../components/UserDashboard/RecentOrdersWidget";
-import RewardsCard from "../../../components/UserDashboard/RewardsCard";
 import SupportCard from "../../../components/UserDashboard/SupportCard";
 import WishlistWidget from "../../../components/UserDashboard/WishlistWidget";
 import Settings from "../../Settings/Settings";
@@ -82,7 +81,6 @@ const UserDashboard = () => {
                     <div className="lg:col-span-1 space-y-6">
                         <AccountOverview userData={userData} />
                         <WishlistWidget />
-                        <RewardsCard points={1250} progress={62} />
                         <SupportCard />
                     </div>
                 </div>

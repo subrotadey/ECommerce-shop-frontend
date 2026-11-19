@@ -86,6 +86,42 @@ const HERO_CONFIG = {
     ],
     tags: ["Chiffon", "Jersey", "Silk Blend", "Printed Sets"],
   },
+  Shop: {
+    headline: "Shop the Full Collection",
+    subline: "Abayas, hijabs and more at wholesale rates",
+    badge: "Wholesale Ready",
+    bg: "from-stone-900 via-neutral-800 to-stone-900",
+    accent: GOLD,
+    images: [
+      "https://images.unsplash.com/photo-1590548784585-643d2b9f2925?w=800&q=85",
+      "https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=800&q=85",
+    ],
+    tags: ["Abaya", "Hijab", "Wholesale"],
+  },
+  "New Arrivals": {
+    headline: "New Arrivals",
+    subline: "Our latest styles, fresh for your boutique",
+    badge: "Just Landed",
+    bg: "from-stone-900 via-neutral-800 to-stone-900",
+    accent: GOLD,
+    images: [
+      "https://images.unsplash.com/photo-1590548784585-643d2b9f2925?w=800&q=85",
+      "https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=800&q=85",
+    ],
+    tags: ["Latest Styles", "Wholesale"],
+  },
+  "Best Sellers": {
+    headline: "Best Sellers",
+    subline: "Our most popular styles among retailers",
+    badge: "Top Picks",
+    bg: "from-stone-900 via-neutral-800 to-stone-900",
+    accent: GOLD,
+    images: [
+      "https://images.unsplash.com/photo-1590548784585-643d2b9f2925?w=800&q=85",
+      "https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=800&q=85",
+    ],
+    tags: ["Popular", "Wholesale"],
+  },
 };
 
 // ─── Breadcrumb ────────────────────────────────────────────────────────────

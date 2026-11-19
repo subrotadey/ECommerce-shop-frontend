@@ -2,7 +2,7 @@
 import { NavLink, Link } from "react-router-dom";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import { MENU_ITEMS } from "../../config/adminMenu";
-import logo from "../../assets/images/logo.png";
+import BrandLogo from "../Shared/BrandLogo/BrandLogo";
 
 const Sidebar = ({ collapsed, toggleCollapse, mobileOpen, closeMobile, userRole }) => {
   const allowed = MENU_ITEMS.filter((item) => item.roles.includes(userRole));
@@ -38,10 +38,10 @@ const Sidebar = ({ collapsed, toggleCollapse, mobileOpen, closeMobile, userRole 
           <Link
             to="/"
             onClick={closeMobile}
-            className={`flex items-center gap-2 ${hideWhenCollapsed}`}
+            aria-label="Anis Abaya Home"
+            className={`flex min-w-0 items-center ${hideWhenCollapsed}`}
           >
-            <img src={logo} alt="Anis Abaya" className="h-7 w-auto" />
-            <span className="text-xl font-bold text-gray-900">Anis Abaya</span>
+            <BrandLogo size="xs" />
           </Link>
 
           {/* Mobile close */}

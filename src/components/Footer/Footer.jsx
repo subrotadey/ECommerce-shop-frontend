@@ -13,31 +13,27 @@ import {
   Globe,
 } from 'lucide-react';
 import { WHATSAPP_NUMBER } from "../../utils/wholesale";
-
-// import logo from '../../assets/images/logo.png';
-   import useSiteImages from '../../hooks/useSiteImages';
+import BrandLogo from '../Shared/BrandLogo/BrandLogo';
 
 const Footer = () => {
-     const { getImage } = useSiteImages();
-   const logo = getImage('logo', 300);
   const currentYear = new Date().getFullYear();
 
   const companyLinks = [
     { name: 'About Us', path: '/about' },
-    { name: 'Our Story', path: '/about' },
     { name: 'Contact Us', path: '/contact' },
   ];
 
   const shopLinks = [
     { name: 'Shop All', path: '/shop' },
     { name: 'Abaya Collection', path: '/abaya' },
+    { name: 'Hijab Collection', path: '/hijab' },
     { name: 'New Arrivals', path: '/new-arrivals' },
     { name: 'Best Sellers', path: '/best-sellers' },
   ];
 
   const supportLinks = [
     { name: 'Wholesale Information', path: '/wholesale' },
-    { name: 'Track My Order', path: '/track-order' },
+    { name: 'Track My Order', path: '/orders' },
     { name: 'Privacy Policy', path: '/privacy-policy' },
     { name: 'Terms & Conditions', path: '/terms-conditions' },
   ];
@@ -78,28 +74,24 @@ const Footer = () => {
   return (
     <footer className="bg-[#F7F5EF] border-t border-[#D4AF37]/25">
       {/* Main Footer */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-14 pb-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-6">
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-10 lg:gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-8 lg:gap-6">
 
           {/* Brand Section */}
           <div className="lg:col-span-4">
-            <Link to="/" className="inline-block mb-5">
-              <img
-                src={logo}
-                alt="Anis Abaya UAE"
-                className="h-12 w-auto object-contain"
-              />
+            <Link to="/" className="inline-block mb-3">
+              <BrandLogo size="md" />
             </Link>
 
-            <p className="text-sm text-[#1A1A1A]/70 leading-7 max-w-sm mb-6">
+            <p className="text-[13px] text-[#1A1A1A]/70 leading-6 max-w-sm mb-4">
               Anis Abaya UAE is a premium abaya manufacturer and
               wholesale supplier based in the UAE. We provide
               quality abayas for boutiques, retailers and fashion
               businesses worldwide.
             </p>
 
-            <div className="space-y-3 text-sm">
+            <div className="space-y-2 text-[13px]">
               <a
                 href={`https://wa.me/${WHATSAPP_NUMBER}`}
                 target="_blank"
@@ -125,7 +117,7 @@ const Footer = () => {
             </div>
 
             {/* Social Links */}
-            <div className="flex flex-wrap items-center gap-3 mt-7">
+            <div className="flex flex-wrap items-center gap-3 mt-5">
               {socialLinks.map((social) => {
                 const Icon = social.icon;
 
@@ -156,11 +148,11 @@ const Footer = () => {
 
           {/* Company Links */}
           <div className="lg:col-span-2">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-[#123C32] mb-5">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-[#123C32] mb-4">
               Company
             </h3>
 
-            <ul className="space-y-3">
+            <ul className="space-y-2">
               {companyLinks.map((link) => (
                 <li key={link.name}>
                   <Link
@@ -180,11 +172,11 @@ const Footer = () => {
 
           {/* Shop Links */}
           <div className="lg:col-span-2">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-[#123C32] mb-5">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-[#123C32] mb-4">
               Shop
             </h3>
 
-            <ul className="space-y-3">
+            <ul className="space-y-2">
               {shopLinks.map((link) => (
                 <li key={link.path}>
                   <Link
@@ -204,11 +196,11 @@ const Footer = () => {
 
           {/* Support Links */}
           <div className="lg:col-span-2">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-[#123C32] mb-5">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-[#123C32] mb-4">
               Support
             </h3>
 
-            <ul className="space-y-3">
+            <ul className="space-y-2">
               {supportLinks.map((link) => (
                 <li key={link.path}>
                   <Link
@@ -228,7 +220,7 @@ const Footer = () => {
 
           {/* Wholesale CTA */}
           <div className="lg:col-span-2">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-[#123C32] mb-5">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-[#123C32] mb-4">
               Wholesale Enquiries
             </h3>
 
@@ -251,7 +243,7 @@ const Footer = () => {
         </div>
 
         {/* Wholesale Information */}
-        <div className="mt-12 pt-7 border-t border-[#123C32]/10">
+        <div className="mt-8 pt-5 border-t border-[#123C32]/10">
           <div className="flex flex-col md:flex-row items-center justify-between gap-5">
 
             <div className="flex items-center gap-3">

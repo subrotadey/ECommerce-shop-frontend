@@ -23,7 +23,7 @@ import {
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
-import useSiteImages from "../../hooks/useSiteImages";
+import BrandLogo from "../Shared/BrandLogo/BrandLogo";
 import avatar from "../../assets/icons/user.svg";
 
 import useCart from "../../hooks/useCart";
@@ -105,8 +105,6 @@ const Navbar = () => {
   const { wishlistCount = 0 } = useWishlist();
   const { currentUser, logOut } = useAuth();
   const { isAdmin, isStaff } = useRole(currentUser?.email);
-  const { getImage } = useSiteImages();
-  const logo = getImage("logo", 300);
 
   const totalCount = items.reduce((total, item) => total + (item.qty || 0), 0);
 
@@ -295,34 +293,15 @@ const Navbar = () => {
               <Menu size={22} />
             </button>
 
-            {/* Desktop logo */}
+            {/* Logo + brand name (mobile & desktop) */}
             <Link
               to="/"
-              className="hidden items-center md:flex"
+              className="ml-1 flex items-center md:ml-0"
               aria-label="Anis Abaya Home"
             >
-              <img
-                src={logo}
-                alt="Anis Abaya"
-                className={`w-auto object-contain transition-all duration-300 ${
-                  isScrolled ? "h-9" : "h-10"
-                }`}
-              />
+              <BrandLogo size={isScrolled ? "sm" : "sm"} hideTextOnTiny />
             </Link>
           </div>
-
-          {/* Mobile centered logo */}
-          <Link
-            to="/"
-            className="absolute left-1/2 flex -translate-x-1/2 items-center md:hidden"
-            aria-label="Anis Abaya Home"
-          >
-            <img
-              src={logo}
-              alt="Anis Abaya"
-              className="h-8 w-auto object-contain"
-            />
-          </Link>
 
           {/* Desktop navigation */}
           <div className="hidden items-center gap-1 md:flex">
@@ -539,7 +518,7 @@ const Navbar = () => {
         {/* Drawer header */}
         <div className="flex items-center justify-between border-b border-[#D4AF37]/25 bg-[#123C32] px-5 py-5">
           <Link to="/" onClick={() => setMenuOpen(false)}>
-            <img src={logo} alt="Anis Abaya" className="h-9 w-auto object-contain" />
+            <BrandLogo size="md" variant="dark" />
           </Link>
 
           <button

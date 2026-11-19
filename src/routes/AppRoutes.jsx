@@ -39,6 +39,12 @@ import CheckoutCancel from "../pages/CheckoutCancel/CheckoutCancel";
 import MyOrders from "../pages/MyOrders/MyOrders";
 import CreateOrder from "../pages/Dashboard/Admin/Orders/CreateOrder";
 import Memo from "../pages/Memo/Memo";
+import ShopAll from "../pages/ShopAll/ShopAll";
+import NewArrivals from "../pages/NewArrivals/NewArrivals";
+import BestSellers from "../pages/BestSellers/BestSellers";
+import Wholesale from "../pages/Wholesale/Wholesale";
+import PrivacyPolicy from "../pages/PrivacyPolicy/PrivacyPolicy";
+import TermsConditions from "../pages/TermsConditions/TermsConditions";
 
 const router = createBrowserRouter([
   {
@@ -85,6 +91,30 @@ const router = createBrowserRouter([
       {
         path: "hijab",
         element: <HijabAll />
+      },
+            {
+        path: "/shop",
+        element: <ShopAll />
+      },
+      {
+        path: "/new-arrivals",
+        element: <NewArrivals />
+      },
+      {
+        path: "/best-sellers",
+        element: <BestSellers />
+      },
+      {
+        path: "/wholesale",
+        element: <Wholesale />
+      },
+      {
+        path: "/privacy-policy",
+        element: <PrivacyPolicy />
+      },
+      {
+        path: "/terms-conditions",
+        element: <TermsConditions />
       },
       {
         path: "/product/:id",
