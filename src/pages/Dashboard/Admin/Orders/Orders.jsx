@@ -12,6 +12,7 @@ import notify from '../../../../utils/notification';
 import { Link } from 'react-router-dom';
 import MemoWhatsAppButton, { toWaDigits } from '../../../../components/Admin/MemoWhatsAppButton';
 import { DELIVERY_NOTICE, WHATSAPP_DISPLAY, formatMoney } from '../../../../utils/wholesale';
+import { OrderRowsSkeleton } from '../../../../components/Shared/Loading/Loading';
 
 // ── constants (Tailwind 4: ক্লাস নাম পুরো লেখা, জোড়া লাগানো নয়) ─────────────
 const STATUS_FILTERS = ['all', 'pending', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'];
@@ -701,7 +702,9 @@ const Orders = () => {
         {statCards.map((c) => (
           <div key={c.label} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
             <p className="text-sm text-gray-600">{c.label}</p>
-            <p className={`text-2xl font-bold mt-1 ${c.color}`}>{c.value ?? 0}</p>
+            <p className={`text-2xl font-bold mt-1 ${c.color}`}>
+              {isLoading && !orders.length ? '–' : c.value ?? 0}
+            </p>
           </div>
         ))}
       </div>
@@ -774,11 +777,7 @@ const Orders = () => {
             </thead>
             <tbody>
               {isLoading && !orders.length ? (
-                [...Array(limit)].map((_, i) => (
-                  <tr key={i}>
-                    <td colSpan="9"><div className="skeleton h-12 w-full" /></td>
-                  </tr>
-                ))
+                <OrderRowsSkeleton rows={8} />
               ) : orders.length > 0 ? (
                 orders.map((order) => (
                   <tr key={order.orderId} className="hover">

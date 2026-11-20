@@ -1,5 +1,5 @@
 // src/layouts/AdminLayout.jsx
-import { Outlet } from "react-router-dom";
+import { Outlet, ScrollRestoration } from "react-router-dom";
 import { useSidebar } from "../hooks/useSidebar";
 import Sidebar from "../components/Admin/Sidebar";
 import Topbar from "../components/Admin/Topbar";
@@ -13,7 +13,7 @@ const AdminLayout = () => {
   const { currentUser } = useAuth();
   const { role, isLoading } = useRole(currentUser?.email);
 
-  if (isLoading) return <Loading />;
+  if (isLoading) return <Loading fullScreen />;
 
   const userRole = role || "staff";
 
@@ -43,6 +43,7 @@ const AdminLayout = () => {
         {/* Content — below topbar */}
           <main className="flex-1 overflow-y-auto p-4 pt-[4.5rem] sm:p-6 sm:pt-20">
           <Outlet />
+          <ScrollRestoration />
           {/* <TokenDebugger /> */}
         </main>
       </div>

@@ -35,7 +35,6 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useNavigate} from "react-router-dom";
-import Swal from "sweetalert2";
 
 import Loading from "../../components/Shared/Loading/Loading";
 import ShareModal from "../../components/ShareModal/ShareModal";
@@ -45,6 +44,7 @@ import useWishlist from "../../hooks/useWishlist";
 import { optimizedVideoUrl } from "../../config/cloudinary";
 import {WHATSAPP_NUMBER} from "../../utils/wholesale";
 import { formatMoney } from "../../utils/currency";
+import notify from "../../utils/notification";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const GOLD = "#B8922A";
@@ -77,16 +77,6 @@ const isCssColor = (name) =>
   typeof CSS !== "undefined" &&
   typeof CSS.supports === "function" &&
   CSS.supports("color", String(name).trim().toLowerCase());
-
-const toast = (icon, title, timer = 1500) =>
-  Swal.fire({
-    position: "top-end",
-    icon,
-    title,
-    showConfirmButton: false,
-    timer,
-    toast: true,
-  });
 
 const buildWhatsAppLink = (product) => {
   const message =
@@ -507,7 +497,7 @@ function WholesaleOrderPanel({ product, addColorGroup }) {
 
       setQtys({});
       setShowErrors(false);
-      toast("success", `${totalQty} pieces added to cart`);
+      notify.success(`${totalQty} pieces added to cart`, "", 1500);
     } catch (err) {
       setError(err?.message || "Could not add to cart. Please try again.");
     } finally {
@@ -1019,7 +1009,7 @@ function RelatedProducts({ products = [], currentId, category }) {
 export default function ProductDetails() {
   const { id } = useParams();
   const [showShareModal, setShowShareModal] = useState(false);
-  const { isInWishlist, toggleWishlist, userId } = useWishlist();
+  const { isInWishlist, toggleWishlist, isToggling } = useWishlist();
 
   const { data: allProducts = [], isLoading } = useAllProducts();
   const product = allProducts.find((p) => p._id === id || p.sku === id);
@@ -1035,18 +1025,11 @@ export default function ProductDetails() {
 
   const handleWishlist = (e) => {
     e.preventDefault();
-    if (userId === "guest") {
-      toast("warning", "Please log in to save items", 1800);
-      return;
-    }
-    toggleWishlist(product._id, {
-      onSuccess: (data) =>
-        toast("success", data.inWishlist ? "Added to wishlist" : "Removed from wishlist", 1000),
-      onError: () => toast("error", "Failed to update wishlist"),
-    });
+    // guest check + success/error toast useWishlist hook er bhitore kora ache
+    toggleWishlist(product._id);
   };
 
-  if (isLoading) return <Loading />;
+  if (isLoading) return <Loading fullScreen />;
 
   if (!product) {
     return (
@@ -1191,6 +1174,7 @@ export default function ProductDetails() {
                 <button
                   type="button"
                   onClick={handleWishlist}
+                  disabled={isToggling}
                   className="flex items-center justify-center gap-2 py-3.5 rounded-2xl font-semibold text-sm border-2 transition-all hover:bg-red-50 active:scale-[0.98]"
                   style={{
                     borderColor: inWishlist ? "#ef4444" : "#E5E7EB",

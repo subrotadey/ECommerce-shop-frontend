@@ -25,7 +25,7 @@ const ProductsPage = () => {
         <h2 className="text-2xl font-bold mb-4">Abaya Collection</h2>
         {abayaLoading ? (
           // <p>Loading Abaya products...</p>
-          <Loading />
+          <Loading fullScreen />
         ) : abayaError ? (
           <p>Error loading Abaya products.</p>
         ) : abayaProducts.length === 0 ? (
@@ -41,7 +41,7 @@ const ProductsPage = () => {
       <section className="mb-12">
         <h2 className="text-2xl font-bold mb-4">Hijab Collection</h2>
         {hijabLoading ? (
-          <Loading />
+          <Loading fullScreen />
         ) : hijabError ? (
           <p>Error loading Hijab products.</p>
         ) : hijabProducts.length === 0 ? (

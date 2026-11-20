@@ -12,7 +12,7 @@ const StaffRoute = ({ children }) => {
   const location = useLocation();
 
   if (authLoading || roleLoading) {
-    return <Loading />;
+    return <Loading fullScreen />;
   }
 
   if (!currentUser) {

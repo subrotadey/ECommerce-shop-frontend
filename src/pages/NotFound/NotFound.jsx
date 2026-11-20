@@ -3,11 +3,9 @@ import { Link } from "react-router";
 
 const NotFound = () => {
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-  const [mounted, setMounted] = useState(false);
   const containerRef = useRef(null);
 
   useEffect(() => {
-    setMounted(true);
     const handleMouseMove = (e) => {
       if (containerRef.current) {
         const rect = containerRef.current.getBoundingClientRect();
@@ -21,19 +19,42 @@ const NotFound = () => {
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
 
+  // SPA te real 404 status pathano jay na, tai noindex + title set kori
+  useEffect(() => {
+    const prevTitle = document.title;
+    document.title = "Page not found | Anis Abaya UAE";
+
+    let meta = document.querySelector('meta[name="robots"]');
+    const created = !meta;
+    const prevContent = meta?.getAttribute("content");
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.setAttribute("name", "robots");
+      document.head.appendChild(meta);
+    }
+    meta.setAttribute("content", "noindex, nofollow");
+
+    return () => {
+      document.title = prevTitle;
+      if (created) meta.remove();
+      else if (prevContent !== null) meta.setAttribute("content", prevContent);
+    };
+  }, []);
+
   return (
     <>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Cinzel:wght@400;600&family=Lato:wght@300;400&display=swap');
 
         .nf-root {
-          min-height: 100vh;
-          background: #0d0a08;
+          min-height: 75vh;
+          background: #ffffff;
           display: flex;
           align-items: center;
           justify-content: center;
           position: relative;
           overflow: hidden;
+          border-bottom: 1px solid #a47e3b26;
           font-family: 'Lato', sans-serif;
         }
 
@@ -43,7 +64,7 @@ const NotFound = () => {
           position: absolute;
           inset: 0;
           background-image: 
-            url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%230d0a08'/%3E%3Crect width='1' height='1' fill='%23ffffff08'/%3E%3Crect x='2' y='2' width='1' height='1' fill='%23ffffff05'/%3E%3C/svg%3E");
+            url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23ffffff'/%3E%3Crect width='1' height='1' fill='%23a47e3b' fill-opacity='0.08'/%3E%3Crect x='2' y='2' width='1' height='1' fill='%23a47e3b' fill-opacity='0.05'/%3E%3C/svg%3E");
           pointer-events: none;
           z-index: 1;
         }
@@ -53,19 +74,19 @@ const NotFound = () => {
           position: absolute;
           border-radius: 50%;
           filter: blur(80px);
-          opacity: 0.12;
+          opacity: 0.35;
           transition: transform 0.8s cubic-bezier(0.23, 1, 0.32, 1);
         }
 
         .blob-1 {
           width: 500px; height: 500px;
-          background: radial-gradient(circle, #c8a96e, transparent);
+          background: radial-gradient(circle, #e0c48a, transparent);
           top: -100px; left: -100px;
         }
 
         .blob-2 {
           width: 400px; height: 400px;
-          background: radial-gradient(circle, #8b6914, transparent);
+          background: radial-gradient(circle, #d4b06a, transparent);
           bottom: -80px; right: -80px;
         }
 
@@ -79,7 +100,7 @@ const NotFound = () => {
         /* Decorative lines */
         .deco-line {
           position: absolute;
-          background: linear-gradient(90deg, transparent, #c8a96e30, transparent);
+          background: linear-gradient(90deg, transparent, #a47e3b30, transparent);
           height: 1px;
           width: 100%;
         }
@@ -89,7 +110,7 @@ const NotFound = () => {
 
         .deco-line-v {
           position: absolute;
-          background: linear-gradient(180deg, transparent, #c8a96e20, transparent);
+          background: linear-gradient(180deg, transparent, #a47e3b20, transparent);
           width: 1px;
           height: 100%;
         }
@@ -127,7 +148,7 @@ const NotFound = () => {
           font-size: clamp(5rem, 18vw, 10rem);
           font-weight: 600;
           color: transparent;
-          background: linear-gradient(135deg, #c8a96e 0%, #f0d4a0 40%, #c8a96e 60%, #8b6914 100%);
+          background: linear-gradient(135deg, #a47e3b 0%, #d9b46a 40%, #a47e3b 60%, #7a5a1c 100%);
           -webkit-background-clip: text;
           background-clip: text;
           line-height: 1;
@@ -144,7 +165,7 @@ const NotFound = () => {
           content: '404';
           position: absolute;
           inset: 0;
-          background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.15) 50%, transparent 60%);
+          background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.7) 50%, transparent 60%);
           -webkit-background-clip: text;
           background-clip: text;
           color: transparent;
@@ -162,7 +183,7 @@ const NotFound = () => {
           font-family: 'Cinzel', serif;
           font-size: 0.65rem;
           letter-spacing: 0.35em;
-          color: #c8a96e;
+          color: #8a6a2f;
           text-transform: uppercase;
           margin-bottom: 0.5rem;
           opacity: 0;
@@ -173,7 +194,7 @@ const NotFound = () => {
           font-family: 'Cormorant Garamond', serif;
           font-size: clamp(1.5rem, 4vw, 2.2rem);
           font-weight: 300;
-          color: #f5efe6;
+          color: #2b211a;
           font-style: italic;
           letter-spacing: 0.02em;
           margin: 0.8rem 0 0.5rem;
@@ -185,7 +206,7 @@ const NotFound = () => {
           font-family: 'Lato', sans-serif;
           font-weight: 300;
           font-size: 0.92rem;
-          color: #9a8a7a;
+          color: #6b5d50;
           line-height: 1.8;
           max-width: 420px;
           margin: 0 auto 2.5rem;
@@ -210,8 +231,8 @@ const NotFound = () => {
           letter-spacing: 0.2em;
           text-transform: uppercase;
           padding: 0.85rem 2.2rem;
-          background: linear-gradient(135deg, #c8a96e, #a8891e);
-          color: #0d0a08;
+          background: #1c1917;
+          color: #faf7f2;
           border: none;
           cursor: pointer;
           text-decoration: none;
@@ -227,14 +248,14 @@ const NotFound = () => {
           content: '';
           position: absolute;
           inset: 0;
-          background: linear-gradient(135deg, #f0d4a0, #c8a96e);
+          background: linear-gradient(135deg, #44403c, #292524);
           opacity: 0;
           transition: opacity 0.3s ease;
         }
 
         .btn-primary-nf:hover {
           transform: translateY(-2px);
-          box-shadow: 0 8px 30px rgba(200, 169, 110, 0.4);
+          box-shadow: 0 8px 30px rgba(28, 25, 23, 0.25);
         }
 
         .btn-primary-nf:hover::before { opacity: 1; }
@@ -248,8 +269,8 @@ const NotFound = () => {
           text-transform: uppercase;
           padding: 0.85rem 2.2rem;
           background: transparent;
-          color: #c8a96e;
-          border: 1px solid #c8a96e40;
+          color: #5c4a2a;
+          border: 1px solid #a47e3b66;
           cursor: pointer;
           text-decoration: none;
           display: inline-flex;
@@ -259,8 +280,8 @@ const NotFound = () => {
         }
 
         .btn-secondary-nf:hover {
-          border-color: #c8a96e;
-          background: rgba(200, 169, 110, 0.08);
+          border-color: #a47e3b;
+          background: rgba(164, 126, 59, 0.08);
           transform: translateY(-2px);
         }
 
@@ -269,7 +290,7 @@ const NotFound = () => {
           font-family: 'Lato', sans-serif;
           font-size: 0.7rem;
           letter-spacing: 0.2em;
-          color: #5a5048;
+          color: #7d6e60;
           text-transform: uppercase;
           margin: 2.5rem 0 1rem;
           opacity: 0;
@@ -288,7 +309,7 @@ const NotFound = () => {
         .nf-quick-link {
           font-family: 'Cormorant Garamond', serif;
           font-size: 0.95rem;
-          color: #7a6a5a;
+          color: #6b5d50;
           text-decoration: none;
           position: relative;
           transition: color 0.3s ease;
@@ -302,11 +323,11 @@ const NotFound = () => {
           left: 0;
           width: 0;
           height: 1px;
-          background: #c8a96e;
+          background: #a47e3b;
           transition: width 0.3s ease;
         }
 
-        .nf-quick-link:hover { color: #c8a96e; }
+        .nf-quick-link:hover { color: #8a6a2f; }
         .nf-quick-link:hover::after { width: 100%; }
 
         /* Floating fabric particles */
@@ -314,7 +335,7 @@ const NotFound = () => {
           position: absolute;
           width: 2px;
           height: 2px;
-          background: #c8a96e;
+          background: #a47e3b;
           border-radius: 50%;
           opacity: 0;
         }
@@ -339,13 +360,13 @@ const NotFound = () => {
           position: absolute;
           width: 60px;
           height: 60px;
-          opacity: 0.2;
+          opacity: 0.35;
         }
 
-        .corner-tl { top: 1.5rem; left: 1.5rem; border-top: 1px solid #c8a96e; border-left: 1px solid #c8a96e; }
-        .corner-tr { top: 1.5rem; right: 1.5rem; border-top: 1px solid #c8a96e; border-right: 1px solid #c8a96e; }
-        .corner-bl { bottom: 1.5rem; left: 1.5rem; border-bottom: 1px solid #c8a96e; border-left: 1px solid #c8a96e; }
-        .corner-br { bottom: 1.5rem; right: 1.5rem; border-bottom: 1px solid #c8a96e; border-right: 1px solid #c8a96e; }
+        .corner-tl { top: 1.5rem; left: 1.5rem; border-top: 1px solid #a47e3b; border-left: 1px solid #a47e3b; }
+        .corner-tr { top: 1.5rem; right: 1.5rem; border-top: 1px solid #a47e3b; border-right: 1px solid #a47e3b; }
+        .corner-bl { bottom: 1.5rem; left: 1.5rem; border-bottom: 1px solid #a47e3b; border-left: 1px solid #a47e3b; }
+        .corner-br { bottom: 1.5rem; right: 1.5rem; border-bottom: 1px solid #a47e3b; border-right: 1px solid #a47e3b; }
       `}</style>
 
       <div className="nf-root" ref={containerRef}>
@@ -381,14 +402,14 @@ const NotFound = () => {
         <div className="nf-card">
           {/* Ornamental top */}
           <svg className="ornament" width="200" height="20" viewBox="0 0 200 20">
-            <line x1="0" y1="10" x2="80" y2="10" stroke="#c8a96e" strokeWidth="0.5" opacity="0.4" />
-            <circle cx="85" cy="10" r="1.5" fill="#c8a96e" opacity="0.6" />
-            <circle cx="92" cy="10" r="1" fill="#c8a96e" opacity="0.4" />
-            <circle cx="100" cy="10" r="3" fill="none" stroke="#c8a96e" strokeWidth="0.8" opacity="0.8" />
-            <circle cx="100" cy="10" r="1" fill="#c8a96e" opacity="0.8" />
-            <circle cx="108" cy="10" r="1" fill="#c8a96e" opacity="0.4" />
-            <circle cx="115" cy="10" r="1.5" fill="#c8a96e" opacity="0.6" />
-            <line x1="120" y1="10" x2="200" y2="10" stroke="#c8a96e" strokeWidth="0.5" opacity="0.4" />
+            <line x1="0" y1="10" x2="80" y2="10" stroke="#a47e3b" strokeWidth="0.5" opacity="0.4" />
+            <circle cx="85" cy="10" r="1.5" fill="#a47e3b" opacity="0.6" />
+            <circle cx="92" cy="10" r="1" fill="#a47e3b" opacity="0.4" />
+            <circle cx="100" cy="10" r="3" fill="none" stroke="#a47e3b" strokeWidth="0.8" opacity="0.8" />
+            <circle cx="100" cy="10" r="1" fill="#a47e3b" opacity="0.8" />
+            <circle cx="108" cy="10" r="1" fill="#a47e3b" opacity="0.4" />
+            <circle cx="115" cy="10" r="1.5" fill="#a47e3b" opacity="0.6" />
+            <line x1="120" y1="10" x2="200" y2="10" stroke="#a47e3b" strokeWidth="0.5" opacity="0.4" />
           </svg>
 
           <p className="nf-eyebrow">Anis Abaya — Page not found</p>
@@ -426,9 +447,9 @@ const NotFound = () => {
             style={{ display: "block", margin: "2rem auto 0", opacity: 0, animation: "fadeUp 0.9s cubic-bezier(0.23, 1, 0.32, 1) 0.95s forwards" }}
             width="120" height="12" viewBox="0 0 120 12"
           >
-            <line x1="0" y1="6" x2="48" y2="6" stroke="#c8a96e" strokeWidth="0.5" opacity="0.3" />
-            <polygon points="54,6 57,3 60,6 57,9" fill="none" stroke="#c8a96e" strokeWidth="0.6" opacity="0.5" />
-            <line x1="66" y1="6" x2="120" y2="6" stroke="#c8a96e" strokeWidth="0.5" opacity="0.3" />
+            <line x1="0" y1="6" x2="48" y2="6" stroke="#a47e3b" strokeWidth="0.5" opacity="0.3" />
+            <polygon points="54,6 57,3 60,6 57,9" fill="none" stroke="#a47e3b" strokeWidth="0.6" opacity="0.5" />
+            <line x1="66" y1="6" x2="120" y2="6" stroke="#a47e3b" strokeWidth="0.5" opacity="0.3" />
           </svg>
         </div>
       </div>

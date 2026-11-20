@@ -1,8 +1,9 @@
 // ============================================
-// hooks/useWishlist.js - IMPROVED
+// hooks/useWishlist.js
 // ============================================
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../utils/axios';
+import notify from '../utils/notification';
 import useAuth from './useAuth';
 
 const API_URL = '/wishlist'; // ✅ Use relative path
@@ -36,36 +37,62 @@ const useWishlist = () => {
     retry: 1
   });
 
-  // Toggle wishlist mutation
+  // Check if product is in wishlist
+  const isInWishlist = (productId) => {
+    return wishlist.some(item =>
+      item.productId === productId ||
+      item.product?._id === productId
+    );
+  };
+
+  // TanStack Query v5: invalidateQueries e object ({ queryKey }) dite hoy
+  const invalidateWishlist = () => {
+    queryClient.invalidateQueries({ queryKey: ['wishlist', userId] });
+    queryClient.invalidateQueries({ queryKey: ['wishlistCount', userId] });
+  };
+
+  // Toggle wishlist mutation (toast ekhanei — jate sob jaigay ek rokom kaj kore)
   const toggleMutation = useMutation({
     mutationFn: async (productId) => {
       const { data } = await axiosInstance.post(`${API_URL}/${userId}/toggle`, { productId });
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries(['wishlist', userId]);
-      queryClient.invalidateQueries(['wishlistCount', userId]);
-    }
+    // fallback er jonno: click er somoy product ta wishlist e chilo kina
+    onMutate: (productId) => ({ wasInWishlist: isInWishlist(productId) }),
+    onSuccess: (data, _productId, context) => {
+      invalidateWishlist();
+      // server ja bole (data.inWishlist) seta-i sotti; na thakle onMutate er hishab
+      const nowInWishlist =
+        typeof data?.inWishlist === 'boolean' ? data.inWishlist : !context?.wasInWishlist;
+      if (nowInWishlist) {
+        notify.success('Added to wishlist');
+      } else {
+        notify.info('Removed from wishlist');
+      }
+    },
+    onError: () => {
+      notify.error('Something went wrong', 'Please try again.');
+    },
   });
 
   // Remove mutation
+  // (toast Wishlist page nijei dekhay — onSuccess/onError callback diye)
   const removeMutation = useMutation({
     mutationFn: async (productId) => {
       const { data } = await axiosInstance.delete(`${API_URL}/${userId}/remove/${productId}`);
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries(['wishlist', userId]);
-      queryClient.invalidateQueries(['wishlistCount', userId]);
-    }
+    onSuccess: invalidateWishlist,
   });
 
-  // Check if product is in wishlist
-  const isInWishlist = (productId) => {
-    return wishlist.some(item => 
-      item.productId === productId || 
-      item.product?._id === productId
-    );
+  // Guest hole login korte bolbe; noile toggle korbe.
+  // options (onSuccess/onError) dile mutate er moto kaj kore.
+  const toggleWishlist = (productId, options) => {
+    if (userId === 'guest') {
+      notify.warning('Please login to save items', '', 1800);
+      return;
+    }
+    toggleMutation.mutate(productId, options);
   };
 
   return {
@@ -73,7 +100,7 @@ const useWishlist = () => {
     wishlistCount,
     isLoading,
     isError,
-    toggleWishlist: toggleMutation.mutate,
+    toggleWishlist,
     removeFromWishlist: removeMutation.mutate,
     isInWishlist,
     isToggling: toggleMutation.isPending,

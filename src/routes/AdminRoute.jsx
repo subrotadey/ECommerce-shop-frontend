@@ -13,7 +13,7 @@ const AdminRoute = ({ children }) => {
 
   // ✅ Loading state
   if (authLoading || roleLoading) {
-    return <Loading />;
+    return <Loading fullScreen />;
   }
 
   // ✅ Not authenticated - redirect to login

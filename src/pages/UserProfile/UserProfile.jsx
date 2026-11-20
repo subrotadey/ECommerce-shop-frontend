@@ -8,6 +8,7 @@ import ProfileCard from '../../components/UserProfile/ProfileCard';
 import ProfileInformation from '../../components/UserProfile/ProfileInfo';
 import useAuth from '../../hooks/useAuth';
 import useRole from '../../hooks/useRole';
+import Loading from '../../components/Shared/Loading/Loading';
 
 const UserProfile = () => {
   const { currentUser } = useAuth();
@@ -40,12 +41,7 @@ const UserProfile = () => {
   // Loading State
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
-        <div className="text-center">
-          <Loader className="w-16 h-16 text-blue-600 animate-spin mx-auto mb-4" />
-          <p className="text-gray-700 font-semibold text-lg">Loading your profile...</p>
-        </div>
-      </div>
+      <Loading fullScreen />
     );
   }
 

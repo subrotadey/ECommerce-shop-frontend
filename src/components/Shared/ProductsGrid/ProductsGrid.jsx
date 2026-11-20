@@ -2,25 +2,35 @@
 // Premium Dubai Wholesale — Abaya & Hijab Category Page
 // White base · Gold accent · Charcoal text · Sage green touch
 
-import { useMemo, useState, useEffect, useRef } from "react";
-import { Link } from "react-router";
 import {
-  Heart, Search, SlidersHorizontal, X, ChevronDown,
-  ArrowUpDown, Star, Package, Truck, Shield, Eye,
-  ArrowRight, Filter, Grid, List, ChevronRight,
-  Home, Tag, Sparkles
+    ChevronDown,
+    ChevronRight,
+    Eye,
+    Grid,
+    Heart,
+    Home,
+    Package,
+    Search,
+    Shield,
+    SlidersHorizontal,
+    Sparkles,
+    Star,
+    Tag,
+    Truck,
+    X
 } from "lucide-react";
-import Swal from "sweetalert2";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router";
 import useWishlist from "../../../hooks/useWishlist";
-import QuickViewModal from "../QuickViewModal/QuickViewModal";
-import Loading from "../Loading/Loading";
 import { formatMoney } from "../../../utils/currency";
 import { stamp } from "../../../utils/homeProducts";
 import {
-  BULK_DISCOUNT_PERCENT,
-  BULK_DISCOUNT_THRESHOLD,
-  MOQ_PER_COLOR,
+    BULK_DISCOUNT_PERCENT,
+    BULK_DISCOUNT_THRESHOLD,
+    MOQ_PER_COLOR,
 } from "../../../utils/wholesale";
+import { ProductGridSkeleton } from "../Loading/Loading";
+import QuickViewModal from "../QuickViewModal/QuickViewModal";
 
 // ─── Design tokens ─────────────────────────────────────────────────────────
 const GOLD = "#B8922A";
@@ -127,20 +137,24 @@ const HERO_CONFIG = {
 // ─── Breadcrumb ────────────────────────────────────────────────────────────
 function Breadcrumb({ breadcrumbs = [] }) {
   return (
-    <nav className="flex items-center gap-1.5 text-xs text-gray-400 px-4 sm:px-6 lg:px-8 py-3 max-w-7xl mx-auto">
-      <Link to="/" className="hover:text-gray-700 transition-colors flex items-center gap-1">
-        <Home size={12} /> Home
-      </Link>
-      {breadcrumbs.map((crumb, i) => (
-        <span key={i} className="flex items-center gap-1.5">
-          <ChevronRight size={11} className="text-gray-300" />
-          {crumb.link ? (
-            <Link to={crumb.link} className="hover:text-gray-700 transition-colors">{crumb.label}</Link>
-          ) : (
-            <span className="font-medium text-gray-700">{crumb.label}</span>
-          )}
-        </span>
-      ))}
+    <nav aria-label="Breadcrumb" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+      <ol className="flex flex-wrap items-center gap-1.5 text-xs text-gray-500">
+        <li>
+          <Link to="/" className="flex items-center gap-1 transition-colors hover:text-gray-900">
+            <Home size={12} aria-hidden="true" /> Home
+          </Link>
+        </li>
+        {breadcrumbs.map((crumb, i) => (
+          <li key={i} className="flex items-center gap-1.5">
+            <ChevronRight size={11} className="text-gray-300" aria-hidden="true" />
+            {crumb.link ? (
+              <Link to={crumb.link} className="transition-colors hover:text-gray-900">{crumb.label}</Link>
+            ) : (
+              <span aria-current="page" className="font-medium text-gray-800">{crumb.label}</span>
+            )}
+          </li>
+        ))}
+      </ol>
     </nav>
   );
 }
@@ -149,60 +163,76 @@ function Breadcrumb({ breadcrumbs = [] }) {
 function CategoryHero({ category, count }) {
   const cfg = HERO_CONFIG[category] || HERO_CONFIG.Abaya;
 
-  return (
-    <div className={`relative bg-gradient-to-r ${cfg.bg} overflow-hidden`}>
-      {/* Background image collage */}
-      <div className="absolute inset-0 opacity-20">
-        <div className="grid grid-cols-2 h-full">
-          {cfg.images.map((img, i) => (
-            <img key={i} src={img} alt="" className="w-full h-full object-cover" />
-          ))}
-        </div>
-      </div>
-      {/* Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-black/30" />
+  const stats = [
+    { label: "Styles", value: `${count}` },
+    { label: "Min. per colour", value: `${MOQ_PER_COLOR} pcs` },
+    { label: `Bulk discount (${BULK_DISCOUNT_THRESHOLD}+ pcs)`, value: `${BULK_DISCOUNT_PERCENT}% off` },
+  ];
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-20">
+  return (
+    <section className={`relative overflow-hidden bg-gradient-to-br ${cfg.bg}`}>
+      {/* Image collage — fades in from the right (desktop only) */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-y-0 right-0 hidden w-3/5 grid-cols-2 gap-2 opacity-50 md:grid [mask-image:linear-gradient(to_left,black_35%,transparent)] [-webkit-mask-image:linear-gradient(to_left,black_35%,transparent)]"
+      >
+        {cfg.images.map((img, i) => (
+          <img key={i} src={img} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
+        ))}
+      </div>
+
+      {/* Readability overlay + soft accent glow */}
+      <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/55 to-black/20" />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full opacity-20 blur-3xl"
+        style={{ background: cfg.accent }}
+      />
+
+      <div className="relative z-10 mx-auto max-w-7xl px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
         <div className="max-w-2xl">
           {/* Badge */}
           <div
-            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold mb-5 border"
+            className="mb-5 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold"
             style={{ color: cfg.accent, borderColor: `${cfg.accent}40`, background: `${cfg.accent}15` }}
           >
-            <Sparkles size={12} />
+            <Sparkles size={12} aria-hidden="true" />
             {cfg.badge}
           </div>
 
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-3 leading-tight">
+          <h1 className="mb-3 text-3xl font-bold leading-tight tracking-tight text-white sm:text-4xl lg:text-5xl">
             {cfg.headline}
           </h1>
-          <p className="text-white/60 text-base sm:text-lg mb-6">{cfg.subline}</p>
+          <p className="mb-6 text-base text-white/70 sm:text-lg">{cfg.subline}</p>
 
           {/* Tag pills */}
-          <div className="flex flex-wrap gap-2 mb-8">
-            {cfg.tags.map(tag => (
-              <span key={tag} className="px-3 py-1 rounded-full text-xs font-medium text-white/70 border border-white/20 bg-white/10">
+          <div className="mb-8 flex flex-wrap gap-2">
+            {cfg.tags.map((tag) => (
+              <span key={tag} className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-medium text-white/80">
                 {tag}
               </span>
             ))}
           </div>
 
           {/* Stats */}
-          <div className="flex flex-wrap gap-6">
-            {[
-              { label: "Styles", value: `${count}` },
-              { label: "Min. per colour", value: `${MOQ_PER_COLOR} pcs` },
-              { label: `Bulk discount (${BULK_DISCOUNT_THRESHOLD}+ pcs)`, value: `${BULK_DISCOUNT_PERCENT}% off` },
-            ].map(s => (
-              <div key={s.label}>
-                <div className="text-2xl font-bold text-white" style={{ color: cfg.accent }}>{s.value}</div>
-                <div className="text-xs text-white/50">{s.label}</div>
+          <dl className="inline-grid grid-cols-3 divide-x divide-white/15 rounded-2xl border border-white/15 bg-white/5 backdrop-blur-sm">
+            {stats.map((st) => (
+              <div key={st.label} className="px-4 py-3 sm:px-6">
+                <dd className="text-xl font-bold sm:text-2xl" style={{ color: cfg.accent }}>{st.value}</dd>
+                <dt className="mt-0.5 text-[11px] leading-tight text-white/60">{st.label}</dt>
               </div>
             ))}
-          </div>
+          </dl>
         </div>
       </div>
-    </div>
+
+      {/* Accent hairline */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-x-0 bottom-0 h-px"
+        style={{ background: `linear-gradient(90deg, transparent, ${cfg.accent}99, transparent)` }}
+      />
+    </section>
   );
 }
 
@@ -217,24 +247,26 @@ function getFirstImage(product) {
 }
 
 // ─── Product Card ──────────────────────────────────────────────────────────
+// Puro card clickable: product name er link "stretched" kora hoyeche (after:inset-0).
+// Wishlist ar Quick View button z-20 diye uporey thake, tai alada kaj kore.
 function ProductCard({ product, idx, onQuickView }) {
-  const { isInWishlist, toggleWishlist, userId } = useWishlist();
+  const { isInWishlist, toggleWishlist, isToggling } = useWishlist();
   const [imgLoaded, setImgLoaded] = useState(false);
-  const inWish = isInWishlist(product._id || product.sku);
+  const imgRef = useRef(null);
+  const productId = product._id || product.sku;
+  const inWish = isInWishlist(productId);
+  const href = `/product/${productId}`;
 
-  const handleWishlist = (e) => {
+  // cached image onLoad er age load hoye gele opacity-0 e atke thake — eta thik kore
+  useEffect(() => {
+    if (imgRef.current?.complete) setImgLoaded(true);
+  }, []);
+
+const handleWishlist = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (userId === "guest") {
-      Swal.fire({
-        position: "top-end", icon: "warning",
-        title: "Please login to save items",
-        showConfirmButton: false, timer: 1800, toast: true,
-        background: "#fff8f0", color: "#92400e",
-      });
-      return;
-    }
-    toggleWishlist(product._id || product.sku);
+    // guest check + success/error toast useWishlist hook er bhitore kora ache
+    toggleWishlist(productId);
   };
 
   const price = Number(product.newPrice) || 0;
@@ -248,28 +280,31 @@ function ProductCard({ product, idx, onQuickView }) {
 
   return (
     <FadeIn delay={(idx % 4) * 60} className="h-full">
-      <div className="group bg-white rounded-2xl overflow-hidden border border-gray-100 hover:border-gray-200 hover:shadow-xl transition-all duration-300 h-full flex flex-col">
+      <article className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white transition-all duration-300 hover:-translate-y-1 hover:border-gray-200 hover:shadow-[0_18px_40px_-18px_rgba(26,26,26,0.28)] focus-within:ring-2 focus-within:ring-[#B8922A]/40">
 
         {/* Image */}
-        <div className="relative overflow-hidden bg-gray-50 aspect-[4/5]">
+        <div className="relative aspect-[4/5] overflow-hidden bg-gray-50">
           {/* Badges */}
-          <div className="absolute top-3 left-3 z-10 flex flex-col gap-1.5">
+          <div className="pointer-events-none absolute left-3 top-3 z-10 flex flex-col gap-1.5">
             {isBestSeller && (
-              <span className="px-2.5 py-1 text-[10px] font-bold rounded-lg text-white" style={{ background: GOLD }}>BESTSELLER</span>
+              <span className="rounded-lg px-2.5 py-1 text-[10px] font-bold text-white" style={{ background: GOLD }}>BESTSELLER</span>
             )}
             {isNew && (
-              <span className="px-2.5 py-1 text-[10px] font-bold rounded-lg text-white" style={{ background: SAGE }}>NEW IN</span>
+              <span className="rounded-lg px-2.5 py-1 text-[10px] font-bold text-white" style={{ background: SAGE }}>NEW IN</span>
             )}
             {discount > 0 && (
-              <span className="px-2.5 py-1 text-[10px] font-bold rounded-lg bg-red-500 text-white">{discount}% OFF</span>
+              <span className="rounded-lg bg-red-500 px-2.5 py-1 text-[10px] font-bold text-white">{discount}% OFF</span>
             )}
           </div>
 
           {/* Wishlist */}
           <button
+            type="button"
             onClick={handleWishlist}
-            className="absolute top-3 right-3 z-10 w-9 h-9 rounded-full bg-white shadow-md flex items-center justify-center transition-all hover:scale-110"
-            aria-label="Wishlist"
+            disabled={isToggling}
+            aria-label={inWish ? "Remove from wishlist" : "Add to wishlist"}
+            aria-pressed={inWish}
+            className="absolute right-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-white/95 shadow-md transition-all hover:scale-110"
           >
             <Heart
               size={16}
@@ -281,82 +316,66 @@ function ProductCard({ product, idx, onQuickView }) {
           </button>
 
           {/* Product image */}
-          <Link to={`/product/${product._id || product.sku}`}>
-            <img
-              src={getFirstImage(product)}
-              alt={product.productName}
-              onLoad={() => setImgLoaded(true)}
-              className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 ${imgLoaded ? "opacity-100" : "opacity-0"}`}
-            />
-            {!imgLoaded && <div className="absolute inset-0 bg-gray-100 animate-pulse" />}
-          </Link>
+          <img
+            ref={imgRef}
+            src={getFirstImage(product)}
+            alt={product.productName}
+            loading="lazy"
+            decoding="async"
+            onLoad={() => setImgLoaded(true)}
+            onError={(e) => {
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = "https://placehold.co/400x533?text=Image";
+              setImgLoaded(true);
+            }}
+            className={`h-full w-full object-contain transition-all duration-700 group-hover:scale-105 ${imgLoaded ? "opacity-100" : "opacity-0"}`}
+          />
+          {!imgLoaded && <div className="absolute inset-0 animate-pulse bg-gray-100" />}
 
-          {/* Quick View overlay */}
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all duration-300 flex items-end justify-center pb-4 opacity-0 group-hover:opacity-100">
+          {/* Quick View — mobile e sobsomoy, desktop e hover e dekhay */}
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex justify-center bg-gradient-to-t from-black/35 to-transparent px-3 pb-3 pt-12 opacity-100 transition-opacity duration-300 lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100">
             <button
+              type="button"
               onClick={() => onQuickView(product)}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white text-xs font-bold shadow-lg hover:bg-gray-50 transition-all -translate-y-2 group-hover:translate-y-0 duration-300"
+              aria-label={`Quick view ${product.productName}`}
+              className="pointer-events-auto flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-xs font-bold shadow-lg transition-all hover:bg-gray-50 sm:px-5 sm:py-2.5"
               style={{ color: CHARCOAL }}
             >
-              <Eye size={14} /> Quick View
+              <Eye size={14} aria-hidden="true" /> Quick View
             </button>
           </div>
         </div>
 
         {/* Info */}
-        <div className="p-4 flex flex-col flex-1">
+        <div className="flex flex-1 flex-col p-3 sm:p-4">
           {/* Category */}
-          <div className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1.5">
-            {product.categories?.slice(0, 2).join(" · ")}
-          </div>
-
-          {/* Name */}
-          <Link to={`/product/${product._id || product.sku}`}>
-            <h3 className="font-semibold text-sm leading-snug mb-2 line-clamp-2 hover:text-gray-600 transition-colors" style={{ color: CHARCOAL }}>
-              {product.productName}
-            </h3>
-          </Link>
-
-          {/* Colors */}
-          {product.colors?.length > 0 && (
-            <div className="flex flex-wrap gap-1 mb-3">
-              {product.colors.slice(0, 4).map(c => (
-                <span key={c} className="text-[10px] px-2 py-0.5 bg-gray-50 border border-gray-100 rounded text-gray-500">{c}</span>
-              ))}
-              {product.colors.length > 4 && (
-                <span className="text-[10px] px-2 py-0.5 bg-gray-50 border border-gray-100 rounded text-gray-400">+{product.colors.length - 4}</span>
-              )}
-            </div>
+          {product.categories?.length > 0 && (
+            <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+              {product.categories.slice(0, 2).join(" · ")}
+            </p>
           )}
 
-          {/* Spacer */}
-          <div className="flex-1" />
+          {/* Name — stretched link: pura card click korle product details e jay */}
+          <h3 className="text-sm font-semibold leading-snug" style={{ color: CHARCOAL }}>
+            <Link
+              to={href}
+              className="line-clamp-2 transition-colors after:absolute after:inset-0 after:content-[''] hover:text-[#B8922A] focus:outline-none"
+            >
+              {product.productName}
+            </Link>
+          </h3>
 
           {/* Price */}
-          <div className="mb-3 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-            <span className="text-xl font-bold" style={{ color: CHARCOAL }}>{formatMoney(price)}</span>
-            <span className="text-xs text-gray-500">/ piece</span>
+          <div className="mt-auto flex flex-wrap items-baseline gap-x-2 pt-4">
+            <span className="text-lg font-bold sm:text-xl" style={{ color: CHARCOAL }}>
+              {formatMoney(price)} <small className="text-xs font-normal text-gray-400">/piece</small>
+            </span>
             {discount > 0 && (
               <span className="text-xs text-gray-400 line-through">{formatMoney(oldPrice)}</span>
             )}
           </div>
-
-          {/* View Details CTA */}
-          <Link
-            to={`/product/${product._id || product.sku}`}
-            className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-xs font-bold border-2 transition-all hover:text-white group/btn"
-            style={{
-              borderColor: CHARCOAL,
-              color: CHARCOAL,
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = CHARCOAL; e.currentTarget.style.color = "white"; }}
-            onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = CHARCOAL; }}
-          >
-            View Details
-            <ArrowRight size={13} />
-          </Link>
         </div>
-      </div>
+      </article>
     </FadeIn>
   );
 }
@@ -364,7 +383,7 @@ function ProductCard({ product, idx, onQuickView }) {
 // ─── Empty State ───────────────────────────────────────────────────────────
 function EmptyState({ onClear }) {
   return (
-    <div className="flex flex-col items-center justify-center py-24 text-center px-4">
+    <div className="relative aspect-[3/4] overflow-hidden bg-white">
       <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-5" style={{ background: `${GOLD}10` }}>
         <Package size={28} style={{ color: GOLD }} />
       </div>
@@ -390,6 +409,10 @@ const SORT_OPTIONS = [
   { value: "popularity", label: "Bestsellers First" },
   { value: "latest", label: "Latest Arrivals" },
 ];
+
+// Mobile e 2 column (e-commerce standard), desktop e 3 ba 4
+const gridClass = (cols) =>
+  cols === 3 ? "grid-cols-2 lg:grid-cols-3" : "grid-cols-2 lg:grid-cols-4";
 
 // ─── Main ProductsGrid Component ──────────────────────────────────────────
 export default function ProductsGrid({
@@ -461,15 +484,21 @@ export default function ProductsGrid({
   const toggle = (list, setList, val) =>
     setList(prev => prev.includes(val) ? prev.filter(x => x !== val) : [...prev, val]);
 
-  if (isLoading) return <Loading />;
-
   if (isError) return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="text-center p-8">
-        <div className="text-5xl mb-4">😕</div>
-        <h2 className="text-xl font-bold mb-2 text-gray-800">Failed to load products</h2>
-        <button onClick={() => window.location.reload()} className="px-6 py-3 rounded-xl text-white font-semibold mt-4" style={{ background: CHARCOAL }}>
-          Retry
+    <div className="flex min-h-[60vh] items-center justify-center px-4">
+      <div className="max-w-sm text-center">
+        <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl" style={{ background: `${GOLD}14` }}>
+          <Package size={28} style={{ color: GOLD }} aria-hidden="true" />
+        </div>
+        <h2 className="text-xl font-bold" style={{ color: CHARCOAL }}>We couldn't load the products</h2>
+        <p className="mt-2 text-sm text-gray-500">Please check your connection and try again.</p>
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className="mt-6 rounded-xl px-6 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+          style={{ background: CHARCOAL }}
+        >
+          Try again
         </button>
       </div>
     </div>
@@ -481,24 +510,24 @@ export default function ProductsGrid({
       <Breadcrumb breadcrumbs={breadcrumbs} />
 
       {/* Hero */}
-      <CategoryHero category={category} count={products.length} />
+      <CategoryHero category={category} count={isLoading ? "…" : products.length} />
 
       {/* Trust strip */}
-      <div className="border-b border-gray-100 bg-gray-50/60">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-wrap items-center justify-center sm:justify-between gap-4 py-3">
+      <div className="border-b border-gray-100 bg-gray-50/70">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <ul className="flex items-center gap-x-8 overflow-x-auto py-3.5 text-xs font-medium text-gray-600 lg:justify-between [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {[
-              { icon: Package, text: `${products.length} ${products.length === 1 ? "style" : "styles"} available` },
+              { icon: Package, text: isLoading ? "Loading styles…" : `${products.length} ${products.length === 1 ? "style" : "styles"} available` },
               { icon: Tag, text: `Min. ${MOQ_PER_COLOR} pcs per colour` },
               { icon: Star, text: `${BULK_DISCOUNT_PERCENT}% off on ${BULK_DISCOUNT_THRESHOLD}+ pieces` },
               { icon: Truck, text: "Worldwide wholesale orders" },
               { icon: Shield, text: "Direct UAE manufacturer" },
             ].map(({ icon: Icon, text }) => (
-              <div key={text} className="flex items-center gap-2 text-xs font-medium text-gray-500">
-                <Icon size={13} style={{ color: GOLD }} /> {text}
-              </div>
+              <li key={text} className="flex shrink-0 items-center gap-2 whitespace-nowrap">
+                <Icon size={14} style={{ color: GOLD }} aria-hidden="true" /> {text}
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
       </div>
 
@@ -545,6 +574,7 @@ export default function ProductsGrid({
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   placeholder="Search products…"
+                  aria-label="Search products"
                   className="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-gray-400 transition-colors"
                 />
                 {searchQuery && (
@@ -561,7 +591,7 @@ export default function ProductsGrid({
                   type="range" min={0} max={maxPrice} step={5}
                   value={priceRange[1]}
                   onChange={e => setPriceRange([0, +e.target.value])}
-                  className="w-full h-1.5 rounded-full accent-gray-900"
+                  className="w-full h-1.5 rounded-full accent-[#B8922A]"
                 />
                 <div className="flex justify-between text-xs text-gray-500 mt-2">
                   <span>{money0(0)}</span><span className="font-semibold text-gray-700">{money0(priceRange[1])}</span>
@@ -579,7 +609,7 @@ export default function ProductsGrid({
                           type="checkbox"
                           checked={selectedCategories.includes(cat)}
                           onChange={() => toggle(selectedCategories, setSelectedCategories, cat)}
-                          className="w-4 h-4 rounded border-gray-300 accent-gray-900"
+                          className="w-4 h-4 rounded border-gray-300 accent-[#B8922A]"
                         />
                         <span className="text-sm text-gray-600 group-hover:text-gray-900 transition-colors">{cat}</span>
                       </label>
@@ -663,10 +693,14 @@ export default function ProductsGrid({
                     )}
                   </button>
 
-                  <span className="text-sm text-gray-500">
-                    <span className="font-bold" style={{ color: CHARCOAL }}>{filtered.length}</span>
-                    {" "}of {products.length} products
-                  </span>
+                  {isLoading ? (
+                    <span className="text-sm text-gray-400">Loading products…</span>
+                  ) : (
+                    <span className="text-sm text-gray-500">
+                      <span className="font-bold" style={{ color: CHARCOAL }}>{filtered.length}</span>
+                      {" "}of {products.length} products
+                    </span>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-3">
@@ -676,6 +710,8 @@ export default function ProductsGrid({
                       <button
                         key={n}
                         onClick={() => setGridCols(n)}
+                        aria-label={`Show ${n} columns`}
+                        aria-pressed={gridCols === n}
                         className={`p-1.5 rounded transition-all ${gridCols === n ? "bg-gray-100" : "hover:bg-gray-50"}`}
                       >
                         <Grid size={14} className={gridCols === n ? "text-gray-900" : "text-gray-400"} />
@@ -688,6 +724,7 @@ export default function ProductsGrid({
                     <select
                       value={sortBy}
                       onChange={e => setSortBy(e.target.value)}
+                      aria-label="Sort products"
                       className="appearance-none text-sm border border-gray-200 rounded-xl px-4 py-2 pr-8 focus:outline-none focus:border-gray-400 bg-white font-medium cursor-pointer"
                       style={{ color: CHARCOAL }}
                     >
@@ -723,14 +760,15 @@ export default function ProductsGrid({
             </div>
 
             {/* Grid */}
-            {filtered.length === 0 ? (
+            {isLoading ? (
+              <ProductGridSkeleton
+                count={6}
+                className={`grid gap-3 sm:gap-5 ${gridClass(gridCols)}`}
+              />
+            ) : filtered.length === 0 ? (
               <EmptyState onClear={clearAll} />
             ) : (
-              <div className={`grid gap-5 ${
-                gridCols === 3
-                  ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
-                  : "grid-cols-2 sm:grid-cols-2 lg:grid-cols-4"
-              }`}>
+              <div className={`grid gap-3 sm:gap-5 ${gridClass(gridCols)}`}>
                 {filtered.map((product, idx) => (
                   <ProductCard
                     key={product._id || product.sku || idx}

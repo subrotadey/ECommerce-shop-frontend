@@ -8,11 +8,10 @@ import QuickActions from "../../../components/UserDashboard/QuickActions";
 import RecentOrdersWidget from "../../../components/UserDashboard/RecentOrdersWidget";
 import SupportCard from "../../../components/UserDashboard/SupportCard";
 import WishlistWidget from "../../../components/UserDashboard/WishlistWidget";
-import Settings from "../../Settings/Settings";
 import useAuth from "../../../hooks/useAuth";
 import useRole from "../../../hooks/useRole";
 import useDashboard from "../../../hooks/useDashboard";
-import { Link } from "react-router";
+import Loading from "../../../components/Shared/Loading/Loading";
 
 const UserDashboard = () => {
     const { currentUser } = useAuth();
@@ -22,12 +21,7 @@ const UserDashboard = () => {
     // Loading State
     if (loading) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
-                <div className="text-center">
-                    <Loader className="w-16 h-16 text-blue-600 animate-spin mx-auto mb-4" />
-                    <p className="text-gray-700 font-semibold text-lg">Loading your dashboard...</p>
-                </div>
-            </div>
+            <Loading fullScreen />
         );
     }
 

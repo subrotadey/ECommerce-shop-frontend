@@ -1,50 +1,30 @@
 import { ShoppingBag, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import Swal from 'sweetalert2';
 import Breadcrumb from '../../components/Shared/Breadcrumb/Breadcrumb';
 import Loading from '../../components/Shared/Loading/Loading';
 import useWishlist from '../../hooks/useWishlist';
 import { formatMoney } from '../../utils/currency';
+import notify from '../../utils/notification';
 
 const Wishlist = () => {
     const { wishlist, isLoading, isError, removeFromWishlist, isRemoving } = useWishlist();
 
-    const handleRemove = (productId, productName) => {
-        if (confirm(`Remove "${productName}" from wishlist?`)) {
-            removeFromWishlist(productId, {
-                onSuccess: () => {
-                    Swal.fire({
-                        position: "top-end",
-                        icon: "success",
-                        title: `"${productName}" removed from wishlist\n`,
-                        showConfirmButton: false,
-                        timer: 1000,
-                        toast: true,
-                        background: "#d4edda",
-                        color: "#155724",
-                    });
+    const handleRemove = async (productId, productName) => {
+        const confirmed = await notify.confirm(
+            'Remove from wishlist?',
+            `"${productName}" will be removed from your wishlist.`,
+            'Yes, remove it'
+        );
+        if (!confirmed) return;
 
-                },
-                onError: () => {
-                    Swal.fire({
-                        position: "top-end",
-                        icon: "error",
-                        title: `Failed to remove "${productName}" from wishlist\n`,
-                        showConfirmButton: false,
-                        timer: 1000,
-                        toast: true,
-                        background: "#f8d7da",
-                        color: "#721c24",
-                    });
-                }
-            });
-        }
+        removeFromWishlist(productId, {
+            onSuccess: () => notify.success('Removed from wishlist', productName),
+            onError: () => notify.error('Failed to remove', productName),
+        });
     };
 
-
-
     if (isLoading) {
-        return <Loading />;
+        return <Loading fullScreen />;
     }
 
     if (isError) {
@@ -92,7 +72,9 @@ const Wishlist = () => {
                     <div className="space-y-4">
                         {wishlist.map(item => {
                             const product = item.product || item.productDetails;
+                            if (!product) return null; // product delete hoye gele crash na kore skip
                             const inStock = product.stock > 0;
+                            const hasDiscount = product.oldPrice > product.newPrice;
 
                             return (
                                 <div key={item._id} className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow">
@@ -128,7 +110,7 @@ const Wishlist = () => {
 
                                                 {/* Price */}
                                                 <div className="flex items-center gap-2 mb-3">
-                                                    {product.oldPrice && (
+                                                    {hasDiscount && (
                                                         <span className="text-sm text-gray-400 line-through">
                                                             {formatMoney(product.oldPrice)}
                                                         </span>
@@ -136,7 +118,7 @@ const Wishlist = () => {
                                                     <span className="text-xl font-bold text-gray-900">
                                                         {formatMoney(product.newPrice)}
                                                     </span>
-                                                    {product.oldPrice && (
+                                                    {hasDiscount && (
                                                         <span className="text-xs font-semibold text-green-600 bg-green-50 px-2 py-1 rounded">
                                                             {Math.round(((product.oldPrice - product.newPrice) / product.oldPrice) * 100)}% OFF
                                                         </span>

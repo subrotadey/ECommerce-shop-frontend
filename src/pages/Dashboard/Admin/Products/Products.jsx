@@ -10,6 +10,7 @@ import { createProduct, updateProduct, deleteProduct } from '../../../../service
 import notify from '../../../../utils/notification';
 import { formatMoney } from '../../../../utils/currency';
 import { optimizedVideoUrl } from '../../../../config/cloudinary';
+import { TableRowsSkeleton } from '../../../../components/Shared/Loading/Loading';
 
 const LOW_STOCK_THRESHOLD = 10;
 
@@ -264,13 +265,7 @@ const Products = () => {
     const viewingImages = viewingProduct ? getProductImages(viewingProduct) : [];
 
     // 4. Render
-    if (isLoading) {
-        return (
-            <div className="flex justify-center items-center h-96">
-                <span className="loading loading-spinner loading-lg"></span>
-            </div>
-        );
-    }
+
 
     if (isError) {
         return (
@@ -391,7 +386,9 @@ const Products = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {filteredProducts.length === 0 ? (
+                            {isLoading ? (
+                                <TableRowsSkeleton rows={6} />
+                            ) : filteredProducts.length === 0 ? (
                                 <tr>
                                     <td colSpan="8" className="text-center py-10 text-gray-500">
                                         No products found.

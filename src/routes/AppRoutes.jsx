@@ -46,12 +46,16 @@ import Wholesale from "../pages/Wholesale/Wholesale";
 import PrivacyPolicy from "../pages/PrivacyPolicy/PrivacyPolicy";
 import TermsConditions from "../pages/TermsConditions/TermsConditions";
 
+
 const router = createBrowserRouter([
   {
     path: "/",
     element: <MainLayout />,
-    errorElement: <DisplayError />,
+    errorElement: <DisplayError fullScreen />,
     children: [
+      {
+        errorElement: <DisplayError />,
+        children: [
       {
         index: true,
         element: <Home />,
@@ -183,7 +187,13 @@ const router = createBrowserRouter([
             <UserSettings />
           </PrivateRoute>
         )
-      }
+      },
+      {
+        path: "*",
+        element: <NotFound />,
+      },
+        ],
+      },
     ],
   },
   {
@@ -193,8 +203,12 @@ const router = createBrowserRouter([
         <AdminLayout />
       </AdminRoute>
     ),
-    errorElement: <DisplayError />,
+    errorElement: <DisplayError fullScreen />,
     children: [
+      {
+        // Sidebar/header thakbe, shudhu content e error dekhabe
+        errorElement: <DisplayError />,
+        children: [
       {
         index: true,
         element: <DashboardHome />,
@@ -252,17 +266,15 @@ const router = createBrowserRouter([
         path: "settings",
         element: <AdminSettings />
       }
+        ],
+      },
     ],
   },
 
   {
     path: "/memo/:orderId",
     element: <Memo />,
-    errorElement: <DisplayError />,
-  },
-  {
-    path: "*",
-    element: <NotFound />,
+    errorElement: <DisplayError fullScreen />,
   },
 ]);
 

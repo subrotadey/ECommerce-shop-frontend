@@ -553,7 +553,7 @@ const MyOrders = () => {
     "refunded",
   ];
 
-  if (isLoading) return <Loading />;
+  if (isLoading) return <Loading fullScreen />;
 
   return (
     <>

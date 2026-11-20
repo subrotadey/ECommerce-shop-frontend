@@ -1,24 +1,17 @@
-import Loading from "../../components/Shared/Loading/Loading";
+// src/pages/AbayaAll/AbayaAll.jsx
 import ProductsGrid from "../../components/Shared/ProductsGrid/ProductsGrid";
 import useProducts from "../../hooks/useProducts";
 
 const AbayaAll = () => {
-  const { data: abayaProducts = [], isLoading: abayaLoading, isError: abayaError } = useProducts("abaya");
-
-  if (abayaLoading) {
-    return <Loading />;
-  }
+  const { data: abayaProducts = [], isLoading, isError } = useProducts("abaya");
 
   return (
     <ProductsGrid
       products={abayaProducts}
-      isLoading={abayaLoading}
-      isError={abayaError}
+      isLoading={isLoading}
+      isError={isError}
       category="Abaya"
-      breadcrumbs={[
-        { label: 'HOME', link: '/' },
-        { label: 'ABAYA' }
-      ]}
+      breadcrumbs={[{ label: "ABAYA" }]}
     />
   );
 };

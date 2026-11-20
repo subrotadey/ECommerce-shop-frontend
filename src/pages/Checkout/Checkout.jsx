@@ -448,7 +448,7 @@ const Checkout = () => {
     }).then(r => { if (r.isConfirmed) removeItem(key); });
   };
 
-  if (isLoading) return <Loading />;
+  if (isLoading) return <Loading fullScreen />;
 
   if (!items || items.length === 0) {
     return (

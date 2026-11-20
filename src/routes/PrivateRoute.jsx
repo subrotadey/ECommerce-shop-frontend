@@ -2,15 +2,15 @@
 // 1. Routes/PrivateRoute.jsx - IMPROVED
 // ============================================
 import { Navigate, useLocation } from 'react-router-dom';
-import useAuth from '../hooks/useAuth';
 import Loading from '../components/Shared/Loading/Loading';
+import useAuth from '../hooks/useAuth';
 
 const PrivateRoute = ({ children }) => {
   const { currentUser, loading } = useAuth();
   const location = useLocation();
 
   if (loading) {
-    return <Loading />;
+    return <Loading fullScreen />;
   }
 
   if (!currentUser) {

@@ -138,7 +138,7 @@ const Cart = () => {
     navigate("/checkout");
   };
 
-  if (isLoading) return <Loading />;
+  if (isLoading) return <Loading fullScreen />;
 
   if (isError) {
     return (
